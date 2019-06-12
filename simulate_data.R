@@ -7,7 +7,7 @@ library(compositions)
 library(MASS)
 library(tidyverse)
 
-# Simulate dataset with 500 individuals and 35 chemicals to approx Mothers and Newborns cohort data.
+# Simulate dataset with 1000 individuals and 35 chemicals to approx Mothers and Newborns cohort data.
 
 #####################
 ## M&N Data #########
@@ -82,9 +82,11 @@ mean_log <- as_vector(map_df(log(mn_data_log), ~mean(., na.rm = TRUE)))
 var_log <- cor(log(mn_data_drop), use = "pairwise.complete.obs", method = c("spearman"))
 #chol(var_log)
 
-simulated <- rlnorm.rplus(500, meanlog = mean_log, varlog = var_log)
+set.seed(1988)
+simulated <- rlnorm.rplus(1000, meanlog = mean_log, varlog = var_log)
 names(simulated) <- names(mn_data_log)
 
+set.seed(1988)
 simulated2 <- exp(mvrnorm(n = 500, mu = mean_log, Sigma = var_log))
 names(simulated2) <- names(mn_data_log)
 
@@ -92,7 +94,7 @@ names(simulated2) <- names(mn_data_log)
 ## Heat map #########
 #####################
 
-sim_cormat <- round(cor(simulated2, use = "pairwise.complete.obs", method = c("spearman")),2)
+sim_cormat <- round(cor(simulated, use = "pairwise.complete.obs", method = c("spearman")),2)
 
 sim_melted_cormat <- melt(sim_cormat) %>% rename(Correlation = value)
 
@@ -113,6 +115,8 @@ ggplot(data = sim_labelled, aes(x = Var1, y = Var2)) +
                        midpoint = 0,
                        na.value = "transparent", limits = c(-1, 1)) +
   theme_grey(base_size = 15) + labs(x = "", y = "", title = "Simulated EDC correlations") +
+  scale_x_discrete(expand = c(0, 0)) +
+  scale_y_discrete(expand = c(0, 0)) +
   theme(axis.text.x = element_blank(), axis.text.y = element_blank(),
         panel.spacing = unit(0, "lines"),
         strip.background = element_blank(),
