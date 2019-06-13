@@ -54,6 +54,10 @@ original <- ggplot(data = labelled, aes(x = Var1, y = Var2)) +
         strip.text.y = element_text(size = 18)) +
   facet_grid(Class2 ~ Class1, scales = "free", switch = "both")
 
+mn_data %>% 
+  gather(key = variable) %>% 
+  ggplot(aes(x = value)) + geom_density() + facet_wrap(.~variable, scales = "free")
+
 ##############################
 ## Multivariate log normal ###
 ##############################
@@ -100,7 +104,7 @@ sim1_plot <- ggplot(data = sim_labelled, aes(x = Var1, y = Var2)) +
   scale_fill_gradient2(low = "#00BFC4", mid = "white", high = "#F8766D",
                        midpoint = 0,
                        na.value = "transparent", limits = c(-1, 1)) +
-  theme_grey(base_size = 15) + labs(x = "", y = "", title = "Simulated EDC correlations") +
+  theme_grey(base_size = 15) + labs(x = "", y = "", title = "Simulated multivariate log normal") +
   scale_x_discrete(expand = c(0, 0)) +
   scale_y_discrete(expand = c(0, 0)) +
   theme(axis.text.x = element_blank(), axis.text.y = element_blank(),
@@ -131,7 +135,7 @@ sim2_plot <- ggplot(data = sim_labelled, aes(x = Var1, y = Var2)) +
   scale_fill_gradient2(low = "#00BFC4", mid = "white", high = "#F8766D",
                        midpoint = 0,
                        na.value = "transparent", limits = c(-1, 1)) +
-  theme_grey(base_size = 15) + labs(x = "", y = "", title = "Simulated EDC correlations") +
+  theme_grey(base_size = 15) + labs(x = "", y = "", title = "Simulated exp(multivariate normal)") +
   scale_x_discrete(expand = c(0, 0)) +
   scale_y_discrete(expand = c(0, 0)) +
   theme(axis.text.x = element_blank(), axis.text.y = element_blank(),
