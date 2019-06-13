@@ -67,11 +67,14 @@ var_log <- cov(log(mn_data), use = "complete.obs")
 
 set.seed(1988)
 simulated <- rlnorm.rplus(1000, meanlog = mean_log, varlog = var_log)
-names(simulated) <- names(mn_data)
+colnames(simulated) <- names(mn_data)
 
 set.seed(1988)
 simulated2 <- exp(mvrnorm(n = 1000, mu = mean_log, Sigma = var_log))
-names(simulated2) <- names(mn_data)
+colnames(simulated2) <- names(mn_data)
+
+simulated[1:5,1:7]
+simulated2[1:5,1:7]
 
 #####################
 ## Heat map #########
