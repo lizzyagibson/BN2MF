@@ -1,6 +1,8 @@
 ######################################
 ## Simulate Data-Generating Process ##
 ## 6/21/2019 #########################
+######################################
+
 options(scipen = 999)
 library(MNdata)
 library(reshape2)
@@ -49,21 +51,15 @@ cor(patterns)
 ## Simulate Individual Scores on Patterns ##
 ############################################
 
-hist(rgamma(50, shape = 1, rate = 0.5))
+scores <- matrix(nrow = 1000, ncol = 5)
 
+set.seed(1988)
+for (i in 1:nrow(scores)) {
+  scores[i,] <- rgamma(5, shape = 0.5)
+  scores[i,] <- scores[i,]/sum(scores[i,]) # Make scores sum to 1
+}
 
-
-
-
-
-
-
-
-
-
-
-
-
+head(scores)
 
 ##############################
 ## Multivariate log normal ###
