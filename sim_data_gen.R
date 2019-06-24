@@ -1,5 +1,6 @@
-# Simulate data-generating process
-# 6/21/2019
+######################################
+## Simulate Data-Generating Process ##
+## 6/21/2019 #########################
 options(scipen = 999)
 library(MNdata)
 library(reshape2)
@@ -7,12 +8,14 @@ library(compositions)
 library(MASS)
 library(tidyverse)
 library(gridExtra)
+library(bindata) # multivariate binomial dist
 
-# Simulate dataset with 1000 individuals and 35 chemicals to approx Mothers and Newborns cohort data.
+# Simulate dataset with 1000 individuals and 50 chemicals to approx 
+# DATA GENERATING PROCESS of Mothers and Newborns cohort data.
 
-#####################
-## MN Data #########
-#####################
+#############
+## MN Data ##
+#############
 
 # 8 phenols, 9 phthalates, 10 pbdes, 8 pcbs
 # phenols and phthalates are specific gravity adjusted
@@ -25,3 +28,55 @@ mn_data <- mn_edc %>% dplyr::select(1:52) %>%
                 grep("BDE", colnames(.))) %>%
   dplyr::select(-sid)
 
+#######################
+## Simulate Patterns ##
+#######################
+
+## Construct a binary correlation matrix for 5 TRUE exposure patterns
+m <- matrix(c(1,0.25,0.25,0.25,0.25,
+              0.25,1,0.25,0.25,0.25,
+              0.25,0.25,1,0.25,0.25,
+              0.25,0.25,0.25,1,0.25,
+              0.25,0.25,0.25,0.25,1), ncol=5)   
+
+## Simulate 50 chemical exposures, and check that they have the specified correlation structure
+set.seed(1988)
+patterns <- rmvbin(50, margprob = rep(0.4, 5), bincorr = m) 
+sum(patterns[,5])
+cor(patterns)
+
+############################################
+## Simulate Individual Scores on Patterns ##
+############################################
+
+hist(rgamma(50, shape = 1, rate = 0.5))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+##############################
+## Multivariate log normal ###
+##############################
+
+##############################
+## Multivariate log normal ###
+##############################
+
+##############################
+## Multivariate log normal ###
+##############################
+
+##############################
+## Multivariate log normal ###
+##############################
