@@ -1,5 +1,3 @@
-data = dlmread('sim_data.csv', ';')
-
 function [W,H,L] = NMF(X,K,penalty,num_iter)
 % NMF implements non-negative matrix factorization of the matrix X
 % according to a predefined penalty.
