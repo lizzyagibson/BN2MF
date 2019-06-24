@@ -34,6 +34,10 @@ mn_data <- mn_edc %>% dplyr::select(1:52) %>%
 ## Simulate Patterns ##
 #######################
 
+# Generate 5 non-negative vectors of length 50 “by hand” — vectors should be overlapping a bit, 
+# and at this stage don’t have to look too much like pollution. 
+# just make 20 (of 50) elements 1 and the rest 0, or something dumb like that
+
 ## Construct a binary correlation matrix for 5 TRUE exposure patterns
 m <- matrix(c(1,0.25,0.25,0.25,0.25,
               0.25,1,0.25,0.25,0.25,
@@ -51,23 +55,59 @@ cor(patterns)
 ## Simulate Individual Scores on Patterns ##
 ############################################
 
+# generate random scores indicating the presence of each vector for each observation from a gamma distribution
+
+hist(rgamma(5, shape = 0.5))
+
 scores <- matrix(nrow = 1000, ncol = 5)
 
 set.seed(1988)
 for (i in 1:nrow(scores)) {
   scores[i,] <- rgamma(5, shape = 0.5)
-  scores[i,] <- scores[i,]/sum(scores[i,]) # Make scores sum to 1
+  #scores[i,] <- scores[i,]/sum(scores[i,]) # Make scores sum to 1
 }
 
 head(scores)
 
-##############################
-## Multivariate log normal ###
-##############################
+#################################
+## Simulate Chemical Exposures ##
+#################################
 
-##############################
-## Multivariate log normal ###
-##############################
+# multiple scores and vectors, and add to get the mixture
+
+chem <- scores %*% t(patterns)
+
+cor(chem)
+
+###########
+## Noise ##
+###########
+
+# noise is harder - if your scores are big enough just use a normal distribution 
+# to make sure things “work” and we can fancy it up from there
+
+chem_n <- matrix(nrow = 1000, ncol = 50)
+
+set.seed(1988)
+for (i in 1:ncol(chem_n)) {
+  chem_n[,i] <- chem[,i] + rnorm(1000)
+}
+
+head(chem_n)
+cor(chem_n)
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ##############################
 ## Multivariate log normal ###
