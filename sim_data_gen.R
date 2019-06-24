@@ -96,23 +96,53 @@ for (i in 1:ncol(chem_n)) {
 head(chem_n)
 cor(chem_n)
 
+###############################
+## Simuate with NMF Function ##
+###############################
 
+# internal parameters
+mu.W <- 1
+sd.W <- 1
 
+# r = rank / patterns
+r <- 5
 
+# n = participants
+n <- 1000
 
+# p = chemicals
+p <- 50
 
+set.seed(1988)
+g <- rmultinom(1, p, rep(1, r))			
+  
+# generate H
+H <- matrix(0, r, p)
+tmp <- 0
+for( i in 1:r ){
+    H[i,(tmp+1):(tmp+g[i])] <- 1
+    tmp <- tmp+g[i]
+  } 	
 
+set.seed(1988)  
+b <- rmultinom(1, n, rep(1, r))		
 
+# generate W
+W <- matrix(0, n, r)
+tmp <- 0
+for( i in 1:r ){		
+    W[(tmp+1):(tmp+b[i]),i] <- abs(rnorm(b[i], mu.W, sd.W))
+    tmp <- tmp + b[i]
+  }	
 
+# build the composite matrix
+res <- W %*% H
 
-
-
-
-
-##############################
-## Multivariate log normal ###
-##############################
-
-##############################
-## Multivariate log normal ###
-##############################
+# add some noise
+res <- pmax(res + rmatrix(res, dist=rnorm, mean=noise$mean, sd=noise$sd), 0)	
+  
+# return the factors
+pData <- list(Group=factor(unlist(mapply(rep, 1:r, g, SIMPLIFY=FALSE))))
+fData <- list(Group=factor(unlist(mapply(rep, 1:r, b, SIMPLIFY=FALSE))))
+res <- list(res, W=W, H=H, offset=offset, pData=pData, fData=fData)
+  
