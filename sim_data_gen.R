@@ -6,11 +6,10 @@
 options(scipen = 999)
 library(MNdata)
 library(reshape2)
-library(compositions)
-library(MASS)
 library(tidyverse)
 library(gridExtra)
 library(bindata) # multivariate binomial dist
+library(NMF) # rmatrix
 
 # Simulate dataset with 1000 individuals and 50 chemicals to approx 
 # DATA GENERATING PROCESS of Mothers and Newborns cohort data.
@@ -97,28 +96,54 @@ head(chem_n)
 cor(chem_n)
 
 ###############################
+## Look at Heatmap Structure ##
+###############################
+
+cormat <- round(cor(chem_n, use = "complete.obs"),2)
+
+melted_cormat <- melt(cormat) %>% rename(Correlation = value)
+
+ggplot(data = melted_cormat, aes(x = Var1, y = Var2)) +
+  geom_tile(aes(fill = Correlation), colour = "white") +
+  scale_fill_gradient2(low = "#00BFC4", mid = "white", high = "#F8766D",
+                       midpoint = 0,
+                       na.value = "transparent", limits = c(-1, 1)) +
+  theme_grey(base_size = 15) + labs(x = "", y = "", title = "Simulated exp(multivariate normal)") +
+  scale_x_discrete(expand = c(0, 0)) +
+  scale_y_discrete(expand = c(0, 0)) +
+  theme(axis.text.x = element_blank(), axis.text.y = element_blank(),
+        panel.spacing = unit(0, "lines"),
+        strip.background = element_blank(),
+        strip.placement = "outside", legend.position = "bottom",
+        strip.text.x = element_text(size = 18),
+        strip.text.y = element_text(size = 18))
+
+###############################
 ## Simuate with NMF Function ##
 ###############################
 
-# internal parameters
-mu.W <- 1
-sd.W <- 1
-
 # r = rank / patterns
+# r specification of the factorization rank
 r <- 5
 
 # n = participants
+# n number of rows of the target matrix
 n <- 1000
 
 # p = chemicals
+# p number of columns of the synthetic target matrix
 p <- 50
 
 set.seed(1988)
 g <- rmultinom(1, p, rep(1, r))			
-  
+# r groups of samples are generated from a draw from a multinomial 
+# distribution with equal probabilities that provides their sizes
+
 # generate H
 H <- matrix(0, r, p)
 tmp <- 0
+
+set.seed(1988)
 for( i in 1:r ){
     H[i,(tmp+1):(tmp+g[i])] <- 1
     tmp <- tmp+g[i]
@@ -126,10 +151,16 @@ for( i in 1:r ){
 
 set.seed(1988)  
 b <- rmultinom(1, n, rep(1, r))		
+# r groups of samples are generated from a draw from a multinomial 
+# distribution with equal probabilities that provides their sizes
 
 # generate W
 W <- matrix(0, n, r)
 tmp <- 0
+mu.W <- 1
+sd.W <- 1
+
+set.seed(1988)
 for( i in 1:r ){		
     W[(tmp+1):(tmp+b[i]),i] <- abs(rnorm(b[i], mu.W, sd.W))
     tmp <- tmp + b[i]
@@ -139,10 +170,34 @@ for( i in 1:r ){
 res <- W %*% H
 
 # add some noise
+noise <- list(mean=0, sd=1)
+set.seed(1988)
 res <- pmax(res + rmatrix(res, dist=rnorm, mean=noise$mean, sd=noise$sd), 0)	
   
 # return the factors
 pData <- list(Group=factor(unlist(mapply(rep, 1:r, g, SIMPLIFY=FALSE))))
 fData <- list(Group=factor(unlist(mapply(rep, 1:r, b, SIMPLIFY=FALSE))))
-res <- list(res, W=W, H=H, offset=offset, pData=pData, fData=fData)
-  
+
+###############################
+## Look at Heatmap Structure ##
+###############################
+
+cormat2 <- round(cor(res, use = "complete.obs"),2)
+
+melted_cormat2 <- melt(cormat2) %>% rename(Correlation = value)
+
+ggplot(data = melted_cormat2, aes(x = Var1, y = Var2)) +
+  geom_tile(aes(fill = Correlation), colour = "white") +
+  scale_fill_gradient2(low = "#00BFC4", mid = "white", high = "#F8766D",
+                       midpoint = 0,
+                       na.value = "transparent", limits = c(-1, 1)) +
+  theme_grey(base_size = 15) + labs(x = "", y = "") +
+  scale_x_discrete(expand = c(0, 0)) +
+  scale_y_discrete(expand = c(0, 0)) +
+  theme(axis.text.x = element_blank(), axis.text.y = element_blank(),
+        panel.spacing = unit(0, "lines"),
+        strip.background = element_blank(),
+        strip.placement = "outside", legend.position = "bottom",
+        strip.text.x = element_text(size = 18),
+        strip.text.y = element_text(size = 18))
+

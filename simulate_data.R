@@ -1,10 +1,10 @@
 # Simulation
 # 6/10/2019
 options(scipen = 999)
-library(MNdata)
-library(reshape2)
-library(compositions)
-library(MASS)
+library(MNdata) 
+library(reshape2) # melt()
+library(compositions) # rlnorm.rplus()
+library(MASS) # mvrnorm()
 library(tidyverse)
 library(gridExtra)
 
