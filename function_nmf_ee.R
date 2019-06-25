@@ -31,30 +31,30 @@ L <- matrix()
 eps <- 2.2204e-16
 
 # Iterate to minimize loss function
-for (i in 1:num_iter) {
-
-  if (identical(penalty,'L2')) {
+if (identical(penalty,'L2')) {
+  for (i in 1:num_iter) {
         H <- H * (t(W) %*% X) / ((t(W) %*% W) %*% H + eps)
         W <- W * (X %*% t(H)) / (W %*% (H %*% t(H)) + eps)
         
   # Loss function -- Gaussian MLE
   L[i] <- sum((X - W %*% H)^2)
   }
+  return(list(ind_scores = W, chem_loadings = H, loss = L))
+  }
 
   else if (identical(penalty,'divergence')) {
+    for (i in 1:num_iter) {
         H <- H * (t(W/kronecker(matrix(1,D,1), matrix(colSums(W), nrow=1))) %*% (X / (W %*% H + eps)))
         W <- W * ((X / (W %*% H + eps)) %*% t(H / kronecker(matrix(1,1,N), matrix(rowSums(H), ncol = 1))))
 
   # Loss function -- Poisson MLE
   L[i] <- -sum(X * log(W %*% H)) + sum(W %*% H)
   }
-  # L(iter) = -sum(sum(X.*log(W*H))) + sum(sum(W*H));
-  
-  else {print('Invalid penalty input')}
+  return(list(ind_scores = W, chem_loadings = H, loss = L))
   }
 
-return(list(ind_scores = W, chem_loadings = H, loss = L))
-
+  else {print('Invalid penalty input')}
 }
+
 
 nmf_ee(chem_n, 5, "divergence", 10)
