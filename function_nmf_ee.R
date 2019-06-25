@@ -13,6 +13,7 @@
 
 nmf_ee <- function(X, K, penalty, num_iter) {
 
+X <- as.matrix(X)
 D <- nrow(X)
 N <- ncol(X)
 
