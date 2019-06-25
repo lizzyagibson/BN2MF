@@ -38,11 +38,11 @@ mn_data <- mn_edc %>% dplyr::select(1:52) %>%
 # just make 20 (of 50) elements 1 and the rest 0, or something dumb like that
 
 ## Construct a binary correlation matrix for 5 TRUE exposure patterns
-m <- matrix(c(1,0.25,0.25,0.25,0.25,
-              0.25,1,0.25,0.25,0.25,
-              0.25,0.25,1,0.25,0.25,
-              0.25,0.25,0.25,1,0.25,
-              0.25,0.25,0.25,0.25,1), ncol=5)   
+m <- matrix(c(1,0.75,0.75,0.75,0.75,
+              0.75,1,0.75,0.75,0.75,
+              0.75,0.75,1,0.75,0.75,
+              0.75,0.75,0.75,1,0.75,
+              0.75,0.75,0.75,0.75,1), ncol=5)   
 
 ## Simulate 50 chemical exposures, and check that they have the specified correlation structure
 set.seed(1988)
@@ -90,10 +90,12 @@ chem_n <- matrix(nrow = 1000, ncol = 50)
 set.seed(1988)
 for (i in 1:ncol(chem_n)) {
   chem_n[,i] <- chem[,i] + rnorm(1000)
+  chem_n[,i] <- abs(chem_n[,i])
 }
 
 head(chem_n)
 cor(chem_n)
+chem_n > 0
 
 ###############################
 ## Look at Heatmap Structure ##
