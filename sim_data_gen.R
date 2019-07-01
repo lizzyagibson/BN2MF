@@ -55,6 +55,7 @@ cor(patterns)
 ############################################
 
 # generate random scores indicating the presence of each vector for each observation from a gamma distribution
+# How to choose gamma parameters??
 
 hist(rgamma(5, shape = 0.5))
 
@@ -75,7 +76,6 @@ head(scores)
 # multiple scores and vectors, and add to get the mixture
 
 chem <- scores %*% t(patterns)
-
 cor(chem)
 
 ###########
@@ -89,7 +89,7 @@ chem_n <- matrix(nrow = 1000, ncol = 50)
 
 set.seed(1988)
 for (i in 1:ncol(chem_n)) {
-  chem_n[,i] <- chem[,i] + rnorm(1000)
+  chem_n[,i] <- chem[,i] + rnorm(1000) ## IMPORTANT: this step should NOT make values negative
   chem_n[,i] <- abs(chem_n[,i])
 }
 
@@ -110,15 +110,13 @@ ggplot(data = melted_cormat, aes(x = Var1, y = Var2)) +
   scale_fill_gradient2(low = "#00BFC4", mid = "white", high = "#F8766D",
                        midpoint = 0,
                        na.value = "transparent", limits = c(-1, 1)) +
-  theme_grey(base_size = 15) + labs(x = "", y = "", title = "Simulated exp(multivariate normal)") +
+  theme_grey(base_size = 15) + labs(x = "", y = "") +
   scale_x_discrete(expand = c(0, 0)) +
   scale_y_discrete(expand = c(0, 0)) +
   theme(axis.text.x = element_blank(), axis.text.y = element_blank(),
         panel.spacing = unit(0, "lines"),
         strip.background = element_blank(),
-        strip.placement = "outside", legend.position = "bottom",
-        strip.text.x = element_text(size = 18),
-        strip.text.y = element_text(size = 18))
+        strip.placement = "outside", legend.position = "bottom")
 
 ###############################
 ## Simuate with NMF Function ##
@@ -199,7 +197,5 @@ ggplot(data = melted_cormat2, aes(x = Var1, y = Var2)) +
   theme(axis.text.x = element_blank(), axis.text.y = element_blank(),
         panel.spacing = unit(0, "lines"),
         strip.background = element_blank(),
-        strip.placement = "outside", legend.position = "bottom",
-        strip.text.x = element_text(size = 18),
-        strip.text.y = element_text(size = 18))
+        strip.placement = "outside", legend.position = "bottom")
 

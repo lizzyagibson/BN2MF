@@ -1,0 +1,262 @@
+---
+title: "Simulate Data Generating Process"
+author: "Lizzy Gibson"
+date: "6/28/2019"
+output: 
+  html_document:
+    toc: TRUE
+    toc_float: TRUE
+---
+
+```{r setup, include=FALSE}
+options(scipen = 999)
+library(MNdata) # my data
+library(reshape2) # melt
+library(gridExtra) # gridarrange
+library(bindata) # multivariate binomial dist
+library(NMF) # rmatrix
+library(MASS) # mvrnorm
+library(tidyverse)
+```
+
+Simulate dataset with 1000 individuals and 50 chemicals to approx DATA GENERATING PROCESS of Mothers and Newborns cohort data.
+
+* 8 phenols, 9 phthalates, 10 pbdes, 8 pcbs
+
+## 1: Distinct Patterns
+
+### Simulate Patterns
+
+Generate 5 non-negative vectors of length 50 “by hand” — vectors should be overlapping a bit, and at this stage don’t have to look too much like pollution. just make 20 (of 50) elements 1 and the rest 0, or something dumb like that.
+
+Pattern matrix is 5*50, patterns by chemicals
+
+```{r}
+## Construct a binary correlation matrix for 5 TRUE exposure patterns
+patterns_dist <- rbind(c(rep(1, 10), rep(0, 40)),
+            c(rep(0,10), rep(1, 10), rep(0, 30)),
+            c(rep(0, 20), rep(1, 10), rep(0, 20)),
+            c(rep(0, 30), rep(1, 10), rep(0, 10)),
+            c(rep(0, 40), rep(1, 10)))
+
+cor(t(patterns_dist))
+```
+
+### Simulate Individual Scores on Patterns
+
+Generate random scores indicating the presence of each vector for each observation from a gamma distribution.
+
+```{r}
+scores_dist <- matrix(nrow = 1000, ncol = 5)
+
+set.seed(1988)
+for (i in 1:nrow(scores_dist)) {
+  scores_dist[i,] <- rlnorm(5, 1, 1) # log normal dist are INDEPENDENT
+}
+
+head(scores_dist)
+cor(scores_dist)
+```
+
+### Simulate Chemical Exposures
+
+Multiple scores and vectors, and add to get the mixture
+
+```{r}
+chem_dist <- scores_dist %*% patterns_dist
+```
+
+### Noise
+
+Noise is harder - if your scores are big enough just use a normal distribution to make sure things “work” and we can fancy it up from there
+
+```{r}
+noise <- list(mean=0, sd=1)
+set.seed(1988)
+chem_dist <- pmax(chem_dist + rmatrix(chem_dist, dist=rnorm, mean=noise$mean, sd=noise$sd), 0)	
+```  
+
+### Heatmap
+
+```{r}
+cormat <- round(cor(chem_dist, use = "complete.obs"),2)
+
+melted_cormat <- melt(cormat) %>% rename(Correlation = value)
+
+ggplot(data = melted_cormat, aes(x = Var1, y = Var2)) +
+  geom_tile(aes(fill = Correlation), colour = "white") +
+  scale_fill_gradient2(low = "#00BFC4", mid = "white", high = "#F8766D",
+                       midpoint = 0,
+                       na.value = "transparent", limits = c(-1, 1)) +
+  theme_grey(base_size = 15) + labs(x = "", y = "") +
+  scale_x_discrete(expand = c(0, 0)) +
+  scale_y_discrete(expand = c(0, 0)) +
+  theme(axis.text.x = element_blank(), axis.text.y = element_blank(),
+        panel.spacing = unit(0, "lines"),
+        strip.background = element_blank(),
+        strip.placement = "outside", legend.position = "bottom")
+
+#write_csv(chem_dist, "sim_distinct.csv")
+```
+
+## 2: Overlapping Patterns
+
+### Simulate Patterns
+
+Pattern matrix is 5*50, patterns by chemicals
+
+```{r}
+## Construct a binary correlation matrix for 5 TRUE exposure patterns
+patterns_over <- rbind(c(rep(1, 20), rep(0, 30)),
+            c(rep(0,8), rep(1, 20), rep(0, 22)),
+            c(rep(0, 15), rep(1, 20), rep(0, 15)),
+            c(rep(0, 22), rep(1, 20), rep(0, 8)),
+            c(rep(0, 30), rep(1, 20)))
+
+cor(t(patterns_over))
+```
+
+### Simulate Individual Scores on Patterns
+
+Generate random scores indicating the presence of each vector for each observation from a gamma distribution.
+
+```{r}
+scores_over <- matrix(nrow = 1000, ncol = 5)
+
+set.seed(1988)
+for (i in 1:nrow(scores_over)) {
+  scores_over[i,] <- rlnorm(5, 1, 1) # log normal dist are INDEPENDENT
+}
+
+head(scores_over)
+cor(scores_over)
+```
+
+### Simulate Chemical Exposures
+
+Multiple scores and vectors, and add to get the mixture
+
+```{r}
+chem_over <- scores_over %*% patterns_over
+```
+
+### Noise
+
+Noise is harder - if your scores are big enough just use a normal distribution to make sure things “work” and we can fancy it up from there
+
+```{r}
+noise <- list(mean=0, sd=1)
+set.seed(1988)
+chem_over <- pmax(chem_over + rmatrix(chem_over, dist=rnorm, mean=noise$mean, sd=noise$sd), 0)	
+```  
+
+### Heatmap
+
+```{r}
+cormat_o <- round(cor(chem_over, use = "complete.obs"),2)
+
+melted_cormat_o <- melt(cormat_o) %>% rename(Correlation = value)
+
+ggplot(data = melted_cormat_o, aes(x = Var1, y = Var2)) +
+  geom_tile(aes(fill = Correlation), colour = "white") +
+  scale_fill_gradient2(low = "#00BFC4", mid = "white", high = "#F8766D",
+                       midpoint = 0,
+                       na.value = "transparent", limits = c(-1, 1)) +
+  theme_grey(base_size = 15) + labs(x = "", y = "") +
+  scale_x_discrete(expand = c(0, 0)) +
+  scale_y_discrete(expand = c(0, 0)) +
+  theme(axis.text.x = element_blank(), axis.text.y = element_blank(),
+        panel.spacing = unit(0, "lines"),
+        strip.background = element_blank(),
+        strip.placement = "outside", legend.position = "bottom")
+```
+
+## 3: Overlapping Patterns & Correlated Scores
+
+### Simulate Patterns
+
+Pattern matrix is 5*50, patterns by chemicals
+
+```{r}
+## Construct a binary correlation matrix for 5 TRUE exposure patterns
+patterns_cor <- rbind(c(rep(1, 20), rep(0, 30)),
+            c(rep(0,8), rep(1, 20), rep(0, 22)),
+            c(rep(0, 15), rep(1, 20), rep(0, 15)),
+            c(rep(0, 22), rep(1, 20), rep(0, 8)),
+            c(rep(0, 30), rep(1, 20)))
+
+cor(t(patterns_cor))
+```
+
+### Simulate Correlated Scores
+
+Generate random scores indicating the presence of each vector for each observation from a multivariate log normal distribution.
+
+Scores are 1000*5, individuals by patterns
+
+```{r}
+hist(rlnorm(50, meanlog = 1, sdlog = 1))
+
+scores_cor <- matrix(nrow = 1000, ncol = 5)
+
+stdevs <- c(1,1,1,1,1)
+# stdevs is the vector that contains the standard deviations of your variables
+
+cors <- matrix( c(1,0.25,0.25,0.25,0.25,
+                  0.25,1,0.25,0.25,0.25,
+                  0.25,0.25,1,0.25,0.25,
+                  0.25,0.25,0.25,1,0.25,
+                  0.25,0.25,0.25,0.25,1), nrow = 5)
+
+b <- stdevs %*% t(stdevs)  
+# b is an n*n matrix whose generic term is stdev[i]*stdev[j] (n is your number of variables)
+
+covariance <- b * cors  #your covariance matrix
+
+set.seed(1988)
+scores_cor <- exp(mvrnorm(n = 1000, mu = rep(1, 5), 
+                          Sigma = covariance)) # dists are DEPENDENT
+
+head(scores_cor)
+cor(scores_cor)
+```
+
+### Simulate Chemical Exposures
+
+Multiple scores and vectors, and add to get the mixture
+
+```{r}
+chem_cor <- scores_cor %*% patterns_cor
+```
+
+### Noise
+
+Noise is harder - if your scores are big enough just use a normal distribution to make sure things “work” and we can fancy it up from there
+
+```{r}
+noise <- list(mean=0, sd=1)
+set.seed(1988)
+chem_cor <- pmax(chem_cor + rmatrix(chem_cor, dist=rnorm, mean=noise$mean, sd=noise$sd), 0)	
+```  
+
+### Heatmap
+
+```{r}
+cormat_cor <- round(cor(chem_cor, use = "complete.obs"),2)
+
+melted_cormat_cor <- melt(cormat_cor) %>% rename(Correlation = value)
+
+ggplot(data = melted_cormat_cor, aes(x = Var1, y = Var2)) +
+  geom_tile(aes(fill = Correlation), colour = "white") +
+  scale_fill_gradient2(low = "#00BFC4", mid = "white", high = "#F8766D",
+                       midpoint = 0,
+                       na.value = "transparent", limits = c(-1, 1)) +
+  theme_grey(base_size = 15) + labs(x = "", y = "") +
+  scale_x_discrete(expand = c(0, 0)) +
+  scale_y_discrete(expand = c(0, 0)) +
+  theme(axis.text.x = element_blank(), axis.text.y = element_blank(),
+        panel.spacing = unit(0, "lines"),
+        strip.background = element_blank(),
+        strip.placement = "outside", legend.position = "bottom")
+```
+
