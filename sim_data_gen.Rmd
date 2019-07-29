@@ -1,7 +1,7 @@
 ---
 title: "Simulate Data Generating Process"
 author: "Lizzy Gibson"
-date: "6/28/2019"
+date: "7/09/2019"
 output: 
   html_document:
     toc: TRUE
@@ -21,37 +21,103 @@ library(tidyverse)
 
 Simulate dataset with 1000 individuals and 50 chemicals to approx DATA GENERATING PROCESS of Mothers and Newborns cohort data.
 
-* 8 phenols, 9 phthalates, 10 pbdes, 8 pcbs
+* 22 pcbs, 11 pbdes, 9 phthalates, 8 phenols
+
+<div class = "row">
+  
+<div class = "col-md-3">
+* PCBs (22):
+    * pcb28
+    * pcb66
+    * pcb74
+    * pcb99
+    * pcb105
+    * pcb118
+    * pcb138_158
+    * pcb146
+    * pcb153
+    * pcb156
+    * pcb167
+    * pcb170
+    * pcb178
+    * pcb183
+    * pcb187
+    * pcb180
+    * pcb189
+    * pcb194
+    * pcb196_203
+    * pcb199
+    * pcb206
+    * pcb209
+</div>
+  
+<div class = "col-md-3">
+* PBDEs (11):
+    * BDE17
+    * BDE28
+    * BDE47
+    * BDE66
+    * BDE85
+    * BDE99
+    * BDE100
+    * BDE153
+    * BDE154
+    * BDE183
+    * BDE209
+</div>
+  
+<div class = "col-md-3">
+* Phthalates (9):
+    * MECPP
+    * MEHHP
+    * MEOHP
+    * MCPP
+    * MIBP
+    * MBP
+    * MBZP
+    * MEP
+    * MEHP
+* Phenols (8):
+    * dcp_24
+    * dcp_25
+    * b_pb
+    * bp_3
+    * m_pb
+    * p_pb
+    * tcs
+    * bpa
+</div>
+</div>
 
 ## 1: Distinct Patterns
 
 ### Simulate Patterns
 
-Generate 5 non-negative vectors of length 50 “by hand” — vectors should be overlapping a bit, and at this stage don’t have to look too much like pollution. just make 20 (of 50) elements 1 and the rest 0, or something dumb like that.
+Generate 4 non-negative vectors of length 50 “by hand” — vectors should be overlapping a bit, and at this stage don’t have to look too much like pollution. just make 20 (of 50) elements 1 and the rest 0.
 
-Pattern matrix is 5*50, patterns by chemicals
+Pattern matrix is 4*50, patterns by chemicals.
 
 ```{r}
-## Construct a binary correlation matrix for 5 TRUE exposure patterns
-patterns_dist <- rbind(c(rep(1, 10), rep(0, 40)),
-            c(rep(0,10), rep(1, 10), rep(0, 30)),
-            c(rep(0, 20), rep(1, 10), rep(0, 20)),
-            c(rep(0, 30), rep(1, 10), rep(0, 10)),
-            c(rep(0, 40), rep(1, 10)))
-
-cor(t(patterns_dist))
+## Construct a matrix for 4 TRUE exposure patterns
+set.seed(1988)
+patterns_dist <- rbind(c(rep(1, 22), runif(28, -0.15, 0.15)),
+            c(runif(22, -0.15, 0.15), rep(1, 11), runif(17, -0.15, 0.15)),
+            c(runif(33, -0.15, 0.15), rep(1, 9), runif(8, -0.15, 0.15)),
+            c(runif(42, -0.15, 0.15), rep(1, 8)))
 ```
 
-### Simulate Individual Scores on Patterns
+### Simulate Individual Scores
 
 Generate random scores indicating the presence of each vector for each observation from a gamma distribution.
 
 ```{r}
-scores_dist <- matrix(nrow = 1000, ncol = 5)
+hist(rgamma(500, shape = 1))
+
+scores_dist <- matrix(nrow = 1000, ncol = 4)
 
 set.seed(1988)
 for (i in 1:nrow(scores_dist)) {
-  scores_dist[i,] <- rlnorm(5, 1, 1) # log normal dist are INDEPENDENT
+  scores_dist[i,] <- rgamma(4, shape = 1) # gamma dist are INDEPENDENT
 }
 
 head(scores_dist)
@@ -60,72 +126,135 @@ cor(scores_dist)
 
 ### Simulate Chemical Exposures
 
-Multiple scores and vectors, and add to get the mixture
+Multiple scores and vectors, and add to get the mixture.
 
 ```{r}
 chem_dist <- scores_dist %*% patterns_dist
 ```
 
-### Noise
+### Simulate Noise
 
-Noise is harder - if your scores are big enough just use a normal distribution to make sure things “work” and we can fancy it up from there
+Noise is harder - if your scores are big enough just use a normal distribution to make sure things “work” and we can fancy it up from there.
 
 ```{r}
 noise <- list(mean=0, sd=1)
 set.seed(1988)
 chem_dist <- pmax(chem_dist + rmatrix(chem_dist, dist=rnorm, mean=noise$mean, sd=noise$sd), 0)	
+head(chem_dist[,1:10])
 ```  
 
-### Heatmap
+### Visualize
 
-```{r}
+```{r, echo = FALSE, fig.height = 7}
+chem_dist <- chem_dist %>% 
+  as_tibble(.) %>% 
+  rename(pcb28 = 1
+    , pcb66 = 2
+    , pcb74 = 3
+    , pcb99 = 4
+    , pcb105 = 5
+    , pcb118 = 6
+    , pcb138_158 = 7
+    , pcb146 = 8
+    , pcb153 = 9
+    , pcb156 = 10
+    , pcb167 = 11
+    , pcb170 = 12
+    , pcb178 = 13
+    , pcb183 = 14
+    , pcb187 = 15
+    , pcb180 = 16
+    , pcb189 = 17
+    , pcb194 = 18
+    , pcb196_203 = 19
+    , pcb199 = 20
+    , pcb206 = 21
+    , pcb209 = 22
+    , BDE17 = 23
+    , BDE28 = 24
+    , BDE47 = 25 
+    , BDE66 = 26
+    , BDE85 = 27 
+    , BDE99 = 28 
+    , BDE100 = 29
+    , BDE153 = 30
+    , BDE154 = 31
+    , BDE183 = 32
+    , BDE209 = 33
+    , MECPP = 34
+    , MEHHP = 35
+    , MEOHP = 36
+    , MCPP = 37
+    , MIBP = 38 
+    , MBP = 39 
+    , MBZP = 40
+    , MEP = 41
+    , MEHP = 42
+    , dcp_24 = 43
+    , dcp_25 = 44
+    , b_pb = 45
+    , bp_3 = 46
+    , m_pb = 47
+    , p_pb = 48
+    , tcs = 49
+    , bpa = 50)
+
+#write_csv(chem_dist, "./sim_data_1.csv")
+
 cormat <- round(cor(chem_dist, use = "complete.obs"),2)
 
 melted_cormat <- melt(cormat) %>% rename(Correlation = value)
 
-ggplot(data = melted_cormat, aes(x = Var1, y = Var2)) +
+labelled <- melted_cormat %>% mutate(Class1 = ifelse(str_detect(Var1, "BDE"), "PBDEs",
+                                                     ifelse(str_detect(Var1, "^M"), "Phthalates",
+                                                            ifelse(str_detect(Var1, "pcb"), "PCBs",
+                                                                   "Phenols")))) %>%
+  mutate(Class2 = ifelse(str_detect(Var2, "BDE"), "PBDEs",
+                         ifelse(str_detect(Var2, "^M"), "Phthalates",
+                                ifelse(str_detect(Var2, "pcb"), "PCBs",
+                                       "Phenols")))) %>%
+  mutate(Class2 = factor(Class2, levels = c("Phthalates", "Phenols",
+                                            "PCBs", "PBDEs")))
+
+ggplot(data = labelled, aes(x = Var1, y = Var2)) +
   geom_tile(aes(fill = Correlation), colour = "white") +
   scale_fill_gradient2(low = "#00BFC4", mid = "white", high = "#F8766D",
                        midpoint = 0,
                        na.value = "transparent", limits = c(-1, 1)) +
-  theme_grey(base_size = 15) + labs(x = "", y = "") +
+  theme_grey() + labs(x = "", y = "") +
   scale_x_discrete(expand = c(0, 0)) +
   scale_y_discrete(expand = c(0, 0)) +
-  theme(axis.text.x = element_blank(), axis.text.y = element_blank(),
+  theme(axis.text.x = element_blank(),
         panel.spacing = unit(0, "lines"),
         strip.background = element_blank(),
         strip.placement = "outside", legend.position = "bottom")
-
-#write_csv(chem_dist, "sim_distinct.csv")
 ```
 
 ## 2: Overlapping Patterns
 
 ### Simulate Patterns
 
-Pattern matrix is 5*50, patterns by chemicals
+Pattern matrix is 4*50, patterns by chemicals.
 
 ```{r}
-## Construct a binary correlation matrix for 5 TRUE exposure patterns
-patterns_over <- rbind(c(rep(1, 20), rep(0, 30)),
-            c(rep(0,8), rep(1, 20), rep(0, 22)),
-            c(rep(0, 15), rep(1, 20), rep(0, 15)),
-            c(rep(0, 22), rep(1, 20), rep(0, 8)),
-            c(rep(0, 30), rep(1, 20)))
-
-cor(t(patterns_over))
+## Construct a matrix for 4 TRUE exposure patterns
+set.seed(1988)
+patterns_over <- rbind(c(rep(1, 22), rep(0.25, 11), runif(17, -0.15, 0.15)),
+            c(rep(0.25,22), rep(1, 11), runif(17, -0.15, 0.15)),
+            c(runif(33, -0.15, 0.15), rep(1, 9), rep(0.25, 8)),
+            c(runif(33, -0.15, 0.15), rep(0.25, 9), rep(1, 8)))
 ```
 
-### Simulate Individual Scores on Patterns
+### Simulate Individual Scores
 
 Generate random scores indicating the presence of each vector for each observation from a gamma distribution.
 
 ```{r}
-scores_over <- matrix(nrow = 1000, ncol = 5)
+scores_over <- matrix(nrow = 1000, ncol = 4)
 
 set.seed(1988)
 for (i in 1:nrow(scores_over)) {
-  scores_over[i,] <- rlnorm(5, 1, 1) # log normal dist are INDEPENDENT
+  scores_over[i,] <- rgamma(4, shape = 1) # gamma dist are INDEPENDENT
 }
 
 head(scores_over)
@@ -134,38 +263,104 @@ cor(scores_over)
 
 ### Simulate Chemical Exposures
 
-Multiple scores and vectors, and add to get the mixture
+Multiple scores and vectors, and add to get the mixture.
 
 ```{r}
 chem_over <- scores_over %*% patterns_over
 ```
 
-### Noise
+### Simulate Noise
 
-Noise is harder - if your scores are big enough just use a normal distribution to make sure things “work” and we can fancy it up from there
+Noise is harder - if your scores are big enough just use a normal distribution to make sure things “work” and we can fancy it up from there.
 
 ```{r}
-noise <- list(mean=0, sd=1)
 set.seed(1988)
 chem_over <- pmax(chem_over + rmatrix(chem_over, dist=rnorm, mean=noise$mean, sd=noise$sd), 0)	
+head(chem_over[,1:10])
 ```  
 
-### Heatmap
+### Visualize
 
-```{r}
+```{r, echo = FALSE, fig.height = 7}
+chem_over <- chem_over %>% 
+  as_tibble(.) %>% 
+  rename(pcb28 = 1
+    , pcb66 = 2
+    , pcb74 = 3
+    , pcb99 = 4
+    , pcb105 = 5
+    , pcb118 = 6
+    , pcb138_158 = 7
+    , pcb146 = 8
+    , pcb153 = 9
+    , pcb156 = 10
+    , pcb167 = 11
+    , pcb170 = 12
+    , pcb178 = 13
+    , pcb183 = 14
+    , pcb187 = 15
+    , pcb180 = 16
+    , pcb189 = 17
+    , pcb194 = 18
+    , pcb196_203 = 19
+    , pcb199 = 20
+    , pcb206 = 21
+    , pcb209 = 22
+    , BDE17 = 23
+    , BDE28 = 24
+    , BDE47 = 25 
+    , BDE66 = 26
+    , BDE85 = 27 
+    , BDE99 = 28 
+    , BDE100 = 29
+    , BDE153 = 30
+    , BDE154 = 31
+    , BDE183 = 32
+    , BDE209 = 33
+    , MECPP = 34
+    , MEHHP = 35
+    , MEOHP = 36
+    , MCPP = 37
+    , MIBP = 38 
+    , MBP = 39 
+    , MBZP = 40
+    , MEP = 41
+    , MEHP = 42
+    , dcp_24 = 43
+    , dcp_25 = 44
+    , b_pb = 45
+    , bp_3 = 46
+    , m_pb = 47
+    , p_pb = 48
+    , tcs = 49
+    , bpa = 50)
+
+#write_csv(chem_over, "./sim_data_2.csv")
+
 cormat_o <- round(cor(chem_over, use = "complete.obs"),2)
 
 melted_cormat_o <- melt(cormat_o) %>% rename(Correlation = value)
 
-ggplot(data = melted_cormat_o, aes(x = Var1, y = Var2)) +
+labelled_o <- melted_cormat_o %>% mutate(Class1 = ifelse(str_detect(Var1, "BDE"), "PBDEs",
+                                                     ifelse(str_detect(Var1, "^M"), "Phthalates",
+                                                            ifelse(str_detect(Var1, "pcb"), "PCBs",
+                                                                   "Phenols")))) %>%
+  mutate(Class2 = ifelse(str_detect(Var2, "BDE"), "PBDEs",
+                         ifelse(str_detect(Var2, "^M"), "Phthalates",
+                                ifelse(str_detect(Var2, "pcb"), "PCBs",
+                                       "Phenols")))) %>%
+  mutate(Class2 = factor(Class2, levels = c("Phthalates", "Phenols",
+                                            "PCBs", "PBDEs")))
+
+ggplot(data = labelled_o, aes(x = Var1, y = Var2)) +
   geom_tile(aes(fill = Correlation), colour = "white") +
   scale_fill_gradient2(low = "#00BFC4", mid = "white", high = "#F8766D",
                        midpoint = 0,
                        na.value = "transparent", limits = c(-1, 1)) +
-  theme_grey(base_size = 15) + labs(x = "", y = "") +
+  theme_grey() + labs(x = "", y = "") +
   scale_x_discrete(expand = c(0, 0)) +
   scale_y_discrete(expand = c(0, 0)) +
-  theme(axis.text.x = element_blank(), axis.text.y = element_blank(),
+  theme(axis.text.x = element_blank(),
         panel.spacing = unit(0, "lines"),
         strip.background = element_blank(),
         strip.placement = "outside", legend.position = "bottom")
@@ -175,47 +370,47 @@ ggplot(data = melted_cormat_o, aes(x = Var1, y = Var2)) +
 
 ### Simulate Patterns
 
-Pattern matrix is 5*50, patterns by chemicals
+Pattern matrix is 4*50, patterns by chemicals.
 
 ```{r}
-## Construct a binary correlation matrix for 5 TRUE exposure patterns
-patterns_cor <- rbind(c(rep(1, 20), rep(0, 30)),
-            c(rep(0,8), rep(1, 20), rep(0, 22)),
-            c(rep(0, 15), rep(1, 20), rep(0, 15)),
-            c(rep(0, 22), rep(1, 20), rep(0, 8)),
-            c(rep(0, 30), rep(1, 20)))
+## Construct a matrix for 4 TRUE exposure patterns
+set.seed(10)
+patterns_cor <- rbind(c(runif(22, 0, 1), runif(11, 0, 0.15), runif(17, -0.15, 0.15)),
+                      c(runif(22, 0, 0.15), runif(11, 0, 1), runif(17, -0.15, 0.15)),
+                      c(runif(33, -0.15, 0.15), runif(9, 0, 1), runif(8, 0, 0.15)),
+                      c(runif(33, -0.15, 0.15), runif(9, 0, 0.15), runif(8, 0, 1)))
 
-cor(t(patterns_cor))
+head(cor(patterns_cor[,1:10]))
 ```
 
-### Simulate Correlated Scores
+### Simulate Individual Scores
 
 Generate random scores indicating the presence of each vector for each observation from a multivariate log normal distribution.
 
-Scores are 1000*5, individuals by patterns
+Scores are 1000*4, individuals by patterns.
 
 ```{r}
 hist(rlnorm(50, meanlog = 1, sdlog = 1))
 
-scores_cor <- matrix(nrow = 1000, ncol = 5)
+scores_cor <- matrix(nrow = 1000, ncol = 4)
 
-stdevs <- c(1,1,1,1,1)
-# stdevs is the vector that contains the standard deviations of your variables
+stdevs <- c(1,1,1,1)
+# stdevs is the vector that contains the standard deviations of your patterns
 
-cors <- matrix( c(1,0.25,0.25,0.25,0.25,
-                  0.25,1,0.25,0.25,0.25,
-                  0.25,0.25,1,0.25,0.25,
-                  0.25,0.25,0.25,1,0.25,
-                  0.25,0.25,0.25,0.25,1), nrow = 5)
+cors <- matrix( c(1,    0.25, 0.15, 0.15,
+                  0.25, 1,    0.15, 0.15,
+                  0.15, 0.15, 1,    0.25,
+                  0.15, 0.15, 0.25, 1), nrow = 4)
 
 b <- stdevs %*% t(stdevs)  
 # b is an n*n matrix whose generic term is stdev[i]*stdev[j] (n is your number of variables)
 
 covariance <- b * cors  #your covariance matrix
+# corr = cov / std1*std2, here stdev = 1
 
 set.seed(1988)
-scores_cor <- exp(mvrnorm(n = 1000, mu = rep(1, 5), 
-                          Sigma = covariance)) # dists are DEPENDENT
+scores_cor <- exp(mvrnorm(n = 1000, mu = rep(1, 4), 
+                          Sigma = covariance)) # dists are kind of DEPENDENT
 
 head(scores_cor)
 cor(scores_cor)
@@ -229,32 +424,98 @@ Multiple scores and vectors, and add to get the mixture
 chem_cor <- scores_cor %*% patterns_cor
 ```
 
-### Noise
+### Simulate Noise
 
 Noise is harder - if your scores are big enough just use a normal distribution to make sure things “work” and we can fancy it up from there
 
 ```{r}
-noise <- list(mean=0, sd=1)
 set.seed(1988)
 chem_cor <- pmax(chem_cor + rmatrix(chem_cor, dist=rnorm, mean=noise$mean, sd=noise$sd), 0)	
+head(chem_cor[,1:10])
 ```  
 
-### Heatmap
+### Visualize
 
-```{r}
+```{r, echo = FALSE, fig.height = 7}
+chem_cor <- chem_cor %>% 
+  as_tibble(.) %>% 
+  rename(pcb28 = 1
+    , pcb66 = 2
+    , pcb74 = 3
+    , pcb99 = 4
+    , pcb105 = 5
+    , pcb118 = 6
+    , pcb138_158 = 7
+    , pcb146 = 8
+    , pcb153 = 9
+    , pcb156 = 10
+    , pcb167 = 11
+    , pcb170 = 12
+    , pcb178 = 13
+    , pcb183 = 14
+    , pcb187 = 15
+    , pcb180 = 16
+    , pcb189 = 17
+    , pcb194 = 18
+    , pcb196_203 = 19
+    , pcb199 = 20
+    , pcb206 = 21
+    , pcb209 = 22
+    , BDE17 = 23
+    , BDE28 = 24
+    , BDE47 = 25 
+    , BDE66 = 26
+    , BDE85 = 27 
+    , BDE99 = 28 
+    , BDE100 = 29
+    , BDE153 = 30
+    , BDE154 = 31
+    , BDE183 = 32
+    , BDE209 = 33
+    , MECPP = 34
+    , MEHHP = 35
+    , MEOHP = 36
+    , MCPP = 37
+    , MIBP = 38 
+    , MBP = 39 
+    , MBZP = 40
+    , MEP = 41
+    , MEHP = 42
+    , dcp_24 = 43
+    , dcp_25 = 44
+    , b_pb = 45
+    , bp_3 = 46
+    , m_pb = 47
+    , p_pb = 48
+    , tcs = 49
+    , bpa = 50)
+
+#write_csv(chem_cor, "./sim_data_3.csv")
+
 cormat_cor <- round(cor(chem_cor, use = "complete.obs"),2)
 
 melted_cormat_cor <- melt(cormat_cor) %>% rename(Correlation = value)
 
-ggplot(data = melted_cormat_cor, aes(x = Var1, y = Var2)) +
+labelled_cor <- melted_cormat_cor %>% mutate(Class1 = ifelse(str_detect(Var1, "BDE"), "PBDEs",
+                                                     ifelse(str_detect(Var1, "^M"), "Phthalates",
+                                                            ifelse(str_detect(Var1, "pcb"), "PCBs",
+                                                                   "Phenols")))) %>%
+  mutate(Class2 = ifelse(str_detect(Var2, "BDE"), "PBDEs",
+                         ifelse(str_detect(Var2, "^M"), "Phthalates",
+                                ifelse(str_detect(Var2, "pcb"), "PCBs",
+                                       "Phenols")))) %>%
+  mutate(Class2 = factor(Class2, levels = c("Phthalates", "Phenols",
+                                            "PCBs", "PBDEs")))
+
+ggplot(data = labelled_cor, aes(x = Var1, y = Var2)) +
   geom_tile(aes(fill = Correlation), colour = "white") +
   scale_fill_gradient2(low = "#00BFC4", mid = "white", high = "#F8766D",
                        midpoint = 0,
                        na.value = "transparent", limits = c(-1, 1)) +
-  theme_grey(base_size = 15) + labs(x = "", y = "") +
+  theme_grey() + labs(x = "", y = "") +
   scale_x_discrete(expand = c(0, 0)) +
   scale_y_discrete(expand = c(0, 0)) +
-  theme(axis.text.x = element_blank(), axis.text.y = element_blank(),
+  theme(axis.text.x = element_blank(),
         panel.spacing = unit(0, "lines"),
         strip.background = element_blank(),
         strip.placement = "outside", legend.position = "bottom")
