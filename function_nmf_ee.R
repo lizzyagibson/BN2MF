@@ -45,14 +45,14 @@ nmf_ee <- function(X, K, penalty, num_iter) {
             H <- H * (t(W) %*% X) / ((t(W) %*% W) %*% H + eps) # eps prevents division by zero
             W <- W * (X %*% t(H)) / (W %*% (H %*% t(H)) + eps)
       # Loss function -- Gaussian MLE
-      L[i] <- sqrt(sum((X - W %*% H)^2))
+      L[i] <- sum((X - W %*% H)^2)
       }
       return(list(ind_scores = W, chem_loadings = H, loss = L))
       }
   
     else if (penalty == 'divergence') {
       for (i in 1:num_iter) {
-          H <- H * (t(W/kronecker(matrix(1,D,1), matrix(colSums(W), nrow=1))) %*% (X / (W %*% H + eps)))
+          H <- H * (t(W / kronecker(matrix(1,D,1), matrix(colSums(W), nrow=1))) %*% (X / (W %*% H + eps)))
           # kronecker creates a matrix of the column sums of W repeated row-stacked
           W <- W * ((X / (W %*% H + eps)) %*% t(H / kronecker(matrix(1,1,N), matrix(rowSums(H), ncol = 1))))
           # kronecker creates a matrix of the row sums of H repeated column-stacked
