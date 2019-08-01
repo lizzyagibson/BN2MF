@@ -13,18 +13,16 @@ options(scipen = 999)
 library(MNdata) # my data
 library(reshape2) # melt
 library(gridExtra) # gridarrange
-library(bindata) # multivariate binomial dist
-library(NMF) # rmatrix
-library(MASS) # mvrnorm
 library(tidyverse)
+library(R.matlab)
 ```
 
 ## Read in Sims
 
 ```{r}
-sim1 <- read_csv("sim_data_1.csv")
-sim2 <- read_csv("sim_data_2.csv")
-sim3 <- read_csv("sim_data_3.csv")
+sim1 <- read_csv("./Sims/sim_data_1.csv")
+sim2 <- read_csv("./Sims/sim_data_2.csv")
+sim3 <- read_csv("./Sims/sim_data_3.csv")
 ```
 
 ## NMF Function
@@ -111,82 +109,172 @@ nmf_ee(fake, 4, "divergence", 100)
 ### Distinct Patterns
 
 ```{r}
-sim1
-
-results_dist <- nmf_ee(sim1, 4, "L2", 100)
+results_dist_l2 <- nmf_ee(sim1, 4, "L2", 10000)
 ```
 
 ```{r}
-results_dist$chem_loadings %>% as_tibble() %>% 
+r_dist_l2 <- results_dist_l2$chem_loadings %>% as_tibble()
+
+r_dist_l2 %>% 
   mutate(Pattern = 1:4) %>% select(Pattern, everything()) %>% 
-  gather(key = Chemical, value = Loadings, -Pattern) %>% 
-  mutate(Group = case_when(grepl("pcb", Chemical) ~ "PCBs",
-                           grepl("BDE", Chemical) ~ "PBDEs",
-                           grepl("^M", Chemical) ~ "PHTs",
-                           grepl("p_|_p", Chemical) ~ "Phenols",
-                           Chemical == "tcs" ~ "Phenols",
-                           Chemical == "bpa" ~ "Phenols")) %>% 
+  gather(key = Chemicals, value = Loadings, -Pattern) %>% 
+  mutate(Group = case_when(grepl("pcb", Chemicals) ~ "PCBs",
+                           grepl("BDE", Chemicals) ~ "PBDEs",
+                           grepl("^M", Chemicals) ~ "PHTs",
+                           grepl("p_|_p", Chemicals) ~ "Phenols",
+                           Chemicals == "tcs" ~ "Phenols",
+                           Chemicals == "bpa" ~ "Phenols")) %>% 
   arrange(Group) %>% 
-  mutate(Chemical = fct_inorder(Chemical)) %>% 
-  ggplot(aes(x = Chemical, y = Loadings)) + geom_col(aes(fill = Group)) +
+  mutate(Chemicals = fct_inorder(Chemicals)) %>% 
+  ggplot(aes(x = Chemicals, y = Loadings)) + geom_col(aes(fill = Group)) +
   facet_wrap(.~Pattern) + theme_bw() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1),
         legend.position = "bottom",
-        strip.background = element_blank())
+        strip.background = element_blank()) +
+  labs(title = "Patterns for Distinct Groups -- R")
+```
+
+#### Compare MATLAB
+
+```{r}
+matlab_dist_l2 <- readMat("./Sims/results_dist_H_l2.mat") %>% 
+  as.data.frame() %>% as_tibble()
+
+names(matlab_dist_l2) <- names(r_dist_l2)
+
+matlab_dist_l2 %>% 
+  mutate(Pattern = 1:4) %>% select(Pattern, everything()) %>% 
+  gather(key = Chemicals, value = Loadings, -Pattern) %>% 
+  mutate(Group = case_when(grepl("pcb", Chemicals) ~ "PCBs",
+                           grepl("BDE", Chemicals) ~ "PBDEs",
+                           grepl("^M", Chemicals) ~ "PHTs",
+                           grepl("p_|_p", Chemicals) ~ "Phenols",
+                           Chemicals == "tcs" ~ "Phenols",
+                           Chemicals == "bpa" ~ "Phenols")) %>% 
+  arrange(Group) %>% 
+  mutate(Chemicals = fct_inorder(Chemicals)) %>% 
+  ggplot(aes(x = Chemicals, y = Loadings)) + geom_col(aes(fill = Group)) +
+  facet_wrap(.~Pattern) + theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "bottom",
+        strip.background = element_blank())+
+  labs(title = "Patterns for Distinct Groups -- MATLAB")
+
+round(r_dist_l2 - matlab_dist_l2, 4)
 ```
 
 ### Overlapping Patterns
 
 ```{r}
-sim2
-
-results_over <- nmf_ee(sim2, 4, "L2", 100)
+results_over_l2 <- nmf_ee(sim2, 4, "L2", 10000)
 ```
 
 ```{r}
-results_over$chem_loadings %>% as_tibble() %>% 
+r_over_l2 <- results_over_l2$chem_loadings %>% as_tibble()
+
+r_over_l2 %>% 
   mutate(Pattern = 1:4) %>% select(Pattern, everything()) %>% 
-  gather(key = Chemical, value = Loadings, -Pattern) %>% 
-  mutate(Group = case_when(grepl("pcb", Chemical) ~ "PCBs",
-                           grepl("BDE", Chemical) ~ "PBDEs",
-                           grepl("^M", Chemical) ~ "PHTs",
-                           grepl("p_|_p", Chemical) ~ "Phenols",
-                           Chemical == "tcs" ~ "Phenols",
-                           Chemical == "bpa" ~ "Phenols")) %>% 
+  gather(key = Chemicals, value = Loadings, -Pattern) %>% 
+  mutate(Group = case_when(grepl("pcb", Chemicals) ~ "PCBs",
+                           grepl("BDE", Chemicals) ~ "PBDEs",
+                           grepl("^M", Chemicals) ~ "PHTs",
+                           grepl("p_|_p", Chemicals) ~ "Phenols",
+                           Chemicals == "tcs" ~ "Phenols",
+                           Chemicals == "bpa" ~ "Phenols")) %>% 
   arrange(Group) %>% 
-  mutate(Chemical = fct_inorder(Chemical)) %>% 
-  ggplot(aes(x = Chemical, y = Loadings)) + geom_col(aes(fill = Group)) +
+  mutate(Chemicals = fct_inorder(Chemicals)) %>% 
+  ggplot(aes(x = Chemicals, y = Loadings)) + geom_col(aes(fill = Group)) +
   facet_wrap(.~Pattern) + theme_bw() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1),
         legend.position = "bottom",
-        strip.background = element_blank())
+        strip.background = element_blank()) +
+  labs(title = "Patterns for Overlapping Groups -- R")
+```
+
+#### Compare MATLAB
+
+```{r}
+matlab_over_l2 <- readMat("./Sims/results_over_H_l2.mat") %>% 
+  as.data.frame() %>% as_tibble()
+
+names(matlab_over_l2) <- names(r_over_l2)
+
+matlab_over_l2 %>% 
+  mutate(Pattern = 1:4) %>% select(Pattern, everything()) %>% 
+  gather(key = Chemicals, value = Loadings, -Pattern) %>% 
+  mutate(Group = case_when(grepl("pcb", Chemicals) ~ "PCBs",
+                           grepl("BDE", Chemicals) ~ "PBDEs",
+                           grepl("^M", Chemicals) ~ "PHTs",
+                           grepl("p_|_p", Chemicals) ~ "Phenols",
+                           Chemicals == "tcs" ~ "Phenols",
+                           Chemicals == "bpa" ~ "Phenols")) %>% 
+  arrange(Group) %>% 
+  mutate(Chemicals = fct_inorder(Chemicals)) %>% 
+  ggplot(aes(x = Chemicals, y = Loadings)) + geom_col(aes(fill = Group)) +
+  facet_wrap(.~Pattern) + theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "bottom",
+        strip.background = element_blank()) +
+  labs(title = "Patterns for Overlapping Groups -- MATLAB")
+
+round(matlab_over_l2 - r_over_l2, 4)
 ```
 
 ### Correlated Patterns
 
 ```{r}
-sim3
-
-results_corr <- nmf_ee(sim3, 4, "L2", 100)
+results_corr_l2 <- nmf_ee(sim3, 4, "L2", 10000)
 ```
 
 ```{r}
-results_corr$chem_loadings %>% as_tibble() %>% 
+r_corr_l2 <- results_corr_l2$chem_loadings %>% as_tibble() 
+
+r_corr_l2 %>% 
   mutate(Pattern = 1:4) %>% select(Pattern, everything()) %>% 
-  gather(key = Chemical, value = Loadings, -Pattern) %>% 
-  mutate(Group = case_when(grepl("pcb", Chemical) ~ "PCBs",
-                           grepl("BDE", Chemical) ~ "PBDEs",
-                           grepl("^M", Chemical) ~ "PHTs",
-                           grepl("p_|_p", Chemical) ~ "Phenols",
-                           Chemical == "tcs" ~ "Phenols",
-                           Chemical == "bpa" ~ "Phenols")) %>% 
+  gather(key = Chemicals, value = Loadings, -Pattern) %>% 
+  mutate(Group = case_when(grepl("pcb", Chemicals) ~ "PCBs",
+                           grepl("BDE", Chemicals) ~ "PBDEs",
+                           grepl("^M", Chemicals) ~ "PHTs",
+                           grepl("p_|_p", Chemicals) ~ "Phenols",
+                           Chemicals == "tcs" ~ "Phenols",
+                           Chemicals == "bpa" ~ "Phenols")) %>% 
   arrange(Group) %>% 
-  mutate(Chemical = fct_inorder(Chemical)) %>% 
-  ggplot(aes(x = Chemical, y = Loadings)) + geom_col(aes(fill = Group)) +
+  mutate(Chemicals = fct_inorder(Chemicals)) %>% 
+  ggplot(aes(x = Chemicals, y = Loadings)) + geom_col(aes(fill = Group)) +
   facet_wrap(.~Pattern) + theme_bw() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1),
         legend.position = "bottom",
-        strip.background = element_blank())
+        strip.background = element_blank()) +
+  labs(title = "Patterns for Correlated Groups -- R")
+```
+
+#### Compare MATLAB
+
+```{r}
+matlab_corr_l2 <- readMat("./Sims/results_corr_H_l2.mat") %>% 
+  as.data.frame() %>% as_tibble()
+
+names(matlab_corr_l2) <- names(r_corr_l2)
+
+matlab_corr_l2 %>% 
+  mutate(Pattern = 1:4) %>% select(Pattern, everything()) %>% 
+  gather(key = Chemicals, value = Loadings, -Pattern) %>% 
+  mutate(Group = case_when(grepl("pcb", Chemicals) ~ "PCBs",
+                           grepl("BDE", Chemicals) ~ "PBDEs",
+                           grepl("^M", Chemicals) ~ "PHTs",
+                           grepl("p_|_p", Chemicals) ~ "Phenols",
+                           Chemicals == "tcs" ~ "Phenols",
+                           Chemicals == "bpa" ~ "Phenols")) %>% 
+  arrange(Group) %>% 
+  mutate(Chemicals = fct_inorder(Chemicals)) %>% 
+  ggplot(aes(x = Chemicals, y = Loadings)) + geom_col(aes(fill = Group)) +
+  facet_wrap(.~Pattern) + theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "bottom",
+        strip.background = element_blank()) +
+  labs(title = "Patterns for Correlated Groups -- MATLAB")
+
+round(matlab_corr_l2 - r_corr_l2, 4)
 ```
 
 ## Poisson Penalty
@@ -194,81 +282,170 @@ results_corr$chem_loadings %>% as_tibble() %>%
 ### Distinct Patterns
 
 ```{r}
-sim1
-
-results_dist2 <- nmf_ee(sim1, 4, "divergence", 100)
+results_dist_p <- nmf_ee(sim1, 4, "divergence", 10000)
 ```
 
 ```{r}
-results_dist2$chem_loadings %>% as_tibble() %>% 
+r_dist_p <- results_dist_p$chem_loadings %>% as_tibble() 
+
+r_dist_p %>% 
   mutate(Pattern = 1:4) %>% select(Pattern, everything()) %>% 
-  gather(key = Chemical, value = Loadings, -Pattern) %>% 
-  mutate(Group = case_when(grepl("pcb", Chemical) ~ "PCBs",
-                           grepl("BDE", Chemical) ~ "PBDEs",
-                           grepl("^M", Chemical) ~ "PHTs",
-                           grepl("p_|_p", Chemical) ~ "Phenols",
-                           Chemical == "tcs" ~ "Phenols",
-                           Chemical == "bpa" ~ "Phenols")) %>% 
+  gather(key = Chemicals, value = Loadings, -Pattern) %>% 
+  mutate(Group = case_when(grepl("pcb", Chemicals) ~ "PCBs",
+                           grepl("BDE", Chemicals) ~ "PBDEs",
+                           grepl("^M", Chemicals) ~ "PHTs",
+                           grepl("p_|_p", Chemicals) ~ "Phenols",
+                           Chemicals == "tcs" ~ "Phenols",
+                           Chemicals == "bpa" ~ "Phenols")) %>% 
   arrange(Group) %>% 
-  mutate(Chemical = fct_inorder(Chemical)) %>% 
-  ggplot(aes(x = Chemical, y = Loadings)) + geom_col(aes(fill = Group)) +
+  mutate(Chemicals = fct_inorder(Chemicals)) %>% 
+  ggplot(aes(x = Chemicals, y = Loadings)) + geom_col(aes(fill = Group)) +
   facet_wrap(.~Pattern) + theme_bw() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1),
         legend.position = "bottom",
-        strip.background = element_blank())
+        strip.background = element_blank()) +
+  labs(title = "Patterns for Distinct Groups -- R")
+```
+
+#### Compare MATLAB
+
+```{r}
+matlab_dist_p <- readMat("./Sims/results_dist_H_p.mat") %>% 
+  as.data.frame() %>% as_tibble()
+
+names(matlab_dist_p) <- names(r_dist_p)
+
+matlab_dist_p %>% 
+  mutate(Pattern = 1:4) %>% select(Pattern, everything()) %>% 
+  gather(key = Chemicals, value = Loadings, -Pattern) %>% 
+  mutate(Group = case_when(grepl("pcb", Chemicals) ~ "PCBs",
+                           grepl("BDE", Chemicals) ~ "PBDEs",
+                           grepl("^M", Chemicals) ~ "PHTs",
+                           grepl("p_|_p", Chemicals) ~ "Phenols",
+                           Chemicals == "tcs" ~ "Phenols",
+                           Chemicals == "bpa" ~ "Phenols")) %>% 
+  arrange(Group) %>% 
+  mutate(Chemicals = fct_inorder(Chemicals)) %>% 
+  ggplot(aes(x = Chemicals, y = Loadings)) + geom_col(aes(fill = Group)) +
+  facet_wrap(.~Pattern) + theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "bottom",
+        strip.background = element_blank()) +
+  labs(title = "Patterns for Distinct Groups -- MATLAB")
+
+round(r_dist_p - matlab_dist_p, 4)
 ```
 
 ### Overlapping Patterns
 
 ```{r}
-sim2
-
-results_over2 <- nmf_ee(sim2, 4, "divergence", 100)
+results_over2 <- nmf_ee(sim2, 4, "divergence", 10000)
 ```
 
 ```{r}
-results_over2$chem_loadings %>% as_tibble() %>% 
+r_over_p <- results_over2$chem_loadings %>% as_tibble()
+  
+r_over_p %>% 
   mutate(Pattern = 1:4) %>% select(Pattern, everything()) %>% 
-  gather(key = Chemical, value = Loadings, -Pattern) %>% 
-  mutate(Group = case_when(grepl("pcb", Chemical) ~ "PCBs",
-                           grepl("BDE", Chemical) ~ "PBDEs",
-                           grepl("^M", Chemical) ~ "PHTs",
-                           grepl("p_|_p", Chemical) ~ "Phenols",
-                           Chemical == "tcs" ~ "Phenols",
-                           Chemical == "bpa" ~ "Phenols")) %>% 
+  gather(key = Chemicals, value = Loadings, -Pattern) %>% 
+  mutate(Group = case_when(grepl("pcb", Chemicals) ~ "PCBs",
+                           grepl("BDE", Chemicals) ~ "PBDEs",
+                           grepl("^M", Chemicals) ~ "PHTs",
+                           grepl("p_|_p", Chemicals) ~ "Phenols",
+                           Chemicals == "tcs" ~ "Phenols",
+                           Chemicals == "bpa" ~ "Phenols")) %>% 
   arrange(Group) %>% 
-  mutate(Chemical = fct_inorder(Chemical)) %>% 
-  ggplot(aes(x = Chemical, y = Loadings)) + geom_col(aes(fill = Group)) +
+  mutate(Chemicals = fct_inorder(Chemicals)) %>% 
+  ggplot(aes(x = Chemicals, y = Loadings)) + geom_col(aes(fill = Group)) +
   facet_wrap(.~Pattern) + theme_bw() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1),
         legend.position = "bottom",
-        strip.background = element_blank())
+        strip.background = element_blank()) +
+  labs(title = "Patterns for Overlapping Groups -- R")
+```
+
+#### Compare MATLAB
+
+```{r}
+matlab_over_p <- readMat("./Sims/results_over_H_p.mat") %>% 
+  as.data.frame() %>% as_tibble()
+
+names(matlab_over_p) <- names(r_over_p)
+
+matlab_over_p %>% 
+  mutate(Pattern = 1:4) %>% select(Pattern, everything()) %>% 
+  gather(key = Chemicals, value = Loadings, -Pattern) %>% 
+  mutate(Group = case_when(grepl("pcb", Chemicals) ~ "PCBs",
+                           grepl("BDE", Chemicals) ~ "PBDEs",
+                           grepl("^M", Chemicals) ~ "PHTs",
+                           grepl("p_|_p", Chemicals) ~ "Phenols",
+                           Chemicals == "tcs" ~ "Phenols",
+                           Chemicals == "bpa" ~ "Phenols")) %>% 
+  arrange(Group) %>% 
+  mutate(Chemicals = fct_inorder(Chemicals)) %>% 
+  ggplot(aes(x = Chemicals, y = Loadings)) + geom_col(aes(fill = Group)) +
+  facet_wrap(.~Pattern) + theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "bottom",
+        strip.background = element_blank()) +
+  labs(title = "Patterns for Overlapping Groups -- MATLAB")
+
+round(matlab_over_p - r_over_p, 4)
 ```
 
 ### Correlated Patterns
 
 ```{r}
-sim3
-
-results_corr2 <- nmf_ee(sim3, 4, "divergence", 100)
+results_corr_p <- nmf_ee(sim3, 4, "divergence", 10000)
 ```
 
-```{r}
-results_corr2$chem_loadings %>% as_tibble() %>% 
+```{r} 
+r_corr_p <- results_corr_p$chem_loadings %>% as_tibble() 
+
+r_corr_p %>% 
   mutate(Pattern = 1:4) %>% select(Pattern, everything()) %>% 
-  gather(key = Chemical, value = Loadings, -Pattern) %>% 
-  mutate(Group = case_when(grepl("pcb", Chemical) ~ "PCBs",
-                           grepl("BDE", Chemical) ~ "PBDEs",
-                           grepl("^M", Chemical) ~ "PHTs",
-                           grepl("p_|_p", Chemical) ~ "Phenols",
-                           Chemical == "tcs" ~ "Phenols",
-                           Chemical == "bpa" ~ "Phenols")) %>% 
+  gather(key = Chemicals, value = Loadings, -Pattern) %>% 
+  mutate(Group = case_when(grepl("pcb", Chemicals) ~ "PCBs",
+                           grepl("BDE", Chemicals) ~ "PBDEs",
+                           grepl("^M", Chemicals) ~ "PHTs",
+                           grepl("p_|_p", Chemicals) ~ "Phenols",
+                           Chemicals == "tcs" ~ "Phenols",
+                           Chemicals == "bpa" ~ "Phenols")) %>% 
   arrange(Group) %>% 
-  mutate(Chemical = fct_inorder(Chemical)) %>% 
-  ggplot(aes(x = Chemical, y = Loadings)) + geom_col(aes(fill = Group)) +
+  mutate(Chemicals = fct_inorder(Chemicals)) %>% 
+  ggplot(aes(x = Chemicals, y = Loadings)) + geom_col(aes(fill = Group)) +
   facet_wrap(.~Pattern) + theme_bw() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1),
         legend.position = "bottom",
-        strip.background = element_blank())
+        strip.background = element_blank()) +
+  labs(title = "Patterns for Correlated Groups -- R")
 ```
 
+#### Compare MATLAB
+
+```{r}
+matlab_corr_p <- readMat("./Sims/results_corr_H_p.mat") %>% 
+  as.data.frame() %>% as_tibble()
+
+names(matlab_corr_p) <- names(r_corr_p)
+
+matlab_corr_p %>% 
+  mutate(Pattern = 1:4) %>% select(Pattern, everything()) %>% 
+  gather(key = Chemicals, value = Loadings, -Pattern) %>% 
+  mutate(Group = case_when(grepl("pcb", Chemicals) ~ "PCBs",
+                           grepl("BDE", Chemicals) ~ "PBDEs",
+                           grepl("^M", Chemicals) ~ "PHTs",
+                           grepl("p_|_p", Chemicals) ~ "Phenols",
+                           Chemicals == "tcs" ~ "Phenols",
+                           Chemicals == "bpa" ~ "Phenols")) %>% 
+  arrange(Group) %>% 
+  mutate(Chemicals = fct_inorder(Chemicals)) %>% 
+  ggplot(aes(x = Chemicals, y = Loadings)) + geom_col(aes(fill = Group)) +
+  facet_wrap(.~Pattern) + theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "bottom",
+        strip.background = element_blank()) +
+  labs(title = "Patterns for Correlated Groups -- MATLAB")
+
+round(matlab_corr_p - r_corr_p, 4)
+```
