@@ -136,6 +136,44 @@ z_update <- function (x, mu, theta, sigma) {
 
 z <- z_update(x, mu, theta, sigma)
 
+#########################
+## Log Joint aka Deviance
+## Equal to the log posterior up to an additive constant
+## To assess convergence
+#########################
+
+log_joint <- function(theta, mu, z, x, alpha, sigma, m, lambda) {
+  
+  k  <- nrow(mu)
+  p  <- ncol(x)
+  n  <- nrow(x)
+  lp <- 0
+  
+  for (i in 1:n) {
+    lp <- lp + log(ddirichlet(theta[i,], alpha)) # Shouldn't this be 1 number?
+  }
+  
+  for (i in 1:k) {
+    lp <- lp + dmvnorm(mu[i, ], mean = rep(m, times = p), sigma = lambda * diag(p), log = TRUE)
+  }
+    
+  z_multi <- apply(z, 2, table) 
+  
+  table(z[,1])
+  tabulate(z[1,])
+  
+  for (i in 1:n) {
+    z_multi <- tabulate(z[1,])
+    lp <- lp + dmultinom(z_multi, p = theta[i,], log = TRUE)
+  }
+  
+  for (i in 1:n) {
+    for (j in 1:p) {
+    lp <- lp + dmvnorm(x[i,], mean = mu[z[i,j], ], sigma = sigma * diag(p), log = TRUE)
+  }}
+  lp
+}
+
 #################
 ## Gibb's Sampler
 #################
