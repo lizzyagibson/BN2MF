@@ -35,6 +35,7 @@ library(LaplacesDemon)
 ##
 ## x, k, alpha, m, lambda, sigma
 
+### TEST
 x <- matrix(rnorm(70), nrow = 10)
 n <- nrow(x)
 k <- 3
@@ -45,6 +46,8 @@ z <- matrix(rep(sample(1:3, p, replace = TRUE), times = n), nrow = n, ncol = p)
 m <- 0
 lambda <- 1
 sigma <- 1
+theta <- rdirichlet(n, alpha) # (n*k)
+z <- apply(theta, 1, function(w) rcat(p, p = w)) # (p*n)
 
 ################
 ## Pattern Means
@@ -58,7 +61,7 @@ mu_update <- function (z, x, sigma, m, lambda) {
   #  m: mean hyperparameter for Gaussian prior on mu
   #  lambda: variance hyperparameter for Gaussian prior on mu
   
-  n_k <- apply(z, 2, table) # n_k = # of chemicals assigned to pattern k
+  n_k <- apply(z, 2, tabulate, nbins = k) # n_k = # of chemicals assigned to pattern k
   k   <- nrow(n_k) # number of patterns
   p   <- ncol(x) # number of chemicals
   mu  <- matrix(NA, nrow = k, ncol = p) # empty matrix to fill in for mu
@@ -81,7 +84,6 @@ mu_update <- function (z, x, sigma, m, lambda) {
 }
 
 mu <- mu_update(z, x, sigma, m, lambda)
-
 # should this sum to 1 over the vocabulary (all chemicals)?
 
 ###################################
@@ -93,8 +95,8 @@ theta_update <- function (z, alpha) {
   #  z: assignments from last step
   #  alpha: hyperparameter on theta
   
-  alpha_new <- t(apply(z, 1, table) + alpha) # alpha_new (k*n)
-  theta     <- rdirichlet(n, alpha_new) # (k*n)
+  alpha_new <- t(apply(z, 2, tabulate, nbins = k) + alpha) # alpha_new (n*k)
+  theta     <- rdirichlet(n, alpha_new) # (n*k)
   
   theta
 }
@@ -118,9 +120,10 @@ z_update <- function (x, mu, theta, sigma) {
   z <- matrix(NA, nrow = n, ncol = p) # empty matrix to fill in for z
 
   for (i in 1:n) {
+    
+    prob_n <- matrix(NA, nrow = p, ncol = k) # Probability matrix for each individual [i is fixed]
+    
     for (j in 1:p) {
-      
-      prob_n <- matrix(NA, nrow = p, ncol = k) # Probability matrix for each individual [i is fixed]
     
       for (u in 1:k) {
         prob_n[j,u] <- theta[i,u] * dmvnorm(x[i,j], mean = mu[u,j]) # Eq. 5.17
@@ -150,17 +153,12 @@ log_joint <- function(theta, mu, z, x, alpha, sigma, m, lambda) {
   lp <- 0
   
   for (i in 1:n) {
-    lp <- lp + log(ddirichlet(theta[i,], alpha)) # Shouldn't this be 1 number?
+    lp <- lp + log(ddirichlet(theta[i,], alpha))
   }
   
   for (i in 1:k) {
     lp <- lp + dmvnorm(mu[i, ], mean = rep(m, times = p), sigma = lambda * diag(p), log = TRUE)
   }
-    
-  z_multi <- apply(z, 2, table) 
-  
-  table(z[,1])
-  tabulate(z[1,])
   
   for (i in 1:n) {
     z_multi <- tabulate(z[1,])
@@ -174,20 +172,22 @@ log_joint <- function(theta, mu, z, x, alpha, sigma, m, lambda) {
   lp
 }
 
+log_joint(theta, mu, z, x, alpha, sigma, m, lambda) 
+  
 #################
 ## Gibb's Sampler
 #################
 
-harness(
-      InitGibbState <- function(){ # Initialize theta and z
-         theta_init <- rdirichlet(n, alpha) # (n*k)
-             z_init <- apply(theta_init, 1, function(w) rcat(p, p = w)) # (p*n)
-                       # matrix(1/k, nrow = n, ncol = p)
-      }
-    
-    , TransitionProposal=function(x){rnorm(1) }
-    , ApplyTransition=function(state,proposal){state + proposal} # For Gibbs Sampler, transition == TRUE
-    , ShouldWeTerminate=function(step,state,proposal){(step > 10)} # For now, 10 iterations
-    )
+# harness(
+#       InitGibbState <- function(){ # Initialize theta and z
+#          theta_init <- rdirichlet(n, alpha) # (n*k)
+#              z_init <- apply(theta_init, 1, function(w) rcat(p, p = w)) # (p*n)
+#                        # matrix(1/k, nrow = n, ncol = p)
+#       }
+#     
+#     , TransitionProposal=function(x){rnorm(1) }
+#     , ApplyTransition=function(state,proposal){state + proposal} # For Gibbs Sampler, transition == TRUE
+#     , ShouldWeTerminate=function(step,state,proposal){(step > 10)} # For now, 10 iterations
+#     )
 
 
