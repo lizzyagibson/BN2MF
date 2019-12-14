@@ -130,7 +130,7 @@ z_update <- function (x, mu, theta, sigma_2) {
     for (j in 1:p) {
     
       for (u in 1:k) {
-        prob_n[j,u] <- theta[i,u] * dmvnorm(x[i,j], mean = mu[u,j]) # Eq. 5.17
+        prob_n[j,u] <- theta[i,u] * dmvnorm(x[i,j], mean = mu[u,j], log =TRUE) # Eq. 5.17
         # density function for the multivariate normal distribution with mean and covariance matrix sigma_2.
       }
         prob_n      <- prob_n / rowSums(prob_n) # this normalizes chemical proportions over all patterns
@@ -201,21 +201,17 @@ GMMM <- function(x, k, sigma_2, m, lambda_2){
                   }
                 
                 , ApplyTransition = function(previousState, proposal){ # For Gibbs Sampler, transition == TRUE
-                      mu       <- proposal$mu
-                      z        <- proposal$z
-                      theta    <- proposal$theta
-                      deviance <- proposal$deviance
-                      list(mu = mu, z = z, theta = theta, deviance = deviance)
+                      proposal
                 }
                 
                 , ShouldWeTerminate = function(step,state,proposal){# For now, 100 iterations
-                  (step > 10)
+                  (step > 100)
                   } 
                 )
       }
 
-# x <- matrix(rnorm(10000), nrow = 1000)
-# ex_run <- GMMM(x, k = 4, sigma_2 = 1, m = 0, lambda_2 = 1)
+x <- matrix(rnorm(70), nrow = 10)
+ex_run <- GMMM(x, k = 3, sigma_2 = 1, m = 0, lambda_2 = 1)
 # ex_run$FinalState
 
 
