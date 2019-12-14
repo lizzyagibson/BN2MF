@@ -1,19 +1,25 @@
 # Simulated Mothers and Newborns data
 dat <- read_csv('./Sims/sim_data_1.csv') %>% as.matrix()
 
+index <- sample(1:nrow(dat), 750, replace = FALSE)
+train <- dat[index,]
+test <- dat[-index,]
+
 # Model
-out_4 <- GMMM(x = dat, k = 4, sigma_2 = 1, m = 0, lambda_2 = 1)
+out_4 <- GMMM(x = train, k = 4, sigma_2 = 1, m = 0, lambda_2 = 1)
+save(out_4, file = "./out_4.RData")
+
 out_4$FinalState
 
 # Data Cleaning
 out_mu <- out_4$TheStateRecord[grep("mu", names(out_4$TheStateRecord))]
-out_mu <- array(as.numeric(unlist(out_mu)), dim=c(4, ncol(dat), out_4$StepCount))
+out_mu <- array(as.numeric(unlist(out_mu)), dim=c(4, ncol(train), out_4$StepCount))
 
 out_theta <- out_4$TheStateRecord[grep("theta", names(out_4$TheStateRecord))]
-out_theta <- array(as.numeric(unlist(out_theta)), dim=c(nrow(dat), 4, out_4$StepCount))
+out_theta <- array(as.numeric(unlist(out_theta)), dim=c(nrow(train), 4, out_4$StepCount))
 
 out_z <- out_4$TheStateRecord[grep("z", names(out_4$TheStateRecord))]
-out_z <- array(as.numeric(unlist(out_z)), dim=c(nrow(dat), ncol(dat), out_4$StepCount))
+out_z <- array(as.numeric(unlist(out_z)), dim=c(nrow(train), ncol(train), out_4$StepCount))
 
 out_lp <- out_4$TheStateRecord[grep("dev", names(out_4$TheStateRecord))] %>% as_vector() %>% 
   cbind(., 1:out_4$StepCount) %>% 
@@ -21,6 +27,7 @@ out_lp <- out_4$TheStateRecord[grep("dev", names(out_4$TheStateRecord))] %>% as_
 
 # Results
 out_lp %>% 
+  #filter(iteration %in% 1:100) %>% 
   ggplot(aes(x = iteration, y = deviance)) +
   geom_line() +
   theme_minimal() +
@@ -38,8 +45,10 @@ z_mc_sd <- apply(out_z, c(1,2), function(x) sd(as.vector(x)))
 
 # Mu
 t(mu_mc) %>% as_tibble() %>% 
-  rename(ave1, ave2, ave3, ave4) %>% 
-  cbind(., t(mu_mc_sd))
+  rename(ave1 = 1, ave2 = 2, ave3 = 3, ave4 = 4) %>% 
+  cbind(., t(mu_mc_sd)) %>% 
+  rename(sd1 = '1', sd2 = '2', sd3 = '3', sd4 = '4') %>% 
+  cbind(., chemicals = colnames(dat))
 
 
 
