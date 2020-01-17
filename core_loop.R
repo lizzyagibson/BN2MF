@@ -1,25 +1,25 @@
 # sampler loop
 # This version records everything
 #
-# Harness :: SeedOverRight , InitGibbState :: () -> NewState , transitionProposal :: (State-> StateChange)
+# Harness :: SeedOverRight , InitState :: () -> NewState , transitionProposal :: (State-> StateChange)
 #     , ApplytransitionUpdate :: (CurrentState, Proposal) -> NewState
 #     , shouldItTerminate :: ( IterationCount,CurrentState,CurrentProposal -> Yes or NO  )
-#  -> (finalState, Number of Steps, Initial rng state,Initial GibbsState Value, stateHistory, transitionProposalHistory)
+#  -> (finalState, Number of Steps, Initial rng state,Initial State Value, stateHistory, transitionProposalHistory)
 
 harness <- function(seed=NA # seed is fine to leave as NA
-    ,InitGibbState=NA
+    ,InitState=NA
     ,TransitionProposal=NA
     ,ApplyTransition=NA
     ,ShouldWeTerminate=NA ) {
 suppressWarnings({
 
-if(is.na(InitGibbState)
+if(is.na(InitState)
     || is.na(TransitionProposal)
     || is.na(ApplyTransition)
     || is.na(ShouldWeTerminate)){
   errorCondition(message=
     "you must use:
-      InitGibbState
+      InitState
       TransitionProposal
       ApplyTransition
       ShouldWeTerminate
@@ -39,17 +39,18 @@ if (!is.na(seed))
 }) # end warning suppression
 
 CurrentStep <- 0
-CurrentState <- InitGibbState()
-StateRecord <- c(CurrentState)
-CurrentProposal <- TransitionProposal(CurrentState)
-ProposalRecord <- c(CurrentProposal)
+CurrentState <- InitState()
+StateRecord <- c(CurrentState) # this adds each state record, so keeps all
+CurrentProposal <- TransitionProposal(CurrentState) # this does the first update step
+ProposalRecord <- c(CurrentProposal) # This puts the output of the last line as the first record in a new list
 
 while(!ShouldWeTerminate(CurrentStep,CurrentState,CurrentProposal)){
   CurrentStep <- CurrentStep + 1
-  CurrentState <- ApplyTransition(CurrentState,CurrentProposal)
-  StateRecord <- c(StateRecord,CurrentState)
-  CurrentProposal <- TransitionProposal(CurrentState)
-  ProposalRecord <- c(ProposalRecord,CurrentProposal)
+  CurrentState <- ApplyTransition(CurrentState,CurrentProposal) # Update parameters
+  StateRecord <- c(StateRecord,CurrentState) # Add current state to state record list
+  CurrentProposal <- TransitionProposal(CurrentState) # Gibbs always accepts transitions
+  ProposalRecord <- c(ProposalRecord,CurrentProposal) # Add current proposal to record list
+  # second to last record proposed is final record
 }
 
 # restore RNG if required
@@ -63,7 +64,7 @@ list(FinalState=CurrentState,StepCount=CurrentStep,TheStateRecord=StateRecord,Th
 
 # Gauss1dimWalk <- function(){
 #   harness(
-#     ,InitGibbState=function(){rnorm(1)}
+#     ,InitState=function(){rnorm(1)}
 #     ,TransitionProposal=function(x){rnorm(1) }# doesn't care about current state
 #        # for graphs, you might depend on the # of nbrs of current vertex/state to determine how you sample over choosing which neighbor you propose moving to
 #     ,ApplyTransition=function(state,proposal){state + proposal }
