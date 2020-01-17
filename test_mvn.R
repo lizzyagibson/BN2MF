@@ -1,3 +1,7 @@
+dmvn(x, 0, 1, log = TRUE, ncores = 1, isChol = FALSE)
+
+dmvnorm(x[i,j], mean = mu[u,j], log =TRUE)
+
 N <- 100
 d <- 5
 mu <- 1:d
@@ -13,4 +17,7 @@ sum(dmvnorm(X, mu, diag(rep(1, times = ncol(X))), log = TRUE))
 diag(rep(1, times = ncol(X)))
 chol(diag(rep(1, times = ncol(X))))
 # Same!
+
+sum(dmvnorm(X, mu, diag(rep(1, times = ncol(X))), log = TRUE))
+
         

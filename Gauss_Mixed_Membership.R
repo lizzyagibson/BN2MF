@@ -49,12 +49,26 @@ sigma_2 <- 1
 
 # Cholesky is of an identity matrix is the identity matrix
 # Matrix version of square root
+=======
+# x <- matrix(rnorm(70), nrow = 10)
+# n <- nrow(x)
+# k <- 3
+# p <- ncol(x)
+# alpha <- rep(1, times = k) # Uniform prior over cluster simplex
+# z <- matrix(rep(sample(1:3, ncol(dat), replace = TRUE), times = nrow(dat)), nrow = nrow(dat), ncol = ncol(dat)) 
+#   # if this random sample doesn't include all k, results will be wrong dim !!!
+# m <- 0
+# lambda_2 <- 1
+# sigma_2 <- 1
+# theta <- rdirichlet(n, alpha) # (n*k)
 
 ################
 ## Pattern Means
 ################
 
 mu_update <- function (x, k, z, sigma_2, m, lambda_2, mu) {
+
+mu_update <- function (x, k, z, sigma_2, m, lambda_2) {
   #  Arguments
   #  k: number of patterns
   #  z: assignments from last step
@@ -63,10 +77,17 @@ mu_update <- function (x, k, z, sigma_2, m, lambda_2, mu) {
   #  m: mean hyperparameter for Gaussian prior on mu
   #  lambda_2: variance hyperparameter for Gaussian prior on mu
   
+  n_k <- apply(z, 2, tabulate, nbins = k) # n_k = # of chemicals assigned to pattern k
   n <- nrow(x)
   p <- ncol(x)
+  alpha <- rep(1, times = k) # Uniform prior over cluster simplex
+
+  theta <- rdirichlet(n, alpha) # (n*k)
+  z <- t(apply(theta, 1, function(w) rcat(p, p = w))) # (p*n)
   
   n_k <- apply(z, 2, tabulate, nbins = k) # n_k = # of chemicals assigned to pattern k
+  p   <- ncol(x) # number of chemicals
+  mu  <- matrix(NA, nrow = k, ncol = p) # empty matrix to fill in for mu
   
   # update: Draw mu_k ~ N(0, I*lambda_2) for each pattern
   for (i in 1:k) {
@@ -110,6 +131,7 @@ theta_update <- function (x, k, z) {
 ##############
 
 z_update <- function (x, mu, theta, sigma_2, z) {
+
   #  Arguments
   #  x: observed data
   #  mu: pattern means from last step
@@ -127,6 +149,7 @@ z_update <- function (x, mu, theta, sigma_2, z) {
     for (j in 1:p) {
     
       for (u in 1:k) {
+
         prob_n[j,u] <- theta[i,u] * dmvn(x[i,j], mu = mu[u,j], sigma = sigma_2, log = TRUE) # Eq. 5.17
         # density function for the multivariate normal distribution with mean and covariance matrix sigma_2.
       }
@@ -167,6 +190,7 @@ log_joint <- function(theta, mu, z, x, sigma_2, m, lambda_2) {
 
   for (i in 1:n) { # p(x)
     for (j in 1:p) {
+
     lp <- lp + dmvn(x[i,], mu = mu[z[i,j], ], sigma = diag(p), log = TRUE)
     }}
 
@@ -189,10 +213,10 @@ GMMM <- function(x, k, sigma_2, m, lambda_2){
                       mu_init    <- rmvn(k, mu = rep(m, times = ncol(x)), sigma = diag(ncol(x)))
                       list(theta = theta_init, z = z_init, mu = mu_init)
                   }
-            
+          
                 , TransitionProposal = function(previousState){ # Update Theta, Mu, Z
-                      propose_mu    <- mu_update(x, k, previousState$z, sigma_2, m, lambda_2, previousState$mu)
-                      propose_z     <- z_update(x, propose_mu, previousState$theta, sigma_2, previousState$z)
+                      propose_mu    <- mu_update(x, k, previousState$z, sigma_2, m, lambda_2)
+                      propose_z     <- z_update(x, propose_mu, previousState$theta, sigma_2)
                       propose_theta <- theta_update(x, k, propose_z)
                       deviance      <- log_joint(propose_theta, propose_mu, propose_z, x, sigma_2, m, lambda_2)
                       list(mu = propose_mu, z = propose_z, theta = propose_theta, deviance = deviance)
@@ -207,6 +231,11 @@ GMMM <- function(x, k, sigma_2, m, lambda_2){
                   } 
                 )
       }
+                  } 
+
+x <- matrix(rnorm(70), nrow = 10)
+ex_run <- GMMM(x, k = 3, sigma_2 = 1, m = 0, lambda_2 = 1)
+# ex_run$FinalState
 
 # x <- matrix(rnorm(50000), nrow = 1000)
 start_time <- Sys.time()
