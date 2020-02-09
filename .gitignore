@@ -3,3 +3,7 @@
 .RData
 .Ruserdata
 *.html
+Stan/*.rData
+Sims/*.csv
+Sims/*.mat
+Resources/*.pdf
