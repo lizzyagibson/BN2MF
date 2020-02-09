@@ -106,6 +106,17 @@ patterns_dist <- rbind(c(rep(1, 22), runif(28, -0.15, 0.15)),
             c(runif(42, -0.15, 0.15), rep(1, 8)))
 ```
 
+```{r}
+patterns_dist %>% as_tibble() %>% 
+  mutate(Pattern = 1:4) %>% select(Pattern, everything()) %>% 
+  gather(key = Chemicals, value = Loadings, -Pattern) %>% 
+  ggplot(aes(x = Chemicals, y = Loadings)) + geom_col() +
+  facet_wrap(.~Pattern) + theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "bottom",
+        strip.background = element_blank())
+```
+
 ### Simulate Individual Scores
 
 Generate random scores indicating the presence of each vector for each observation from a gamma distribution.
@@ -245,6 +256,17 @@ patterns_over <- rbind(c(rep(1, 22), rep(0.25, 11), runif(17, -0.15, 0.15)),
             c(runif(33, -0.15, 0.15), rep(0.25, 9), rep(1, 8)))
 ```
 
+```{r}
+patterns_over %>% as_tibble() %>% 
+  mutate(Pattern = 1:4) %>% select(Pattern, everything()) %>% 
+  gather(key = Chemicals, value = Loadings, -Pattern) %>% 
+  ggplot(aes(x = Chemicals, y = Loadings)) + geom_col() +
+  facet_wrap(.~Pattern) + theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "bottom",
+        strip.background = element_blank())
+```
+
 ### Simulate Individual Scores
 
 Generate random scores indicating the presence of each vector for each observation from a gamma distribution.
@@ -381,6 +403,17 @@ patterns_cor <- rbind(c(runif(22, 0, 1), runif(11, 0, 0.15), runif(17, -0.15, 0.
                       c(runif(33, -0.15, 0.15), runif(9, 0, 0.15), runif(8, 0, 1)))
 
 head(cor(patterns_cor[,1:10]))
+```
+
+```{r}
+patterns_cor %>% as_tibble() %>% 
+  mutate(Pattern = 1:4) %>% select(Pattern, everything()) %>% 
+  gather(key = Chemicals, value = Loadings, -Pattern) %>% 
+  ggplot(aes(x = Chemicals, y = Loadings)) + geom_col() +
+  facet_wrap(.~Pattern) + theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "bottom",
+        strip.background = element_blank())
 ```
 
 ### Simulate Individual Scores
