@@ -87,7 +87,7 @@ for iter = 1:num_iter
 %    stem(A1./A2); colorbar; pause(.5);
     disp([num2str(iter) ' : ' num2str(sum(sum(abs(X-(W1./W2)*diag(A1./A2)*(H1./H2)))))]);
 
- if iter ~= 1 && abs(loss(iter-1)-loss(iter)) < 1e-3
+ if iter ~= 1 && abs(loss(iter-1)-loss(iter)) < 1e-4
         break % Added convergence criteria, ok?
   end
 end

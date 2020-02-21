@@ -1,7 +1,7 @@
 ---
-title: "Simulate Data Generating Process"
+title: "NMF & Sim Data"
 author: "Lizzy Gibson"
-date: "7/09/2019"
+date: "2/18/2020"
 output: 
   html_document:
     toc: TRUE
@@ -100,7 +100,12 @@ Pattern matrix is 4*50, patterns by chemicals.
 
 ```{r}
 ## Construct a matrix for 4 TRUE exposure patterns
-set.seed(1988)
+labels <-  c("pcb28", "pcb66", "pcb74", "pcb99", "pcb105", "pcb118", "pcb138_158", "pcb146", "pcb153", "pcb156", "pcb167",
+          "pcb170", "pcb178", "pcb183", "pcb187", "pcb180", "pcb189", "pcb194", "pcb196_203", "pcb199", "pcb206", "pcb209",
+          "BDE17", "BDE28", "BDE47", "BDE66", "BDE85", "BDE99", "BDE100", "BDE153", "BDE154", "BDE183", "BDE209", "MECPP",
+          "MEHHP", "MEOHP", "MCPP", "MIBP", "MBP", "MBZP", "MEP", "MEHP", "dcp_24", "dcp_25", "b_pb", "bp_3", "m_pb",
+          "p_pb", "tcs", "bpa")
+
 patterns_dist <- rbind(c(rep(1, 22), rep(0, 28)),
                        c(rep(0, 22), rep(1, 11), rep(0, 17)),
                        c(rep(0, 33), rep(1, 9), rep(0, 8)),
@@ -108,18 +113,24 @@ patterns_dist <- rbind(c(rep(1, 22), rep(0, 28)),
 ```
 
 ```{r}
+colnames(patterns_dist) <- labels
+
 patterns_dist %>% as_tibble() %>% 
   mutate(Pattern = 1:4) %>% select(Pattern, everything()) %>% 
   gather(key = Chemicals, value = Loadings, -Pattern) %>%
   mutate(Chemicals = fct_inorder(Chemicals)) %>% 
-  ggplot(aes(x = Chemicals, y = Loadings)) + geom_col() +
+  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
+                                                     ifelse(str_detect(Chemicals, "^M"), "Phthalates",
+                                                            ifelse(str_detect(Chemicals, "pcb"), "PCBs",
+                                                                   "Phenols")))) %>% 
+  ggplot(aes(x = Chemicals, y = Loadings)) + geom_col(aes(fill = Group)) +
   facet_wrap(.~Pattern) + theme_bw() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+  theme(axis.text.x = element_blank(),
         legend.position = "bottom",
         strip.background = element_blank())
 ```
 
-### Simulate Individual Scores
+### Simulate Scores
 
 Generate random scores indicating the presence of each vector for each observation from a gamma distribution.
 
@@ -143,8 +154,6 @@ Multiple scores and vectors, and add to get the mixture.
 
 ```{r}
 chem_dist <- scores_dist %*% patterns_dist
-
-summary(chem_dist)
 ```
 
 ### Simulate Noise
@@ -162,57 +171,7 @@ head(chem_dist[,1:10])
 
 ```{r, echo = FALSE, fig.height = 7}
 chem_dist <- chem_dist %>% 
-  as_tibble(.) %>% 
-  rename(pcb28 = 1
-    , pcb66 = 2
-    , pcb74 = 3
-    , pcb99 = 4
-    , pcb105 = 5
-    , pcb118 = 6
-    , pcb138_158 = 7
-    , pcb146 = 8
-    , pcb153 = 9
-    , pcb156 = 10
-    , pcb167 = 11
-    , pcb170 = 12
-    , pcb178 = 13
-    , pcb183 = 14
-    , pcb187 = 15
-    , pcb180 = 16
-    , pcb189 = 17
-    , pcb194 = 18
-    , pcb196_203 = 19
-    , pcb199 = 20
-    , pcb206 = 21
-    , pcb209 = 22
-    , BDE17 = 23
-    , BDE28 = 24
-    , BDE47 = 25 
-    , BDE66 = 26
-    , BDE85 = 27 
-    , BDE99 = 28 
-    , BDE100 = 29
-    , BDE153 = 30
-    , BDE154 = 31
-    , BDE183 = 32
-    , BDE209 = 33
-    , MECPP = 34
-    , MEHHP = 35
-    , MEOHP = 36
-    , MCPP = 37
-    , MIBP = 38 
-    , MBP = 39 
-    , MBZP = 40
-    , MEP = 41
-    , MEHP = 42
-    , dcp_24 = 43
-    , dcp_25 = 44
-    , b_pb = 45
-    , bp_3 = 46
-    , m_pb = 47
-    , p_pb = 48
-    , tcs = 49
-    , bpa = 50)
+  as_tibble(.)
 
 cormat <- round(cor(chem_dist, use = "complete.obs"),2)
 
@@ -243,22 +202,28 @@ ggplot(data = labelled, aes(x = Var1, y = Var2)) +
         strip.placement = "outside", legend.position = "bottom")
 ```
 
-### Bayesian NMF
+### Bayesian NMF Solution
 
 #### Loadings
 
 ```{r}
-eh1 <- readMat("./Data/eh1.mat")[[1]]
+eh1 <- readMat(here::here("./Data/eh1.mat"))[[1]]
 ```
 
 ```{r}
+colnames(eh1) <- labels
+
 eh1 %>% as_tibble() %>% 
   mutate(Pattern = 1:4) %>% select(Pattern, everything()) %>% 
   gather(key = Chemicals, value = Loadings, -Pattern) %>%
   mutate(Chemicals = fct_inorder(Chemicals)) %>% 
-  ggplot(aes(x = Chemicals, y = Loadings)) + geom_col() +
+  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
+                                                     ifelse(str_detect(Chemicals, "^M"), "Phthalates",
+                                                            ifelse(str_detect(Chemicals, "pcb"), "PCBs",
+                                                                   "Phenols")))) %>% 
+  ggplot(aes(x = Chemicals, y = Loadings)) + geom_col(aes(fill = Group)) +
   facet_wrap(.~Pattern) + theme_bw() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+  theme(axis.text.x = element_blank(),
         legend.position = "bottom",
         strip.background = element_blank())
 ```
@@ -267,19 +232,19 @@ eh1 %>% as_tibble() %>%
 ```{r}
 eh1_pcb <- eh1[3,]/max(eh1[3,])
 eh1_pbde <- eh1[2,]/max(eh1[2,])
-eh1_pht <- eh1[1,]/max(eh1[1,])
-eh1_pnl <- eh1[4,]/max(eh1[4,])
+eh1_pnl <- eh1[1,]/max(eh1[1,])
+eh1_pht <- eh1[4,]/max(eh1[4,])
 
 sqrt(sum((eh1_pcb - patterns_dist[1,])^2))/sqrt(sum((patterns_dist[1,])^2))
 sqrt(sum((eh1_pbde - patterns_dist[2,])^2))/sqrt(sum((patterns_dist[2,])^2))
-sqrt(sum((eh1_pht - patterns_dist[4,])^2))/sqrt(sum((patterns_dist[4,])^2))
-sqrt(sum((eh1_pnl - patterns_dist[3,])^2))/sqrt(sum((patterns_dist[3,])^2))
+sqrt(sum((eh1_pht - patterns_dist[3,])^2))/sqrt(sum((patterns_dist[3,])^2))
+sqrt(sum((eh1_pnl - patterns_dist[4,])^2))/sqrt(sum((patterns_dist[4,])^2))
 ```
 
 #### Scores
 
 ```{r}
-ewa1 <- readMat("./Data/ewa1.mat")[[1]]
+ewa1 <- readMat(here::here("./Data/ewa1.mat"))[[1]]
 
 dim(ewa1)
 ```
@@ -289,22 +254,22 @@ dim(ewa1)
 # Put on same range
 ewa1_pcb <- ewa1[,3]/max(ewa1[,3])
 ewa1_pbde <- ewa1[,2]/max(ewa1[,2])
-ewa1_pht <- ewa1[,1]/max(ewa1[,1])
-ewa1_pnl <- ewa1[,4]/max(ewa1[,4])
+ewa1_pht <- ewa1[,4]/max(ewa1[,4])
+ewa1_pnl <- ewa1[,1]/max(ewa1[,1])
 
 max(scores_dist)
 max(ewa1)
 
 # Put on same range
-score_pcb <- scores_dist[,1]/max(scores_dist[,1])
-score_pbde <- scores_dist[,2]/max(scores_dist[,2])
-score_pht <- scores_dist[,4]/max(scores_dist[,4])
-score_pnl <- scores_dist[,3]/max(scores_dist[,3])
+score_pcb1 <- scores_dist[,1]/max(scores_dist[,1])
+score_pbde1 <- scores_dist[,2]/max(scores_dist[,2])
+score_pnl1 <- scores_dist[,4]/max(scores_dist[,4])
+score_pht1 <- scores_dist[,3]/max(scores_dist[,3])
 
-sqrt(sum((ewa1_pcb - score_pcb)^2))/sqrt(sum((score_pcb)^2))
-sqrt(sum((ewa1_pbde - score_pbde)^2))/sqrt(sum((score_pbde)^2))
-sqrt(sum((ewa1_pht - score_pht)^2))/sqrt(sum((score_pht)^2))
-sqrt(sum((ewa1_pnl - score_pnl)^2))/sqrt(sum((score_pnl)^2))
+sqrt(sum((ewa1_pcb - score_pcb1)^2))/sqrt(sum((score_pcb1)^2))
+sqrt(sum((ewa1_pbde - score_pbde1)^2))/sqrt(sum((score_pbde1)^2))
+sqrt(sum((ewa1_pht - score_pht1)^2))/sqrt(sum((score_pht1)^2))
+sqrt(sum((ewa1_pnl - score_pnl1)^2))/sqrt(sum((score_pnl1)^2))
 ```
 
 ## 2: Overlapping Patterns
@@ -322,18 +287,24 @@ patterns_over <- rbind(c(rep(1, 22), rep(0.25, 11), rep(0, 17)),
 ```
 
 ```{r}
+colnames(patterns_over) <- labels
+
 patterns_over %>% as_tibble() %>% 
   mutate(Pattern = 1:4) %>% select(Pattern, everything()) %>% 
   gather(key = Chemicals, value = Loadings, -Pattern) %>% 
-  mutate(Chemicals = fct_inorder(Chemicals)) %>% 
-  ggplot(aes(x = Chemicals, y = Loadings)) + geom_col() +
+  mutate(Chemicals = fct_inorder(Chemicals)) %>%
+  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
+                                                     ifelse(str_detect(Chemicals, "^M"), "Phthalates",
+                                                            ifelse(str_detect(Chemicals, "pcb"), "PCBs",
+                                                                   "Phenols")))) %>% 
+  ggplot(aes(x = Chemicals, y = Loadings)) + geom_col(aes(fill = Group)) +
   facet_wrap(.~Pattern) + theme_bw() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+  theme(axis.text.x = element_blank(),
         legend.position = "bottom",
         strip.background = element_blank())
 ```
 
-### Simulate Individual Scores
+### Simulate Scores
 
 Generate random scores indicating the presence of each vector for each observation from a gamma distribution.
 
@@ -369,59 +340,9 @@ head(chem_over[,1:10])
 
 ### Visualize
 
-```{r, echo = FALSE, fig.height = 7}
+```{r, fig.height = 7}
 chem_over <- chem_over %>% 
-  as_tibble(.) %>% 
-  rename(pcb28 = 1
-    , pcb66 = 2
-    , pcb74 = 3
-    , pcb99 = 4
-    , pcb105 = 5
-    , pcb118 = 6
-    , pcb138_158 = 7
-    , pcb146 = 8
-    , pcb153 = 9
-    , pcb156 = 10
-    , pcb167 = 11
-    , pcb170 = 12
-    , pcb178 = 13
-    , pcb183 = 14
-    , pcb187 = 15
-    , pcb180 = 16
-    , pcb189 = 17
-    , pcb194 = 18
-    , pcb196_203 = 19
-    , pcb199 = 20
-    , pcb206 = 21
-    , pcb209 = 22
-    , BDE17 = 23
-    , BDE28 = 24
-    , BDE47 = 25 
-    , BDE66 = 26
-    , BDE85 = 27 
-    , BDE99 = 28 
-    , BDE100 = 29
-    , BDE153 = 30
-    , BDE154 = 31
-    , BDE183 = 32
-    , BDE209 = 33
-    , MECPP = 34
-    , MEHHP = 35
-    , MEOHP = 36
-    , MCPP = 37
-    , MIBP = 38 
-    , MBP = 39 
-    , MBZP = 40
-    , MEP = 41
-    , MEHP = 42
-    , dcp_24 = 43
-    , dcp_25 = 44
-    , b_pb = 45
-    , bp_3 = 46
-    , m_pb = 47
-    , p_pb = 48
-    , tcs = 49
-    , bpa = 50)
+  as_tibble(.)
 
 cormat_o <- round(cor(chem_over, use = "complete.obs"),2)
 
@@ -452,22 +373,28 @@ ggplot(data = labelled_o, aes(x = Var1, y = Var2)) +
         strip.placement = "outside", legend.position = "bottom")
 ```
 
-### Bayesian NMF
+### Bayesian NMF Solution
 
 #### Loadings
 
 ```{r}
-eh2 <- readMat("./Data/eh2.mat")[[1]]
+eh2 <- readMat(here::here("./Data/eh2.mat"))[[1]]
 ```
 
 ```{r}
+colnames(eh2) <- labels
+
 eh2 %>% as_tibble() %>% 
   mutate(Pattern = 1:4) %>% select(Pattern, everything()) %>% 
   gather(key = Chemicals, value = Loadings, -Pattern) %>%
   mutate(Chemicals = fct_inorder(Chemicals)) %>% 
-  ggplot(aes(x = Chemicals, y = Loadings)) + geom_col() +
+  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
+                                                     ifelse(str_detect(Chemicals, "^M"), "Phthalates",
+                                                            ifelse(str_detect(Chemicals, "pcb"), "PCBs",
+                                                                   "Phenols")))) %>% 
+  ggplot(aes(x = Chemicals, y = Loadings)) + geom_col(aes(fill = Group)) +
   facet_wrap(.~Pattern) + theme_bw() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+  theme(axis.text.x = element_blank(),
         legend.position = "bottom",
         strip.background = element_blank())
 ```
@@ -476,19 +403,19 @@ eh2 %>% as_tibble() %>%
 ```{r}
 eh2_pcb <- eh2[4,]/max(eh2[4,])
 eh2_pbde <- eh2[1,]/max(eh2[1,])
-eh2_pht <- eh2[2,]/max(eh2[2,])
-eh2_pnl <- eh2[3,]/max(eh2[3,])
+eh2_pht <- eh2[3,]/max(eh2[3,])
+eh2_pnl <- eh2[2,]/max(eh2[2,])
 
 sqrt(sum((eh2_pcb - patterns_over[1,])^2))/sqrt(sum((patterns_over[1,])^2))
 sqrt(sum((eh2_pbde - patterns_over[2,])^2))/sqrt(sum((patterns_over[2,])^2))
-sqrt(sum((eh2_pht - patterns_over[4,])^2))/sqrt(sum((patterns_over[4,])^2))
-sqrt(sum((eh2_pnl - patterns_over[3,])^2))/sqrt(sum((patterns_over[3,])^2))
+sqrt(sum((eh2_pnl - patterns_over[4,])^2))/sqrt(sum((patterns_over[4,])^2))
+sqrt(sum((eh2_pht - patterns_over[3,])^2))/sqrt(sum((patterns_over[3,])^2))
 ```
 
 #### Scores
 
 ```{r}
-ewa2 <- readMat("./Data/ewa2.mat")[[1]]
+ewa2 <- readMat(here::here("./Data/ewa2.mat"))[[1]]
 
 dim(ewa2)
 ```
@@ -498,25 +425,25 @@ dim(ewa2)
 # Put on same range
 ewa2_pcb <- ewa2[,4]/max(ewa2[,4])
 ewa2_pbde <- ewa2[,1]/max(ewa2[,1])
-ewa2_pht <- ewa2[,2]/max(ewa2[,2])
-ewa2_pnl <- ewa2[,3]/max(ewa2[,3])
+ewa2_pnl <- ewa2[,2]/max(ewa2[,2])
+ewa2_pht <- ewa2[,3]/max(ewa2[,3])
 
 max(scores_over)
 max(ewa2)
 
 # Put on same range
-score_pcb <- scores_over[,1]/max(scores_over[,1])
-score_pbde <- scores_over[,2]/max(scores_over[,2])
-score_pht <- scores_over[,4]/max(scores_over[,4])
-score_pnl <- scores_over[,3]/max(scores_over[,3])
+score_pcb2 <- scores_over[,1]/max(scores_over[,1])
+score_pbde2 <- scores_over[,2]/max(scores_over[,2])
+score_pht2 <- scores_over[,3]/max(scores_over[,3])
+score_pnl2 <- scores_over[,4]/max(scores_over[,4])
 
-sqrt(sum((ewa2_pcb - score_pcb)^2))/sqrt(sum((score_pcb)^2))
-sqrt(sum((ewa2_pbde - score_pbde)^2))/sqrt(sum((score_pbde)^2))
-sqrt(sum((ewa2_pht - score_pht)^2))/sqrt(sum((score_pht)^2))
-sqrt(sum((ewa2_pnl - score_pnl)^2))/sqrt(sum((score_pnl)^2))
+sqrt(sum((ewa2_pcb - score_pcb2)^2))/sqrt(sum((score_pcb2)^2))
+sqrt(sum((ewa2_pbde - score_pbde2)^2))/sqrt(sum((score_pbde2)^2))
+sqrt(sum((ewa2_pht - score_pht2)^2))/sqrt(sum((score_pht2)^2))
+sqrt(sum((ewa2_pnl - score_pnl2)^2))/sqrt(sum((score_pnl2)^2))
 ```
 
-## 3: Overlapping Patterns & Correlated Scores
+## 3: Correlated Scores
 
 ### Simulate Patterns
 
@@ -524,25 +451,34 @@ Pattern matrix is 4*50, patterns by chemicals.
 
 ```{r}
 ## Construct a matrix for 4 TRUE exposure patterns
-patterns_cor <- rbind(c(rep(1, 22), rep(0.25, 11), rep(0, 17)),
-            c(rep(0.25,22), rep(1, 11), rep(0, 17)),
-            c(rep(0, 33), rep(1, 9), rep(0.25, 8)),
-            c(rep(0, 33), rep(0.25, 9), rep(1, 8)))
+set.seed(10)
+patterns_cor <- rbind(c(runif(22, 0, 1), runif(11, 0, 0.15), runif(17, 0, 0.15)),
+                      c(runif(22, 0, 0.15), runif(11, 0, 1), runif(17, 0, 0.15)),
+                      c(runif(33, 0, 0.15), runif(9, 0, 1), runif(8, 0, 0.15)),
+                      c(runif(33, 0, 0.15), runif(9, 0, 0.15), runif(8, 0, 1)))
+
+head(cor(patterns_cor[,1:10]))
 ```
 
 ```{r}
+colnames(patterns_cor) <- labels
+
 patterns_cor %>% as_tibble() %>% 
   mutate(Pattern = 1:4) %>% select(Pattern, everything()) %>% 
   gather(key = Chemicals, value = Loadings, -Pattern) %>% 
   mutate(Chemicals = fct_inorder(Chemicals)) %>% 
-  ggplot(aes(x = Chemicals, y = Loadings)) + geom_col() +
+  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
+                                                     ifelse(str_detect(Chemicals, "^M"), "Phthalates",
+                                                            ifelse(str_detect(Chemicals, "pcb"), "PCBs",
+                                                                   "Phenols")))) %>% 
+  ggplot(aes(x = Chemicals, y = Loadings)) + geom_col(aes(fill = Group)) +
   facet_wrap(.~Pattern) + theme_bw() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+  theme(axis.text.x = element_blank(),
         legend.position = "bottom",
         strip.background = element_blank())
 ```
 
-### Simulate Individual Scores
+### Simulate Scores
 
 Generate random scores indicating the presence of each vector for each observation from a multivariate log normal distribution.
 
@@ -556,7 +492,7 @@ hist(rlnorm(50, meanlog = 1, sdlog = 1))
 scores_cor <- matrix(nrow = 1000, ncol = 4)
 
 stdevs <- c(1,1,1,1)
-# stdevs is the vector that contains the standard deviations of your patterns
+# vector contains the standard deviations of patterns
 
 cors <- matrix( c(1,    0.25, 0.15, 0.15,
                   0.25, 1,    0.15, 0.15,
@@ -564,7 +500,7 @@ cors <- matrix( c(1,    0.25, 0.15, 0.15,
                   0.15, 0.15, 0.25, 1), nrow = 4)
 
 b <- stdevs %*% t(stdevs)  
-# b is an n*n matrix whose generic term is stdev[i]*stdev[j] (n is number of variables)
+# b is n*n matrix whose generic term is stdev[i]*stdev[j] (n is number of variables)
 
 covariance <- b * cors  # covariance matrix
 # corr = cov / std1*std2, here stdev = 1
@@ -596,59 +532,9 @@ chem_cor <- pmax(chem_cor + rmatrix(chem_cor, dist=rnorm, mean=noise$mean, sd=no
 
 ### Visualize
 
-```{r, echo = FALSE, fig.height = 7}
+```{r, fig.height = 7}
 chem_cor <- chem_cor %>% 
-  as_tibble(.) %>% 
-  rename(pcb28 = 1
-    , pcb66 = 2
-    , pcb74 = 3
-    , pcb99 = 4
-    , pcb105 = 5
-    , pcb118 = 6
-    , pcb138_158 = 7
-    , pcb146 = 8
-    , pcb153 = 9
-    , pcb156 = 10
-    , pcb167 = 11
-    , pcb170 = 12
-    , pcb178 = 13
-    , pcb183 = 14
-    , pcb187 = 15
-    , pcb180 = 16
-    , pcb189 = 17
-    , pcb194 = 18
-    , pcb196_203 = 19
-    , pcb199 = 20
-    , pcb206 = 21
-    , pcb209 = 22
-    , BDE17 = 23
-    , BDE28 = 24
-    , BDE47 = 25 
-    , BDE66 = 26
-    , BDE85 = 27 
-    , BDE99 = 28 
-    , BDE100 = 29
-    , BDE153 = 30
-    , BDE154 = 31
-    , BDE183 = 32
-    , BDE209 = 33
-    , MECPP = 34
-    , MEHHP = 35
-    , MEOHP = 36
-    , MCPP = 37
-    , MIBP = 38 
-    , MBP = 39 
-    , MBZP = 40
-    , MEP = 41
-    , MEHP = 42
-    , dcp_24 = 43
-    , dcp_25 = 44
-    , b_pb = 45
-    , bp_3 = 46
-    , m_pb = 47
-    , p_pb = 48
-    , tcs = 49
-    , bpa = 50)
+  as_tibble(.)
 
 cormat_cor <- round(cor(chem_cor, use = "complete.obs"),2)
 
@@ -679,22 +565,28 @@ ggplot(data = labelled_cor, aes(x = Var1, y = Var2)) +
         strip.placement = "outside", legend.position = "bottom")
 ```
 
-### Bayesian NMF
+### Bayesian NMF Soultion
 
 #### Loadings
 
 ```{r}
-eh3 <- readMat("./Data/eh3.mat")[[1]]
+eh3 <- readMat(here::here("./Data/eh3.mat"))[[1]]
 ```
 
 ```{r}
+colnames(eh3) <- labels
+
 eh3 %>% as_tibble() %>% 
-  mutate(Pattern = 1:5) %>% select(Pattern, everything()) %>% 
+  mutate(Pattern = 1:4) %>% select(Pattern, everything()) %>% 
   gather(key = Chemicals, value = Loadings, -Pattern) %>%
   mutate(Chemicals = fct_inorder(Chemicals)) %>% 
-  ggplot(aes(x = Chemicals, y = Loadings)) + geom_col() +
+  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
+                                                     ifelse(str_detect(Chemicals, "^M"), "Phthalates",
+                                                            ifelse(str_detect(Chemicals, "pcb"), "PCBs",
+                                                                   "Phenols")))) %>% 
+  ggplot(aes(x = Chemicals, y = Loadings)) + geom_col(aes(fill = Group)) +
   facet_wrap(.~Pattern) + theme_bw() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+  theme(axis.text.x = element_blank(),
         legend.position = "bottom",
         strip.background = element_blank())
 ```
@@ -702,22 +594,20 @@ eh3 %>% as_tibble() %>%
 ##### Relative Error
 ```{r}
 eh3_pcb <- eh3[2,]/max(eh3[2,])
-eh3_pbde <- eh3[4,]/max(eh3[4,])
-eh3_pht <- eh3[1,]/max(eh3[1,])
+eh3_pbde <- eh3[1,]/max(eh3[1,])
+eh3_pht <- eh3[4,]/max(eh3[4,])
 eh3_pnl <- eh3[3,]/max(eh3[3,])
 
 sqrt(sum((eh3_pcb - patterns_cor[1,])^2))/sqrt(sum((patterns_cor[1,])^2))
 sqrt(sum((eh3_pbde - patterns_cor[2,])^2))/sqrt(sum((patterns_cor[2,])^2))
-sqrt(sum((eh3_pht - patterns_cor[4,])^2))/sqrt(sum((patterns_cor[4,])^2))
-sqrt(sum((eh3_pnl - patterns_cor[3,])^2))/sqrt(sum((patterns_cor[3,])^2))
-
-sqrt(sum((eh3[5,])^2))
+sqrt(sum((eh3_pht - patterns_cor[3,])^2))/sqrt(sum((patterns_cor[3,])^2))
+sqrt(sum((eh3_pnl - patterns_cor[4,])^2))/sqrt(sum((patterns_cor[4,])^2))
 ```
 
 #### Scores
 
 ```{r}
-ewa3 <- readMat("./Data/ewa3.mat")[[1]]
+ewa3 <- readMat(here::here("./Data/ewa3.mat"))[[1]]
 
 dim(ewa3)
 ```
@@ -726,23 +616,22 @@ dim(ewa3)
 ```{r}
 # Put on same range
 ewa3_pcb <- ewa3[,2]/max(ewa3[,2])
-ewa3_pbde <- ewa3[,4]/max(ewa3[,4])
-ewa3_pht <- ewa3[,1]/max(ewa3[,1])
+ewa3_pbde <- ewa3[,1]/max(ewa3[,1])
+ewa3_pht <- ewa3[,4]/max(ewa3[,4])
 ewa3_pnl <- ewa3[,3]/max(ewa3[,3])
 
 max(scores_cor)
 max(ewa3)
 
 # Put on same range
-score_pcb <- scores_cor[,1]/max(scores_cor[,1])
-score_pbde <- scores_cor[,2]/max(scores_cor[,2])
-score_pht <- scores_cor[,4]/max(scores_cor[,4])
-score_pnl <- scores_cor[,3]/max(scores_cor[,3])
+score_pcb3 <- scores_cor[,1]/max(scores_cor[,1])
+score_pbde3 <- scores_cor[,2]/max(scores_cor[,2])
+score_pnl3 <- scores_cor[,4]/max(scores_cor[,4])
+score_pht3 <- scores_cor[,3]/max(scores_cor[,3])
 
-sqrt(sum((ewa3_pcb - score_pcb)^2))/sqrt(sum((score_pcb)^2))
-sqrt(sum((ewa3_pbde - score_pbde)^2))/sqrt(sum((score_pbde)^2))
-sqrt(sum((ewa3_pht - score_pht)^2))/sqrt(sum((score_pht)^2))
-sqrt(sum((ewa3_pnl - score_pnl)^2))/sqrt(sum((score_pnl)^2))
-
-sqrt(sum((ewa3[,5])^2))
+sqrt(sum((ewa3_pcb - score_pcb3)^2))/sqrt(sum((score_pcb3)^2))
+sqrt(sum((ewa3_pbde - score_pbde3)^2))/sqrt(sum((score_pbde3)^2))
+sqrt(sum((ewa3_pht - score_pht3)^2))/sqrt(sum((score_pht3)^2))
+sqrt(sum((ewa3_pnl - score_pnl3)^2))/sqrt(sum((score_pnl3)^2))
 ```
+
