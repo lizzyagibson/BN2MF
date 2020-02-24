@@ -10,7 +10,9 @@ bnp_switch = 1;  % this turns on/off the Bayesian nonparametric part. I made the
 
 [dim,N] = size(X);
 
-h01 = 1/Kinit; % ###This was \gamma constant in Hotlzman, also <1, but topic-specific?###
+% Try h with non-sparse prior
+h01 = 1;
+%h01 = 1/Kinit; % ###This was \gamma constant in Hotlzman, also <1, but topic-specific?###
 h02 = 1;
 
 w01 = 1; %1/dim; ###Changed this prior to correspond with Holtzman paper###
@@ -87,7 +89,7 @@ for iter = 1:num_iter
 %    stem(A1./A2); colorbar; pause(.5);
     disp([num2str(iter) ' : ' num2str(sum(sum(abs(X-(W1./W2)*diag(A1./A2)*(H1./H2)))))]);
 
- if iter ~= 1 && abs(loss(iter-1)-loss(iter)) < 1e-4
+ if iter ~= 1 && abs(loss(iter-1)-loss(iter)) < 1e-5
         break % Added convergence criteria, ok?
   end
 end
@@ -95,6 +97,7 @@ end
 EA = A1./A2;
 EWA = (W1./W2)*diag(A1./A2);
 EH = H1./H2;
+EW = (W1./W2);
 % expected values of WA and H are alpha/beta of the Gamma dist
 
 
