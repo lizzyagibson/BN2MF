@@ -1,0 +1,609 @@
+---
+title: "NMF & Sim Data -- Iterate"
+author: "Lizzy Gibson"
+date: "2/25/2020"
+output: 
+  html_document:
+    toc: TRUE
+    toc_float: TRUE
+---
+
+```{r setup, include=FALSE}
+options(scipen = 999)
+library(MNdata) # my data
+library(reshape2) # melt
+library(gridExtra) # gridarrange
+library(bindata) # multivariate binomial dist
+library(NMF) # rmatrix
+library(MASS) # mvrnorm
+library(tidyverse)
+library(R.matlab)
+```
+
+## 1: Distinct Patterns
+
+### Simulate Patterns
+
+Generate 4 non-negative vectors of length 50 “by hand” — vectors should be overlapping a bit, and at this stage don’t have to look too much like pollution. just make 20 (of 50) elements 1 and the rest 0.
+
+Pattern matrix is 4*50, patterns by chemicals.
+
+```{r}
+## Construct a matrix for 4 TRUE exposure patterns
+labels <-  c("pcb28", "pcb66", "pcb74", "pcb99", "pcb105", "pcb118", "pcb138_158", "pcb146", "pcb153", "pcb156", "pcb167",
+          "pcb170", "pcb178", "pcb183", "pcb187", "pcb180", "pcb189", "pcb194", "pcb196_203", "pcb199", "pcb206", "pcb209",
+          "BDE17", "BDE28", "BDE47", "BDE66", "BDE85", "BDE99", "BDE100", "BDE153", "BDE154", "BDE183", "BDE209", "MECPP",
+          "MEHHP", "MEOHP", "MCPP", "MIBP", "MBP", "MBZP", "MEP", "MEHP", "dcp_24", "dcp_25", "b_pb", "bp_3", "m_pb",
+          "p_pb", "tcs", "bpa")
+
+create_patterns <- function (seed) {
+  set.seed(seed)
+  patterns_dist <- rbind(c(runif(22, 1, 2), rep(0, 11), rep(0, 17)),
+                       c(rep(0, 22), runif(11, 1, 2), rep(0, 17)),
+                       c(rep(0, 33), runif(9, 1, 2), rep(0, 8)),
+                       c(rep(0, 33), rep(0, 9), runif(8, 1, 2)))
+  colnames(patterns_dist) <- labels
+  patterns_dist
+}
+
+patterns_dist_iter <- tibble(seed = 1:100) %>% 
+ mutate(patterns = map(seed, ~create_patterns(seed = .x)))
+
+patterns_dist_iter
+```
+
+### Simulate Scores
+
+```{r}
+
+create_scores <- function (seed) {
+  scores_dist <- matrix(nrow = 1000, ncol = 4)
+  set.seed(seed)
+  scores_dist <- exp(mvrnorm(n = 1000, mu = rep(1, 4), 
+                          Sigma = diag(rep(1, 4)))) # Independent log normal dist
+  scores_dist
+}
+
+scores_dist_iter <- tibble(seed = 1:100) %>% 
+ mutate(scores = map(seed, ~create_scores(seed = .x)))
+
+scores_dist_iter
+```
+
+### Simulate Chemical Exposures
+
+Multiple scores and vectors, and add to get the mixture.
+
+```{r}
+sim_dist0 <- full_join(scores_dist_iter, patterns_dist_iter, by = "seed")
+
+sim_dist0 <- sim_dist0 %>% 
+  mutate(chem = map2(scores, patterns, `%*%`))
+```
+
+### Simulate Noise
+
+```{r}
+
+add_noise <- function (chem) {
+  noise <- list(mean=0, sd=1)
+  set.seed(1988)
+  chem_dist <- pmax(chem + rmatrix(chem, dist=rnorm, mean=noise$mean, sd=noise$sd), 0)	
+  chem_dist
+}
+
+sim_dist <- sim_dist0 %>% 
+ mutate(sim = map(chem, ~add_noise(chem = .x)))
+
+sim_dist
+```  
+
+### Visualize
+
+```{r, echo = FALSE, fig.height = 7}
+chem_dist <- sim_dist$sim[[3]] %>% 
+  as_tibble(.)
+
+cormat <- round(cor(chem_dist, use = "complete.obs"),2)
+
+melted_cormat <- melt(cormat) %>% rename(Correlation = value)
+
+labelled <- melted_cormat %>% mutate(Class1 = ifelse(str_detect(Var1, "BDE"), "PBDEs",
+                                                     ifelse(str_detect(Var1, "^M"), "Phthalates",
+                                                            ifelse(str_detect(Var1, "pcb"), "PCBs",
+                                                                   "Phenols")))) %>%
+  mutate(Class2 = ifelse(str_detect(Var2, "BDE"), "PBDEs",
+                         ifelse(str_detect(Var2, "^M"), "Phthalates",
+                                ifelse(str_detect(Var2, "pcb"), "PCBs",
+                                       "Phenols")))) %>%
+  mutate(Class2 = factor(Class2, levels = c("Phthalates", "Phenols",
+                                            "PCBs", "PBDEs")))
+
+ggplot(data = labelled, aes(x = Var1, y = Var2)) +
+  geom_tile(aes(fill = Correlation), colour = "white") +
+  scale_fill_gradient2(low = "#00BFC4", mid = "white", high = "#F8766D",
+                       midpoint = 0,
+                       na.value = "transparent", limits = c(-1, 1)) +
+  theme_grey() + labs(x = "", y = "") +
+  scale_x_discrete(expand = c(0, 0)) +
+  scale_y_discrete(expand = c(0, 0)) +
+  theme(axis.text.x = element_blank(),
+        panel.spacing = unit(0, "lines"),
+        strip.background = element_blank(),
+        strip.placement = "outside", legend.position = "bottom")
+```
+
+### Bayesian NMF Solution
+
+#### Loadings
+
+```{r}
+eh1 <- readMat(here::here("./Data/eh1.mat"))[[1]]
+```
+
+```{r}
+colnames(eh1) <- labels
+
+eh1 %>% as_tibble() %>% 
+  mutate(Pattern = 1:4) %>% select(Pattern, everything()) %>% 
+  gather(key = Chemicals, value = Loadings, -Pattern) %>%
+  mutate(Chemicals = fct_inorder(Chemicals)) %>% 
+  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
+                                                     ifelse(str_detect(Chemicals, "^M"), "Phthalates",
+                                                            ifelse(str_detect(Chemicals, "pcb"), "PCBs",
+                                                                   "Phenols")))) %>% 
+  ggplot(aes(x = Chemicals, y = Loadings)) + geom_col(aes(fill = Group)) +
+  facet_wrap(.~Pattern) + theme_bw() +
+  theme(axis.text.x = element_blank(),
+        legend.position = "bottom",
+        strip.background = element_blank())
+```
+
+#### Scores
+
+```{r}
+ewa1 <- readMat(here::here("./Data/ewa1.mat"))[[1]]
+
+dim(ewa1)
+```
+
+#### Scores*Patterns
+
+scores: 1000*4  
+patterns: 4*50  
+chem_dist: 1000*50  
+
+Put scores and patterns into same order as truth.
+
+```{r}
+eh1_pcb <- eh1[3,]
+eh1_pbde <- eh1[2,]
+eh1_pnl <- eh1[1,]
+eh1_pht <- eh1[4,]
+```
+
+```{r}
+# Put on same range
+ewa1_pcb <- ewa1[,3]
+ewa1_pbde <- ewa1[,2]
+ewa1_pnl <- ewa1[,1]
+ewa1_pht <- ewa1[,4]
+```
+
+```{r}
+ewa1_out <- cbind(ewa1_pcb, ewa1_pbde, ewa1_pht, ewa1_pnl)
+dim(ewa1_out)
+
+eh1_out <- rbind(eh1_pcb, eh1_pbde, eh1_pht, eh1_pnl)
+dim(eh1_out)
+
+out1 <- (ewa1_out %*% eh1_out)
+```
+
+##### Relative error
+
+```{r}
+chem_dist <- as.matrix(chem_dist)
+
+norm(scale(patterns_dist) - scale(eh1_out), "F")/norm(scale(patterns_dist), "F")
+norm(scale(scores_dist) - scale(ewa1_out), "F")/norm(scale(scores_dist), "F")
+norm(chem_dist - out1, "F")/norm(chem_dist, "F")
+```
+
+## 2: Overlapping Patterns
+
+### Simulate Patterns
+
+Pattern matrix is 4*50, patterns by chemicals.
+
+```{r}
+## Construct a matrix for 4 TRUE exposure patterns
+patterns_over <- rbind(c(rep(1, 22), rep(0, 11), rep(0, 9), rep(0.5,8)),
+            c(rep(0.5,22), rep(1, 11), rep(0, 17)),
+            c(rep(0, 22), rep(0.5, 11), rep(1, 9), rep(0, 8)),
+            c(rep(0, 33), rep(0.5, 9), rep(1, 8)))
+
+# set.seed(10)
+# patterns_over <- rbind(c(runif(22, 0, 1), runif(11, 0, 0.15), runif(17, 0, 0.15)),
+#                       c(runif(22, 0, 0.15), runif(11, 0, 1), runif(17, 0, 0.15)),
+#                       c(runif(33, 0, 0.15), runif(9, 0, 1), runif(8, 0, 0.15)),
+#                       c(runif(33, 0, 0.15), runif(9, 0, 0.15), runif(8, 0, 1)))
+```
+
+```{r}
+colnames(patterns_over) <- labels
+
+patterns_over %>% as_tibble() %>% 
+  mutate(Pattern = 1:4) %>% select(Pattern, everything()) %>% 
+  gather(key = Chemicals, value = Loadings, -Pattern) %>% 
+  mutate(Chemicals = fct_inorder(Chemicals)) %>%
+  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
+                                                     ifelse(str_detect(Chemicals, "^M"), "Phthalates",
+                                                            ifelse(str_detect(Chemicals, "pcb"), "PCBs",
+                                                                   "Phenols")))) %>% 
+  ggplot(aes(x = Chemicals, y = Loadings)) + geom_col(aes(fill = Group)) +
+  facet_wrap(.~Pattern) + theme_bw() +
+  theme(axis.text.x = element_blank(),
+        legend.position = "bottom",
+        strip.background = element_blank())
+```
+
+### Simulate Scores
+
+Generate random scores indicating the presence of each vector for each observation from a gamma distribution.
+
+```{r}
+# scores_over <- matrix(nrow = 1000, ncol = 4)
+# 
+# set.seed(1988)
+# for (i in 1:nrow(scores_over)) {
+#   scores_over[i,] <- rgamma(4, shape = 1) # gamma dist are INDEPENDENT
+# }
+
+set.seed(1988)
+scores_over <- exp(mvrnorm(n = 1000, mu = rep(1, 4), 
+                          Sigma = diag(rep(1, 4)))) 
+
+head(scores_over)
+cor(scores_over)
+summary(scores_over)
+```
+
+### Simulate Chemical Exposures
+
+Multiple scores and vectors, and add to get the mixture.
+
+```{r}
+chem_over0 <- scores_over %*% patterns_over
+```
+
+### Simulate Noise
+
+Noise is harder - if your scores are big enough just use a normal distribution to make sure things “work” and we can fancy it up from there.
+
+```{r}
+set.seed(1988)
+chem_over <- pmax(chem_over0 + rmatrix(chem_over0, dist=rnorm, mean=noise$mean, sd=noise$sd), 0)	
+head(chem_over[,1:10])
+
+#write_csv(as_tibble(chem_over), "./Sims/overlap_nonmirror6.csv")
+```  
+
+### Visualize
+
+```{r, fig.height = 7}
+chem_over <- chem_over %>% 
+  as_tibble(.)
+
+cormat_o <- round(cor(chem_over, use = "complete.obs"),2)
+
+melted_cormat_o <- melt(cormat_o) %>% rename(Correlation = value)
+
+labelled_o <- melted_cormat_o %>% mutate(Class1 = ifelse(str_detect(Var1, "BDE"), "PBDEs",
+                                                     ifelse(str_detect(Var1, "^M"), "Phthalates",
+                                                            ifelse(str_detect(Var1, "pcb"), "PCBs",
+                                                                   "Phenols")))) %>%
+  mutate(Class2 = ifelse(str_detect(Var2, "BDE"), "PBDEs",
+                         ifelse(str_detect(Var2, "^M"), "Phthalates",
+                                ifelse(str_detect(Var2, "pcb"), "PCBs",
+                                       "Phenols")))) %>%
+  mutate(Class2 = factor(Class2, levels = c("Phthalates", "Phenols",
+                                            "PCBs", "PBDEs")))
+
+ggplot(data = labelled_o, aes(x = Var1, y = Var2)) +
+  geom_tile(aes(fill = Correlation), colour = "white") +
+  scale_fill_gradient2(low = "#00BFC4", mid = "white", high = "#F8766D",
+                       midpoint = 0,
+                       na.value = "transparent", limits = c(-1, 1)) +
+  theme_grey() + labs(x = "", y = "") +
+  scale_x_discrete(expand = c(0, 0)) +
+  scale_y_discrete(expand = c(0, 0)) +
+  theme(axis.text.x = element_blank(),
+        panel.spacing = unit(0, "lines"),
+        strip.background = element_blank(),
+        strip.placement = "outside", legend.position = "bottom")
+```
+
+### Bayesian NMF Solution
+
+#### Loadings
+
+```{r}
+eh2 <- readMat(here::here("./Data/eh2.mat"))[[1]]
+```
+
+```{r}
+colnames(eh2) <- labels
+
+eh2 %>% as_tibble() %>% 
+  mutate(Pattern = 1:4) %>% select(Pattern, everything()) %>% 
+  gather(key = Chemicals, value = Loadings, -Pattern) %>%
+  mutate(Chemicals = fct_inorder(Chemicals)) %>% 
+  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
+                                                     ifelse(str_detect(Chemicals, "^M"), "Phthalates",
+                                                            ifelse(str_detect(Chemicals, "pcb"), "PCBs",
+                                                                   "Phenols")))) %>% 
+  ggplot(aes(x = Chemicals, y = Loadings)) + geom_col(aes(fill = Group)) +
+  facet_wrap(.~Pattern) + theme_bw() +
+  theme(axis.text.x = element_blank(),
+        legend.position = "bottom",
+        strip.background = element_blank())
+```
+
+#### Scores
+
+```{r}
+ewa2 <- readMat(here::here("./Data/ewa2.mat"))[[1]]
+
+dim(ewa2)
+```
+
+#### Scores*Patterns
+
+scores: 1000*4  
+patterns: 4*50  
+chem_dist: 1000*50  
+
+Put scores and patterns into same order as truth.
+
+```{r}
+eh2_pcb <- eh2[4,]
+eh2_pbde <- eh2[1,]
+eh2_pnl <- eh2[2,]
+eh2_pht <- eh2[3,]
+```
+
+```{r}
+# Put on same range
+ewa2_pcb <- ewa2[,4]
+ewa2_pbde <- ewa2[,1]
+ewa2_pnl <- ewa2[,2]
+ewa2_pht <- ewa2[,3]
+```
+
+```{r}
+ewa2_out <- cbind(ewa2_pcb, ewa2_pbde, ewa2_pht, ewa2_pnl)
+dim(ewa2_out)
+
+eh2_out <- rbind(eh2_pcb, eh2_pbde, eh2_pht, eh2_pnl)
+dim(eh2_out)
+
+out2_scale <- (ewa2_out %*% eh2_out)
+```
+
+##### Relative error
+
+```{r}
+chem_over_scale <- as.matrix(chem_over)
+
+norm(scale(patterns_over) - scale(eh2_out), "F")/norm(scale(patterns_over), "F")
+norm(scale(scores_over) - scale(ewa2_out), "F")/norm(scale(scores_over), "F")
+norm(chem_over_scale - out2_scale, "F")/norm(chem_over_scale, "F")
+```
+
+## 3: Correlated Scores
+
+### Simulate Patterns
+
+Pattern matrix is 4*50, patterns by chemicals.
+
+```{r}
+# patterns_cor <- rbind(c(rep(1, 22), rep(0, 11), rep(0, 9), rep(0.5,8)),
+#             c(rep(0.5,22), rep(1, 11), rep(0, 17)),
+#             c(rep(0, 22), rep(0.5, 11), rep(1, 9), rep(0, 8)),
+#             c(rep(0, 33), rep(0.5, 9), rep(1, 8)))
+
+## Construct a matrix for 4 TRUE exposure patterns
+set.seed(10)
+patterns_cor <- rbind(c(runif(22, 0, 1), runif(11, 0, 0.15), runif(17, 0, 0.15)),
+                      c(runif(22, 0, 0.15), runif(11, 0, 1), runif(17, 0, 0.15)),
+                      c(runif(33, 0, 0.15), runif(9, 0, 1), runif(8, 0, 0.15)),
+                      c(runif(33, 0, 0.15), runif(9, 0, 0.15), runif(8, 0, 1)))
+
+head(cor(patterns_cor[,1:10]))
+```
+
+```{r}
+colnames(patterns_cor) <- labels
+
+patterns_cor %>% as_tibble() %>% 
+  mutate(Pattern = 1:4) %>% select(Pattern, everything()) %>% 
+  gather(key = Chemicals, value = Loadings, -Pattern) %>% 
+  mutate(Chemicals = fct_inorder(Chemicals)) %>% 
+  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
+                                                     ifelse(str_detect(Chemicals, "^M"), "Phthalates",
+                                                            ifelse(str_detect(Chemicals, "pcb"), "PCBs",
+                                                                   "Phenols")))) %>% 
+  ggplot(aes(x = Chemicals, y = Loadings)) + geom_col(aes(fill = Group)) +
+  facet_wrap(.~Pattern) + theme_bw() +
+  theme(axis.text.x = element_blank(),
+        legend.position = "bottom",
+        strip.background = element_blank())
+```
+
+### Simulate Scores
+
+Generate random scores indicating the presence of each vector for each observation from a multivariate log normal distribution.
+
+**Try Wishart**
+
+Scores are 1000*4, individuals by patterns.
+
+```{r}
+hist(rlnorm(50, meanlog = 1, sdlog = 1))
+
+scores_cor <- matrix(nrow = 1000, ncol = 4)
+
+stdevs <- c(1,1,1,1)
+# vector contains the standard deviations of patterns
+
+cors <- matrix( c(1,    0.25, 0.15, 0.15,
+                  0.25, 1,    0.15, 0.15,
+                  0.15, 0.15, 1,    0.25,
+                  0.15, 0.15, 0.25, 1), nrow = 4)
+
+b <- stdevs %*% t(stdevs)  
+# b is n*n matrix whose generic term is stdev[i]*stdev[j] (n is number of variables)
+
+covariance <- b * cors  # covariance matrix
+# corr = cov / std1*std2, here stdev = 1
+
+set.seed(1988)
+scores_cor <- exp(mvrnorm(n = 1000, mu = rep(1, 4), 
+                          Sigma = covariance)) # dists are kind of DEPENDENT
+
+head(scores_cor)
+cor(scores_cor)
+summary(scores_cor)
+```
+
+### Simulate Chemical Exposures
+
+Multiple scores and vectors, and add to get the mixture
+
+```{r}
+chem_cor0 <- scores_cor %*% patterns_cor
+```
+
+### Simulate Noise
+
+Noise is harder - if your scores are big enough just use a normal distribution to make sure things “work” and we can fancy it up from there
+
+```{r}
+set.seed(1988)
+chem_cor <- pmax(chem_cor0 + rmatrix(chem_cor0, dist=rnorm, mean=noise$mean, sd=noise$sd), 0)	
+
+#write_csv(as_tibble(chem_cor), "./Sims/sim_data_3.csv")
+```  
+
+### Visualize
+
+```{r, fig.height = 7}
+chem_cor <- chem_cor %>% 
+  as_tibble(.)
+
+cormat_cor <- round(cor(chem_cor, use = "complete.obs"),2)
+
+melted_cormat_cor <- melt(cormat_cor) %>% rename(Correlation = value)
+
+labelled_cor <- melted_cormat_cor %>% mutate(Class1 = ifelse(str_detect(Var1, "BDE"), "PBDEs",
+                                                     ifelse(str_detect(Var1, "^M"), "Phthalates",
+                                                            ifelse(str_detect(Var1, "pcb"), "PCBs",
+                                                                   "Phenols")))) %>%
+  mutate(Class2 = ifelse(str_detect(Var2, "BDE"), "PBDEs",
+                         ifelse(str_detect(Var2, "^M"), "Phthalates",
+                                ifelse(str_detect(Var2, "pcb"), "PCBs",
+                                       "Phenols")))) %>%
+  mutate(Class2 = factor(Class2, levels = c("Phthalates", "Phenols",
+                                            "PCBs", "PBDEs")))
+
+ggplot(data = labelled_cor, aes(x = Var1, y = Var2)) +
+  geom_tile(aes(fill = Correlation), colour = "white") +
+  scale_fill_gradient2(low = "#00BFC4", mid = "white", high = "#F8766D",
+                       midpoint = 0,
+                       na.value = "transparent", limits = c(-1, 1)) +
+  theme_grey() + labs(x = "", y = "") +
+  scale_x_discrete(expand = c(0, 0)) +
+  scale_y_discrete(expand = c(0, 0)) +
+  theme(axis.text.x = element_blank(),
+        panel.spacing = unit(0, "lines"),
+        strip.background = element_blank(),
+        strip.placement = "outside", legend.position = "bottom")
+```
+
+### Bayesian NMF Soultion
+
+#### Loadings
+
+```{r}
+eh3 <- readMat(here::here("./Data/eh3.mat"))[[1]]
+```
+
+```{r}
+colnames(eh3) <- labels
+
+eh3 %>% as_tibble() %>% 
+  mutate(Pattern = 1:4) %>% select(Pattern, everything()) %>% 
+  gather(key = Chemicals, value = Loadings, -Pattern) %>%
+  mutate(Chemicals = fct_inorder(Chemicals)) %>% 
+  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
+                                                     ifelse(str_detect(Chemicals, "^M"), "Phthalates",
+                                                            ifelse(str_detect(Chemicals, "pcb"), "PCBs",
+                                                                   "Phenols")))) %>% 
+  ggplot(aes(x = Chemicals, y = Loadings)) + geom_col(aes(fill = Group)) +
+  facet_wrap(.~Pattern) + theme_bw() +
+  theme(axis.text.x = element_blank(),
+        legend.position = "bottom",
+        strip.background = element_blank())
+```
+
+#### Scores
+
+```{r}
+ewa3 <- readMat(here::here("./Data/ewa3.mat"))[[1]]
+
+dim(ewa3)
+```
+
+#### Scores*Patterns
+
+scores: 1000*4  
+patterns: 4*50  
+chem_dist: 1000*50  
+
+Put scores and patterns into same order as truth.
+
+```{r}
+eh3_pcb <- eh3[2,]
+eh3_pbde <- eh3[1,]
+eh3_pnl <- eh3[3,]
+eh3_pht <- eh3[4,]
+```
+
+```{r}
+# Put on same range
+ewa3_pcb <- ewa3[,2]
+ewa3_pbde <- ewa3[,1]
+ewa3_pnl <- ewa3[,3]
+ewa3_pht <- ewa3[,4]
+```
+
+```{r}
+ewa3_out <- cbind(ewa3_pcb, ewa3_pbde, ewa3_pht, ewa3_pnl)
+dim(ewa3_out)
+
+eh3_out <- rbind(eh3_pcb, eh3_pbde, eh3_pht, eh3_pnl)
+dim(eh3_out)
+
+out3 <- ewa3_out %*% eh3_out
+```
+
+##### Relative error
+
+```{r}
+chem_cor <- as.matrix(chem_cor)
+
+norm(scale(patterns_cor) - scale(eh3_out), "F")/norm(scale(patterns_cor), "F")
+norm(scale(scores_cor) - scale(ewa3_out), "F")/norm(scale(scores_cor), "F")
+norm(chem_cor - out3, "F")/norm(chem_cor, "F")
+```
