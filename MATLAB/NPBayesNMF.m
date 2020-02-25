@@ -11,8 +11,8 @@ bnp_switch = 1;  % this turns on/off the Bayesian nonparametric part. I made the
 [dim,N] = size(X);
 
 % Try h with non-sparse prior
-h01 = 1;
-%h01 = 1/Kinit; % ###This was \gamma constant in Hotlzman, also <1, but topic-specific?###
+%h01 = 1;
+h01 = 1/Kinit; % ###This was \gamma constant in Hotlzman, also <1, but topic-specific?###
 h02 = 1;
 
 w01 = 1; %1/dim; ###Changed this prior to correspond with Holtzman paper###

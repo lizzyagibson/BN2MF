@@ -153,7 +153,8 @@ cor(scores_dist)
 Multiple scores and vectors, and add to get the mixture.
 
 ```{r}
-chem_dist <- scores_dist %*% patterns_dist
+chem_dist0 <- scores_dist %*% patterns_dist
+# 0 == no error
 ```
 
 ### Simulate Noise
@@ -163,7 +164,7 @@ Noise is harder - if your scores are big enough just use a normal distribution t
 ```{r}
 noise <- list(mean=0, sd=1)
 set.seed(1988)
-chem_dist <- pmax(chem_dist + rmatrix(chem_dist, dist=rnorm, mean=noise$mean, sd=noise$sd), 0)	
+chem_dist <- pmax(chem_dist0 + rmatrix(chem_dist0, dist=rnorm, mean=noise$mean, sd=noise$sd), 0)	
 head(chem_dist[,1:10])
 ```  
 
@@ -228,19 +229,6 @@ eh1 %>% as_tibble() %>%
         strip.background = element_blank())
 ```
 
-##### Relative Error
-```{r}
-eh1_pcb <- eh1[3,]/max(eh1[3,])
-eh1_pbde <- eh1[2,]/max(eh1[2,])
-eh1_pnl <- eh1[1,]/max(eh1[1,])
-eh1_pht <- eh1[4,]/max(eh1[4,])
-
-sqrt(sum((eh1_pcb - patterns_dist[1,])^2))/sqrt(sum((patterns_dist[1,])^2))
-sqrt(sum((eh1_pbde - patterns_dist[2,])^2))/sqrt(sum((patterns_dist[2,])^2))
-sqrt(sum((eh1_pht - patterns_dist[3,])^2))/sqrt(sum((patterns_dist[3,])^2))
-sqrt(sum((eh1_pnl - patterns_dist[4,])^2))/sqrt(sum((patterns_dist[4,])^2))
-```
-
 #### Scores
 
 ```{r}
@@ -249,27 +237,47 @@ ewa1 <- readMat(here::here("./Data/ewa1.mat"))[[1]]
 dim(ewa1)
 ```
 
-##### Relative Error
+#### Scores*Patterns
+
+scores: 1000*4  
+patterns: 4*50  
+chem_dist: 1000*50  
+
+Put scores and patterns into same order as truth.
+
+```{r}
+eh1_pcb <- eh1[3,]
+eh1_pbde <- eh1[2,]
+eh1_pnl <- eh1[1,]
+eh1_pht <- eh1[4,]
+```
+
 ```{r}
 # Put on same range
-ewa1_pcb <- ewa1[,3]/max(ewa1[,3])
-ewa1_pbde <- ewa1[,2]/max(ewa1[,2])
-ewa1_pht <- ewa1[,4]/max(ewa1[,4])
-ewa1_pnl <- ewa1[,1]/max(ewa1[,1])
+ewa1_pcb <- ewa1[,3]
+ewa1_pbde <- ewa1[,2]
+ewa1_pnl <- ewa1[,1]
+ewa1_pht <- ewa1[,4]
+```
 
-max(scores_dist)
-max(ewa1)
+```{r}
+ewa1_out <- cbind(ewa1_pcb, ewa1_pbde, ewa1_pht, ewa1_pnl)
+dim(ewa1_out)
 
-# Put on same range
-score_pcb1 <- scores_dist[,1]/max(scores_dist[,1])
-score_pbde1 <- scores_dist[,2]/max(scores_dist[,2])
-score_pnl1 <- scores_dist[,4]/max(scores_dist[,4])
-score_pht1 <- scores_dist[,3]/max(scores_dist[,3])
+eh1_out <- rbind(eh1_pcb, eh1_pbde, eh1_pht, eh1_pnl)
+dim(eh1_out)
 
-sqrt(sum((ewa1_pcb - score_pcb1)^2))/sqrt(sum((score_pcb1)^2))
-sqrt(sum((ewa1_pbde - score_pbde1)^2))/sqrt(sum((score_pbde1)^2))
-sqrt(sum((ewa1_pht - score_pht1)^2))/sqrt(sum((score_pht1)^2))
-sqrt(sum((ewa1_pnl - score_pnl1)^2))/sqrt(sum((score_pnl1)^2))
+out1 <- (ewa1_out %*% eh1_out)
+```
+
+##### Relative error
+
+```{r}
+chem_dist <- as.matrix(chem_dist)
+
+norm(scale(patterns_dist) - scale(eh1_out), "F")/norm(scale(patterns_dist), "F")
+norm(scale(scores_dist) - scale(ewa1_out), "F")/norm(scale(scores_dist), "F")
+norm(chem_dist - out1, "F")/norm(chem_dist, "F")
 ```
 
 ## 2: Overlapping Patterns
@@ -280,10 +288,16 @@ Pattern matrix is 4*50, patterns by chemicals.
 
 ```{r}
 ## Construct a matrix for 4 TRUE exposure patterns
-patterns_over <- rbind(c(rep(1, 22), rep(0.25, 11), rep(0, 17)),
-            c(rep(0.25,22), rep(1, 11), rep(0, 17)),
-            c(rep(0, 33), rep(1, 9), rep(0.25, 8)),
-            c(rep(0, 33), rep(0.25, 9), rep(1, 8)))
+patterns_over <- rbind(c(rep(1, 22), rep(0, 11), rep(0, 9), rep(0.5,8)),
+            c(rep(0.5,22), rep(1, 11), rep(0, 17)),
+            c(rep(0, 22), rep(0.5, 11), rep(1, 9), rep(0, 8)),
+            c(rep(0, 33), rep(0.5, 9), rep(1, 8)))
+
+# set.seed(10)
+# patterns_over <- rbind(c(runif(22, 0, 1), runif(11, 0, 0.15), runif(17, 0, 0.15)),
+#                       c(runif(22, 0, 0.15), runif(11, 0, 1), runif(17, 0, 0.15)),
+#                       c(runif(33, 0, 0.15), runif(9, 0, 1), runif(8, 0, 0.15)),
+#                       c(runif(33, 0, 0.15), runif(9, 0, 0.15), runif(8, 0, 1)))
 ```
 
 ```{r}
@@ -309,15 +323,20 @@ patterns_over %>% as_tibble() %>%
 Generate random scores indicating the presence of each vector for each observation from a gamma distribution.
 
 ```{r}
-scores_over <- matrix(nrow = 1000, ncol = 4)
+# scores_over <- matrix(nrow = 1000, ncol = 4)
+# 
+# set.seed(1988)
+# for (i in 1:nrow(scores_over)) {
+#   scores_over[i,] <- rgamma(4, shape = 1) # gamma dist are INDEPENDENT
+# }
 
 set.seed(1988)
-for (i in 1:nrow(scores_over)) {
-  scores_over[i,] <- rgamma(4, shape = 1) # gamma dist are INDEPENDENT
-}
+scores_over <- exp(mvrnorm(n = 1000, mu = rep(1, 4), 
+                          Sigma = diag(rep(1, 4)))) 
 
 head(scores_over)
 cor(scores_over)
+summary(scores_over)
 ```
 
 ### Simulate Chemical Exposures
@@ -325,7 +344,7 @@ cor(scores_over)
 Multiple scores and vectors, and add to get the mixture.
 
 ```{r}
-chem_over <- scores_over %*% patterns_over
+chem_over0 <- scores_over %*% patterns_over
 ```
 
 ### Simulate Noise
@@ -334,8 +353,10 @@ Noise is harder - if your scores are big enough just use a normal distribution t
 
 ```{r}
 set.seed(1988)
-chem_over <- pmax(chem_over + rmatrix(chem_over, dist=rnorm, mean=noise$mean, sd=noise$sd), 0)	
+chem_over <- pmax(chem_over0 + rmatrix(chem_over0, dist=rnorm, mean=noise$mean, sd=noise$sd), 0)	
 head(chem_over[,1:10])
+
+#write_csv(as_tibble(chem_over), "./Sims/overlap_nonmirror6.csv")
 ```  
 
 ### Visualize
@@ -399,19 +420,6 @@ eh2 %>% as_tibble() %>%
         strip.background = element_blank())
 ```
 
-##### Relative Error
-```{r}
-eh2_pcb <- eh2[4,]/max(eh2[4,])
-eh2_pbde <- eh2[1,]/max(eh2[1,])
-eh2_pht <- eh2[3,]/max(eh2[3,])
-eh2_pnl <- eh2[2,]/max(eh2[2,])
-
-sqrt(sum((eh2_pcb - patterns_over[1,])^2))/sqrt(sum((patterns_over[1,])^2))
-sqrt(sum((eh2_pbde - patterns_over[2,])^2))/sqrt(sum((patterns_over[2,])^2))
-sqrt(sum((eh2_pnl - patterns_over[4,])^2))/sqrt(sum((patterns_over[4,])^2))
-sqrt(sum((eh2_pht - patterns_over[3,])^2))/sqrt(sum((patterns_over[3,])^2))
-```
-
 #### Scores
 
 ```{r}
@@ -420,27 +428,47 @@ ewa2 <- readMat(here::here("./Data/ewa2.mat"))[[1]]
 dim(ewa2)
 ```
 
-##### Relative Error
+#### Scores*Patterns
+
+scores: 1000*4  
+patterns: 4*50  
+chem_dist: 1000*50  
+
+Put scores and patterns into same order as truth.
+
+```{r}
+eh2_pcb <- eh2[4,]
+eh2_pbde <- eh2[1,]
+eh2_pnl <- eh2[2,]
+eh2_pht <- eh2[3,]
+```
+
 ```{r}
 # Put on same range
-ewa2_pcb <- ewa2[,4]/max(ewa2[,4])
-ewa2_pbde <- ewa2[,1]/max(ewa2[,1])
-ewa2_pnl <- ewa2[,2]/max(ewa2[,2])
-ewa2_pht <- ewa2[,3]/max(ewa2[,3])
+ewa2_pcb <- ewa2[,4]
+ewa2_pbde <- ewa2[,1]
+ewa2_pnl <- ewa2[,2]
+ewa2_pht <- ewa2[,3]
+```
 
-max(scores_over)
-max(ewa2)
+```{r}
+ewa2_out <- cbind(ewa2_pcb, ewa2_pbde, ewa2_pht, ewa2_pnl)
+dim(ewa2_out)
 
-# Put on same range
-score_pcb2 <- scores_over[,1]/max(scores_over[,1])
-score_pbde2 <- scores_over[,2]/max(scores_over[,2])
-score_pht2 <- scores_over[,3]/max(scores_over[,3])
-score_pnl2 <- scores_over[,4]/max(scores_over[,4])
+eh2_out <- rbind(eh2_pcb, eh2_pbde, eh2_pht, eh2_pnl)
+dim(eh2_out)
 
-sqrt(sum((ewa2_pcb - score_pcb2)^2))/sqrt(sum((score_pcb2)^2))
-sqrt(sum((ewa2_pbde - score_pbde2)^2))/sqrt(sum((score_pbde2)^2))
-sqrt(sum((ewa2_pht - score_pht2)^2))/sqrt(sum((score_pht2)^2))
-sqrt(sum((ewa2_pnl - score_pnl2)^2))/sqrt(sum((score_pnl2)^2))
+out2_scale <- (ewa2_out %*% eh2_out)
+```
+
+##### Relative error
+
+```{r}
+chem_over_scale <- as.matrix(chem_over)
+
+norm(scale(patterns_over) - scale(eh2_out), "F")/norm(scale(patterns_over), "F")
+norm(scale(scores_over) - scale(ewa2_out), "F")/norm(scale(scores_over), "F")
+norm(chem_over_scale - out2_scale, "F")/norm(chem_over_scale, "F")
 ```
 
 ## 3: Correlated Scores
@@ -450,6 +478,11 @@ sqrt(sum((ewa2_pnl - score_pnl2)^2))/sqrt(sum((score_pnl2)^2))
 Pattern matrix is 4*50, patterns by chemicals.
 
 ```{r}
+# patterns_cor <- rbind(c(rep(1, 22), rep(0, 11), rep(0, 9), rep(0.5,8)),
+#             c(rep(0.5,22), rep(1, 11), rep(0, 17)),
+#             c(rep(0, 22), rep(0.5, 11), rep(1, 9), rep(0, 8)),
+#             c(rep(0, 33), rep(0.5, 9), rep(1, 8)))
+
 ## Construct a matrix for 4 TRUE exposure patterns
 set.seed(10)
 patterns_cor <- rbind(c(runif(22, 0, 1), runif(11, 0, 0.15), runif(17, 0, 0.15)),
@@ -511,6 +544,7 @@ scores_cor <- exp(mvrnorm(n = 1000, mu = rep(1, 4),
 
 head(scores_cor)
 cor(scores_cor)
+summary(scores_cor)
 ```
 
 ### Simulate Chemical Exposures
@@ -518,7 +552,7 @@ cor(scores_cor)
 Multiple scores and vectors, and add to get the mixture
 
 ```{r}
-chem_cor <- scores_cor %*% patterns_cor
+chem_cor0 <- scores_cor %*% patterns_cor
 ```
 
 ### Simulate Noise
@@ -527,7 +561,9 @@ Noise is harder - if your scores are big enough just use a normal distribution t
 
 ```{r}
 set.seed(1988)
-chem_cor <- pmax(chem_cor + rmatrix(chem_cor, dist=rnorm, mean=noise$mean, sd=noise$sd), 0)	
+chem_cor <- pmax(chem_cor0 + rmatrix(chem_cor0, dist=rnorm, mean=noise$mean, sd=noise$sd), 0)	
+
+#write_csv(as_tibble(chem_cor), "./Sims/sim_data_3.csv")
 ```  
 
 ### Visualize
@@ -591,19 +627,6 @@ eh3 %>% as_tibble() %>%
         strip.background = element_blank())
 ```
 
-##### Relative Error
-```{r}
-eh3_pcb <- eh3[2,]/max(eh3[2,])
-eh3_pbde <- eh3[1,]/max(eh3[1,])
-eh3_pht <- eh3[4,]/max(eh3[4,])
-eh3_pnl <- eh3[3,]/max(eh3[3,])
-
-sqrt(sum((eh3_pcb - patterns_cor[1,])^2))/sqrt(sum((patterns_cor[1,])^2))
-sqrt(sum((eh3_pbde - patterns_cor[2,])^2))/sqrt(sum((patterns_cor[2,])^2))
-sqrt(sum((eh3_pht - patterns_cor[3,])^2))/sqrt(sum((patterns_cor[3,])^2))
-sqrt(sum((eh3_pnl - patterns_cor[4,])^2))/sqrt(sum((patterns_cor[4,])^2))
-```
-
 #### Scores
 
 ```{r}
@@ -612,26 +635,45 @@ ewa3 <- readMat(here::here("./Data/ewa3.mat"))[[1]]
 dim(ewa3)
 ```
 
-##### Relative Error
+#### Scores*Patterns
+
+scores: 1000*4  
+patterns: 4*50  
+chem_dist: 1000*50  
+
+Put scores and patterns into same order as truth.
+
 ```{r}
-# Put on same range
-ewa3_pcb <- ewa3[,2]/max(ewa3[,2])
-ewa3_pbde <- ewa3[,1]/max(ewa3[,1])
-ewa3_pht <- ewa3[,4]/max(ewa3[,4])
-ewa3_pnl <- ewa3[,3]/max(ewa3[,3])
-
-max(scores_cor)
-max(ewa3)
-
-# Put on same range
-score_pcb3 <- scores_cor[,1]/max(scores_cor[,1])
-score_pbde3 <- scores_cor[,2]/max(scores_cor[,2])
-score_pnl3 <- scores_cor[,4]/max(scores_cor[,4])
-score_pht3 <- scores_cor[,3]/max(scores_cor[,3])
-
-sqrt(sum((ewa3_pcb - score_pcb3)^2))/sqrt(sum((score_pcb3)^2))
-sqrt(sum((ewa3_pbde - score_pbde3)^2))/sqrt(sum((score_pbde3)^2))
-sqrt(sum((ewa3_pht - score_pht3)^2))/sqrt(sum((score_pht3)^2))
-sqrt(sum((ewa3_pnl - score_pnl3)^2))/sqrt(sum((score_pnl3)^2))
+eh3_pcb <- eh3[2,]
+eh3_pbde <- eh3[1,]
+eh3_pnl <- eh3[3,]
+eh3_pht <- eh3[4,]
 ```
 
+```{r}
+# Put on same range
+ewa3_pcb <- ewa3[,2]
+ewa3_pbde <- ewa3[,1]
+ewa3_pnl <- ewa3[,3]
+ewa3_pht <- ewa3[,4]
+```
+
+```{r}
+ewa3_out <- cbind(ewa3_pcb, ewa3_pbde, ewa3_pht, ewa3_pnl)
+dim(ewa3_out)
+
+eh3_out <- rbind(eh3_pcb, eh3_pbde, eh3_pht, eh3_pnl)
+dim(eh3_out)
+
+out3 <- ewa3_out %*% eh3_out
+```
+
+##### Relative error
+
+```{r}
+chem_cor <- as.matrix(chem_cor)
+
+norm(scale(patterns_cor) - scale(eh3_out), "F")/norm(scale(patterns_cor), "F")
+norm(scale(scores_cor) - scale(ewa3_out), "F")/norm(scale(scores_cor), "F")
+norm(chem_cor - out3, "F")/norm(chem_cor, "F")
+```
