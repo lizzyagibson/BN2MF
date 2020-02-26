@@ -6,4 +6,6 @@
 Stan/*.rData
 Sims/*.csv
 Sims/*.mat
+Sims/Iterate_Out/*
+Sims/Iterate/*
 Resources/*.pdf
