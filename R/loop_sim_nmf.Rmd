@@ -36,7 +36,7 @@ labels <-  c("pcb28", "pcb66", "pcb74", "pcb99", "pcb105", "pcb118", "pcb138_158
           "MEHHP", "MEOHP", "MCPP", "MIBP", "MBP", "MBZP", "MEP", "MEHP", "dcp_24", "dcp_25", "b_pb", "bp_3", "m_pb",
           "p_pb", "tcs", "bpa")
 
-create_patterns <- function (seed) {
+create_patterns_dist <- function (seed) {
   set.seed(seed)
   patterns_dist <- rbind(c(runif(22, 1, 2), rep(0, 11), rep(0, 17)),
                        c(rep(0, 22), runif(11, 1, 2), rep(0, 17)),
@@ -47,7 +47,7 @@ create_patterns <- function (seed) {
 }
 
 patterns_dist_iter <- tibble(seed = 1:100) %>% 
- mutate(patterns = map(seed, ~create_patterns(seed = .x)))
+ mutate(patterns = map(seed, ~create_patterns_dist(seed = .x)))
 
 patterns_dist_iter
 ```
@@ -55,8 +55,7 @@ patterns_dist_iter
 ### Simulate Scores
 
 ```{r}
-
-create_scores <- function (seed) {
+create_scores_dist <- function (seed) {
   scores_dist <- matrix(nrow = 1000, ncol = 4)
   set.seed(seed)
   scores_dist <- exp(mvrnorm(n = 1000, mu = rep(1, 4), 
@@ -65,7 +64,7 @@ create_scores <- function (seed) {
 }
 
 scores_dist_iter <- tibble(seed = 1:100) %>% 
- mutate(scores = map(seed, ~create_scores(seed = .x)))
+ mutate(scores = map(seed, ~create_scores_dist(seed = .x)))
 
 scores_dist_iter
 ```
@@ -84,16 +83,15 @@ sim_dist0 <- sim_dist0 %>%
 ### Simulate Noise
 
 ```{r}
-
-add_noise <- function (chem) {
+add_noise <- function (seed, chem) {
   noise <- list(mean=0, sd=1)
-  set.seed(1988)
+  set.seed(seed)
   chem_dist <- pmax(chem + rmatrix(1000, 50, dist=rnorm, mean=noise$mean, sd=noise$sd), 0)	
   chem_dist
 }
 
 sim_dist <- sim_dist0 %>% 
- mutate(sim = map(chem, ~add_noise(chem = .x)))
+ mutate(sim = map2(seed, chem, ~add_noise(seed = .x, chem = .y)))
 
 sim_dist
 ```  
@@ -122,7 +120,15 @@ ggplot(data = melted_cormat, aes(x = Var1, y = Var2)) +
         strip.placement = "outside", legend.position = "bottom")
 ```
 
-## 2: Overlapping Patterns
+### Save
+
+```{r}
+#for (i in 1:nrow(sim_dist)) {
+#  write_csv(as_tibble(sim_dist[i,]$sim[[1]]), paste0("./Sims/Iterate/sim_dist_", i, ".csv"))  
+#}
+```
+
+## 2: Correlated Patterns
 
 ### Simulate Patterns
 
@@ -134,44 +140,42 @@ labels <-  c("pcb28", "pcb66", "pcb74", "pcb99", "pcb105", "pcb118", "pcb138_158
           "MEHHP", "MEOHP", "MCPP", "MIBP", "MBP", "MBZP", "MEP", "MEHP", "dcp_24", "dcp_25", "b_pb", "bp_3", "m_pb",
           "p_pb", "tcs", "bpa")
 
-create_patterns_over <- function (seed) {
+create_patterns_cor <- function (seed) {
   set.seed(seed)
-  patterns_over <- rbind(c(runif(22, 1, 2),   runif(11, 0.5, 1), rep(0, 17)),
+  patterns_cor <- rbind(c(runif(22, 1, 2),   runif(11, 0.5, 1), rep(0, 17)),
                          c(rep(0, 22),        runif(11, 1, 2),   runif(9, 0.5, 1),  rep(0, 8)),
                          c(rep(0, 33),                           runif(9, 1, 2),    runif(8, 0.5, 1)),
                          c(runif(22, 0.5, 1), rep(0, 11),        rep(0, 9),         runif(8, 1, 2)))
   
-  colnames(patterns_over) <- labels
-  patterns_over
+  colnames(patterns_cor) <- labels
+  patterns_cor
 }
 
-patterns_over_iter <- tibble(seed = 1:100) %>% 
- mutate(patterns = map(seed, ~create_patterns_over(seed = .x)))
+patterns_cor_iter <- tibble(seed = 1:100) %>% 
+ mutate(patterns = map(seed, ~create_patterns_cor(seed = .x)))
 
-patterns_over_iter
+patterns_cor_iter
 ```
 
 ### Simulate Scores
 
 ```{r}
-
-create_scores_over <- function (seed) {
-  
-  scores_over <- matrix(nrow = 1000, ncol = 4)
+create_scores_cor <- function (seed) {
+  scores_cor <- matrix(nrow = 1000, ncol = 4)
   cov <- matrix( c(1,    0.25, 0.15, 0.15,
                   0.25, 1,    0.15, 0.15,
                   0.15, 0.15, 1,    0.25,
                   0.15, 0.15, 0.25, 1), nrow = 4)
   
   set.seed(seed)
-  scores_over <- exp(mvrnorm(n = 1000, mu = rep(1, 4), 
+  scores_cor <- exp(mvrnorm(n = 1000, mu = rep(1, 4), 
                           Sigma = cov)) # dists are kind of DEPENDENT
   }
 
-scores_over_iter <- tibble(seed = 1:100) %>% 
- mutate(scores = map(seed, ~create_scores_over(seed = .x)))
+scores_cor_iter <- tibble(seed = 1:100) %>% 
+ mutate(scores = map(seed, ~create_scores_cor(seed = .x)))
 
-scores_over_iter
+scores_cor_iter
 ```
 
 ### Simulate Chemical Exposures
@@ -179,7 +183,69 @@ scores_over_iter
 Multiple scores and vectors, and add to get the mixture.
 
 ```{r}
-sim_over0 <- full_join(scores_over_iter, patterns_over_iter, by = "seed")
+sim_cor0 <- full_join(scores_cor_iter, patterns_cor_iter, by = "seed")
+
+sim_cor0 <- sim_cor0 %>% 
+  mutate(chem = map2(scores, patterns, `%*%`))
+```
+
+### Simulate Noise
+
+```{r}
+sim_cor <- sim_cor0 %>% 
+ mutate(sim = map2(seed, chem, ~add_noise(seed = .x, chem = .y)))
+
+sim_cor
+```  
+
+### Visualize
+
+```{r, echo = FALSE, fig.height = 7}
+chem_cor <- sim_cor$sim[[5]] %>% 
+  as_tibble(.)
+
+cormat <- round(cor(chem_cor, use = "complete.obs"),2)
+
+melted_cormat <- melt(cormat) %>% rename(Correlation = value)
+
+ggplot(data = melted_cormat, aes(x = Var1, y = Var2)) +
+  geom_tile(aes(fill = Correlation), colour = "white") +
+  scale_fill_gradient2(low = "#00BFC4", mid = "white", high = "#F8766D",
+                       midpoint = 0,
+                       na.value = "transparent", limits = c(-1, 1)) +
+  theme_grey() + labs(x = "", y = "") +
+  scale_x_discrete(expand = c(0, 0)) +
+  scale_y_discrete(expand = c(0, 0)) +
+  theme(axis.text.x = element_blank(),
+        panel.spacing = unit(0, "lines"),
+        strip.background = element_blank(),
+        strip.placement = "outside", legend.position = "bottom")
+```
+
+### Save
+
+```{r}
+#for (i in 1:nrow(sim_cor)) {
+#  write_csv(as_tibble(sim_cor[i,]$sim[[1]]), paste0("./Sims/Iterate/sim_cor_", i, ".csv"))  
+#}
+```
+
+## 3: Overlapping Patterns
+
+### Simulate Patterns
+
+Use correlated patterns.
+
+### Simulate Scores
+
+Use distinct scores.
+
+### Simulate Chemical Exposures
+
+Multiple scores and vectors, and add to get the mixture.
+
+```{r}
+sim_over0 <- full_join(scores_dist_iter, patterns_cor_iter, by = "seed")
 
 sim_over0 <- sim_over0 %>% 
   mutate(chem = map2(scores, patterns, `%*%`))
@@ -189,7 +255,7 @@ sim_over0 <- sim_over0 %>%
 
 ```{r}
 sim_over <- sim_over0 %>% 
- mutate(sim = map(chem, ~add_noise(chem = .x)))
+ mutate(sim = map2(seed, chem, ~add_noise(seed = .x, chem = .y)))
 
 sim_over
 ```  
@@ -218,4 +284,10 @@ ggplot(data = melted_cormat, aes(x = Var1, y = Var2)) +
         strip.placement = "outside", legend.position = "bottom")
 ```
 
+### Save
 
+```{r}
+for (i in 1:nrow(sim_over)) {
+  write_csv(as_tibble(sim_over[i,]$sim[[1]]), paste0("./Sims/Iterate/sim_over_", i, ".csv"))  
+}
+```
