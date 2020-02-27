@@ -1,7 +1,7 @@
 ---
-title: "NMF & Sim Data -- Iterate"
+title: "PCA & Sim Data -- Iterate"
 author: "Lizzy Gibson"
-date: "2/25/2020"
+date: "2/26/2020"
 output: 
   html_document:
     toc: TRUE
@@ -96,50 +96,12 @@ sim_dist <- sim_dist0 %>%
 sim_dist
 ```  
 
-### Visualize
-
-```{r, echo = FALSE, fig.height = 7}
-chem_dist <- sim_dist$sim[[30]] %>% 
-  as_tibble(.)
-
-cormat <- round(cor(chem_dist, use = "complete.obs"),2)
-
-melted_cormat <- melt(cormat) %>% rename(Correlation = value)
-
-ggplot(data = melted_cormat, aes(x = Var1, y = Var2)) +
-  geom_tile(aes(fill = Correlation), colour = "white") +
-  scale_fill_gradient2(low = "#00BFC4", mid = "white", high = "#F8766D",
-                       midpoint = 0,
-                       na.value = "transparent", limits = c(-1, 1)) +
-  theme_grey() + labs(x = "", y = "") +
-  scale_x_discrete(expand = c(0, 0)) +
-  scale_y_discrete(expand = c(0, 0)) +
-  theme(axis.text.x = element_blank(),
-        panel.spacing = unit(0, "lines"),
-        strip.background = element_blank(),
-        strip.placement = "outside", legend.position = "bottom")
-```
-
-### Save
-
-```{r}
-#for (i in 1:nrow(sim_dist)) {
-#  write_csv(as_tibble(sim_dist[i,]$sim[[1]]), paste0("./Sims/Iterate/sim_dist_", i, ".csv"))  
-#}
-```
-
 ## 2: Correlated Patterns
 
 ### Simulate Patterns
 
 ```{r}
 ## Construct a matrix for 4 TRUE exposure patterns
-labels <-  c("pcb28", "pcb66", "pcb74", "pcb99", "pcb105", "pcb118", "pcb138_158", "pcb146", "pcb153", "pcb156", "pcb167",
-          "pcb170", "pcb178", "pcb183", "pcb187", "pcb180", "pcb189", "pcb194", "pcb196_203", "pcb199", "pcb206", "pcb209",
-          "BDE17", "BDE28", "BDE47", "BDE66", "BDE85", "BDE99", "BDE100", "BDE153", "BDE154", "BDE183", "BDE209", "MECPP",
-          "MEHHP", "MEOHP", "MCPP", "MIBP", "MBP", "MBZP", "MEP", "MEHP", "dcp_24", "dcp_25", "b_pb", "bp_3", "m_pb",
-          "p_pb", "tcs", "bpa")
-
 create_patterns_cor <- function (seed) {
   set.seed(seed)
   patterns_cor <- rbind(c(runif(22, 1, 2),   runif(11, 0.5, 1), rep(0, 17)),
@@ -198,38 +160,6 @@ sim_cor <- sim_cor0 %>%
 sim_cor
 ```  
 
-### Visualize
-
-```{r, echo = FALSE, fig.height = 7}
-chem_cor <- sim_cor$sim[[5]] %>% 
-  as_tibble(.)
-
-cormat <- round(cor(chem_cor, use = "complete.obs"),2)
-
-melted_cormat <- melt(cormat) %>% rename(Correlation = value)
-
-ggplot(data = melted_cormat, aes(x = Var1, y = Var2)) +
-  geom_tile(aes(fill = Correlation), colour = "white") +
-  scale_fill_gradient2(low = "#00BFC4", mid = "white", high = "#F8766D",
-                       midpoint = 0,
-                       na.value = "transparent", limits = c(-1, 1)) +
-  theme_grey() + labs(x = "", y = "") +
-  scale_x_discrete(expand = c(0, 0)) +
-  scale_y_discrete(expand = c(0, 0)) +
-  theme(axis.text.x = element_blank(),
-        panel.spacing = unit(0, "lines"),
-        strip.background = element_blank(),
-        strip.placement = "outside", legend.position = "bottom")
-```
-
-### Save
-
-```{r}
-#for (i in 1:nrow(sim_cor)) {
-#  write_csv(as_tibble(sim_cor[i,]$sim[[1]]), paste0("./Sims/Iterate/sim_cor_", i, ".csv"))  
-#}
-```
-
 ## 3: Overlapping Patterns
 
 ### Simulate Patterns
@@ -260,126 +190,97 @@ sim_over <- sim_over0 %>%
 sim_over
 ```  
 
-### Visualize
-
-```{r, echo = FALSE, fig.height = 7}
-chem_over <- sim_over$sim[[5]] %>% 
-  as_tibble(.)
-
-cormat <- round(cor(chem_over, use = "complete.obs"),2)
-
-melted_cormat <- melt(cormat) %>% rename(Correlation = value)
-
-ggplot(data = melted_cormat, aes(x = Var1, y = Var2)) +
-  geom_tile(aes(fill = Correlation), colour = "white") +
-  scale_fill_gradient2(low = "#00BFC4", mid = "white", high = "#F8766D",
-                       midpoint = 0,
-                       na.value = "transparent", limits = c(-1, 1)) +
-  theme_grey() + labs(x = "", y = "") +
-  scale_x_discrete(expand = c(0, 0)) +
-  scale_y_discrete(expand = c(0, 0)) +
-  theme(axis.text.x = element_blank(),
-        panel.spacing = unit(0, "lines"),
-        strip.background = element_blank(),
-        strip.placement = "outside", legend.position = "bottom")
-```
-
-### Save
-
-```{r}
-#for (i in 1:nrow(sim_over)) {
-#  write_csv(as_tibble(sim_over[i,]$sim[[1]]), paste0("./Sims/Iterate/sim_over_", i, ".csv"))  
-#}
-```
-
-## NMF Results
+## PCA
 
 ### Distinct Patterns
 
 ```{r}
-get_eh <- function(seed) {
-  eh <- readMat(paste0("./Sims/Iterate_Out/eh_dist_", seed, ".mat"))[[1]]
-  eh <- as_tibble(eh)
+sim_dist
+
+get_rotations <- function (sim) {
+  as_tibble(prcomp(sim_dist$sim[[1]])$rotation) %>% 
+      mutate(Chemicals = labels) %>% 
+      select(Chemicals, everything())
 }
 
-eh_dist <- tibble(seed = 1:100) %>% 
-  mutate(eh = map(seed, ~get_eh(.x)))
+get_x <- function (sim) {
+  as_tibble(prcomp(sim)$x)
+}
 
-for (i in 1:100) {
-  colnames(eh_dist$eh[[i]]) <- labels
-  
-  eh_dist$eh[[i]] <- eh_dist$eh[[i]] %>% 
-                      mutate(pattern = 1:nrow(.)) %>% 
-                      select(pattern, everything())
-  }
-```
+pca_out_dist <- sim_dist %>% 
+  mutate(rotations = map(sim, ~get_rotations(.x)),
+         ex = map(sim, ~get_x(.x)))
 
-```{r}
-eh_dist_plot <- eh_dist %>% 
-  unnest(cols = c(eh))
-
-full_dist <- eh_dist_plot %>% 
-  mutate(pattern1 = ifelse(pcb146 > 0.5, 1,
-                          ifelse(BDE17 > 0.5, 2,
-                                ifelse(MECPP > 0.5, 3,
-                                       ifelse(tcs > 0.5, 4, 5))))) %>% 
-  select(seed, pattern1, everything(), -pattern) %>% 
-  arrange(seed, pattern1) %>% 
-  select(-pattern1) %>% 
-  nest(eh = pcb28:bpa) %>% 
-  full_join(., patterns_dist_iter, by = "seed")
-
-full_dist %>% 
-  filter(!(seed %in% c(30,85))) %>% # Two seeds with 5 patterns
-  mutate(norm = map2(patterns, eh, ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>% 
-  unnest(norm) %>% 
-  pull(norm) %>% summary()
+pca_rotations_dist <- pca_out_dist %>% select(seed, rotations) %>% unnest(cols = c(rotations))
 ```
 
 #### Viz
 
 ```{r}
-eh_dist_plot %>%  
-  filter(seed == 3) %>% 
-  gather(key = Chemicals, value = Loadings, -pattern, -seed) %>%
+pca_rotations_dist %>%  
+  filter(seed == 7) %>% 
+  mutate(Chemicals = labels) %>% 
+  select(seed, Chemicals, PC1:PC5) %>% 
+  gather(key = PC, value = Loadings, -Chemicals, -seed) %>%
   mutate(Chemicals = fct_inorder(Chemicals)) %>% 
   mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
                                                      ifelse(str_detect(Chemicals, "^M"), "Phthalates",
                                                             ifelse(str_detect(Chemicals, "pcb"), "PCBs",
                                                                    "Phenols")))) %>% 
+    group_by(PC) %>%
+  mutate(Loadings = case_when(
+    any(PC == "PC1" & Chemicals == "pcb28" & Loadings > 0) ~ -Loadings,
+    any(PC == "PC2" & Chemicals == "MEP" & Loadings > 0) ~ -Loadings,
+    any(PC == "PC3" & Chemicals == "BDE99" & Loadings > 0) ~ -Loadings,
+    any(PC == "PC4" & Chemicals == "bpa" & Loadings > 0) ~ -Loadings,
+    TRUE ~ Loadings # These dont change plot at all, should be able to standardize all 100 sims
+  )) %>%
   ggplot(aes(x = Chemicals, y = Loadings)) + geom_col(aes(fill = Group)) +
-  facet_wrap(.~pattern) + theme_bw() +
+  facet_wrap(.~PC) + theme_bw() +
   theme(axis.text.x = element_blank(),
         legend.position = "bottom",
         strip.background = element_blank())
 
-eh_dist_plot %>%  
-  mutate(pattern1 = ifelse(pcb146 > 0.5, 1,
-                          ifelse(BDE17 > 0.5, 2,
-                                ifelse(MECPP > 0.5, 3,
-                                       ifelse(tcs > 0.5, 4, 5))))) %>% 
-  gather(key = Chemicals, value = Loadings, -pattern, -pattern1, -seed) %>%
+pca_rotations %>%  
+  mutate(Chemicals = rep(labels, 100)) %>% 
+  select(seed, Chemicals, PC1:PC5) %>% 
+  gather(key = PC, value = Loadings, -Chemicals, -seed) %>%
   mutate(Chemicals = fct_inorder(Chemicals)) %>% 
   mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
                                                      ifelse(str_detect(Chemicals, "^M"), "Phthalates",
                                                             ifelse(str_detect(Chemicals, "pcb"), "PCBs",
                                                                    "Phenols")))) %>% 
+  group_by(PC, seed) %>%
+  mutate(Loadings = case_when(
+    any(PC == "PC1" & Chemicals == "pcb28" & Loadings < 0) ~ -Loadings,
+    any(PC == "PC2" & Chemicals == "BDE99" & Loadings < 0) ~ -Loadings,
+    any(PC == "PC3" & Chemicals == "MEP" & Loadings < 0) ~ -Loadings,
+    any(PC == "PC4" & Chemicals == "bpa" & Loadings < 0) ~ -Loadings,
+    TRUE ~ Loadings
+  )) %>%
   ggplot(aes(x = Group, y = Loadings)) + geom_jitter(aes(color = Group), alpha = 0.5, size = 0.1, height = 0) +
   geom_boxplot(aes(x = Group, color = Group), width = .45, outlier.shape = NA) +
-  facet_wrap(.~pattern1) + theme_bw() +
+  facet_wrap(.~PC) + theme_bw() +
   theme(legend.position = "none",
         strip.background = element_blank())
 ```
 
 ```{r}
-eh_dist_plot %>%  
-  mutate(pattern1 = ifelse(pcb146 > 0.5, 1,
-                          ifelse(BDE17 > 0.5, 2,
-                                ifelse(MECPP > 0.5, 3,
-                                       ifelse(tcs > 0.5, 4, 5))))) %>% 
-  gather(key = Chemicals, value = Loadings, -pattern, -pattern1, -seed) %>%
+pca_rotations %>%  
+  mutate(Chemicals = rep(labels, 100)) %>% 
+  select(seed, Chemicals, PC1:PC5) %>% 
+  gather(key = PC, value = Loadings, -Chemicals, -seed) %>%
   mutate(Chemicals = fct_inorder(Chemicals)) %>% 
-  group_by(Chemicals, pattern1) %>% 
+  group_by(PC, seed) %>%
+  mutate(Loadings = case_when(
+    any(PC == "PC1" & Chemicals == "pcb28" & Loadings < 0) ~ -Loadings,
+    any(PC == "PC2" & Chemicals == "BDE99" & Loadings < 0) ~ -Loadings,
+    any(PC == "PC3" & Chemicals == "MEP" & Loadings < 0) ~ -Loadings,
+    any(PC == "PC4" & Chemicals == "bpa" & Loadings < 0) ~ -Loadings,
+    TRUE ~ Loadings
+  )) %>%
+  ungroup() %>% 
+  group_by(Chemicals, PC) %>% 
   summarise(med = median(Loadings),
             upper = quantile(Loadings, 0.75),
             lower = quantile(Loadings, 0.25)) %>% 
@@ -389,199 +290,91 @@ eh_dist_plot %>%
                                                                    "Phenols")))) %>% 
   ggplot(aes(x = Chemicals, y = med)) + 
   geom_pointrange(aes(color = Group, min = lower, max = upper), alpha = 0.75, size = 0.25) +
-  facet_wrap(.~pattern1) + theme_bw() +
+  facet_wrap(.~PC) + theme_bw() +
   theme(axis.text.x = element_blank(),
         legend.position = "bottom",
         strip.background = element_blank())
-```
-
-#### Scores
-
-```{r}
-get_ewa <- function(seed) {
-  ewa <- readMat(paste0("./Sims/Iterate_Out/ewa_dist_", seed, ".mat"))[[1]]
-  ewa <- as_tibble(ewa)
-}
-
-ewa_dist <- tibble(seed = 1:100) %>% 
-  mutate(ewa = map(seed, ~get_ewa(.x)))
-
-ewa_dist_plot <- ewa_dist %>% 
-  unnest(cols = c(ewa))
-
-ewa_dist_plot
-```
-
-### Correlated Scores
-
-```{r}
-get_eh_cor <- function(seed) {
-  eh <- readMat(paste0("./Sims/Iterate_Out/eh_cor_", seed, ".mat"))[[1]]
-  eh <- as_tibble(eh)
-}
-
-eh_cor <- tibble(seed = 1:100) %>% 
-  mutate(eh = map(seed, ~get_eh_cor(.x)))
-
-for (i in 1:100) {
-  colnames(eh_cor$eh[[i]]) <- labels
-  
-  eh_cor$eh[[i]] <- eh_cor$eh[[i]] %>% 
-                      mutate(pattern = 1:nrow(.)) %>% 
-                      select(pattern, everything())
-  }
-
-eh_cor_plot <- eh_cor %>% 
-  unnest(cols = c(eh))
-
-eh_cor_plot
-```
-
-#### Viz
-
-```{r}
-eh_cor_plot %>%  
-  filter(seed == 3) %>% 
-  gather(key = Chemicals, value = Loadings, -pattern, -seed) %>%
-  mutate(Chemicals = fct_inorder(Chemicals)) %>% 
-  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
-                                                     ifelse(str_detect(Chemicals, "^M"), "Phthalates",
-                                                            ifelse(str_detect(Chemicals, "pcb"), "PCBs",
-                                                                   "Phenols")))) %>% 
-  ggplot(aes(x = Chemicals, y = Loadings)) + geom_col(aes(fill = Group)) +
-  facet_wrap(.~pattern) + theme_bw() +
-  theme(axis.text.x = element_blank(),
-        legend.position = "bottom",
-        strip.background = element_blank())
-
-eh_cor_plot %>%  
-  mutate(pattern1 = ifelse(pcb146 > 0.5, 1,
-                          ifelse(BDE17 > 0.5, 2,
-                                ifelse(MECPP > 0.5, 3,
-                                       ifelse(tcs > 0.5, 4, 5))))) %>% 
-  gather(key = Chemicals, value = Loadings, -pattern, -pattern1, -seed) %>%
-  mutate(Chemicals = fct_inorder(Chemicals)) %>% 
-  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
-                                                     ifelse(str_detect(Chemicals, "^M"), "Phthalates",
-                                                            ifelse(str_detect(Chemicals, "pcb"), "PCBs",
-                                                                   "Phenols")))) %>% 
-  ggplot(aes(x = Group, y = Loadings)) + geom_jitter(aes(color = Group), alpha = 0.5, size = 0.1, height = 0) +
-  geom_boxplot(aes(x = Group, color = Group), width = .45, outlier.shape = NA) +
-  facet_wrap(.~pattern1) + theme_bw() +
-  theme(legend.position = "none",
-        strip.background = element_blank())
-```
-
-```{r}
-eh_cor_plot %>%  
-  mutate(pattern1 = ifelse(pcb146 > 0.5, 1,
-                          ifelse(BDE17 > 0.5, 2,
-                                ifelse(MECPP > 0.5, 3,
-                                       ifelse(tcs > 0.5, 4, 5))))) %>% 
-  gather(key = Chemicals, value = Loadings, -pattern, -pattern1, -seed) %>%
-  mutate(Chemicals = fct_inorder(Chemicals)) %>% 
-  group_by(Chemicals, pattern1) %>% 
-  summarise(med = median(Loadings),
-            upper = quantile(Loadings, 0.75),
-            lower = quantile(Loadings, 0.25)) %>% 
-  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
-                                                     ifelse(str_detect(Chemicals, "^M"), "Phthalates",
-                                                            ifelse(str_detect(Chemicals, "pcb"), "PCBs",
-                                                                   "Phenols")))) %>% 
-  ggplot(aes(x = Chemicals, y = med)) + 
-  geom_pointrange(aes(color = Group, min = lower, max = upper), alpha = 0.75, size = 0.25) +
-  facet_wrap(.~pattern1) + theme_bw() +
-  theme(axis.text.x = element_blank(),
-        legend.position = "bottom",
-        strip.background = element_blank())
-```
-
-#### Scores
-
-```{r}
-get_ewa_cor <- function(seed) {
-  ewa <- readMat(paste0("./Sims/Iterate_Out/ewa_cor_", seed, ".mat"))[[1]]
-  ewa <- as_tibble(ewa)
-}
-
-ewa_cor <- tibble(seed = 1:100) %>% 
-  mutate(ewa = map(seed, ~get_ewa_cor(.x)))
-
-ewa_cor_plot <- ewa_cor %>% 
-  unnest(cols = c(ewa))
-
-ewa_cor_plot
 ```
 
 ### Overlapping Patterns
 
 ```{r}
-get_eh_over <- function(seed) {
-  eh <- readMat(paste0("./Sims/Iterate_Out/eh_over_", seed, ".mat"))[[1]]
-  eh <- as_tibble(eh)
-}
+sim_over
 
-eh_over <- tibble(seed = 1:100) %>% 
-  mutate(eh = map(seed, ~get_eh_over(.x)))
+pca_out_over <- sim_over %>% 
+  mutate(rotations = map(sim, ~get_rotations(.x)),
+         ex = map(sim, ~get_x(.x)))
 
-for (i in 1:100) {
-  colnames(eh_over$eh[[i]]) <- labels
-  
-  eh_over$eh[[i]] <- eh_over$eh[[i]] %>% 
-                      mutate(pattern = 1:nrow(.)) %>% 
-                      select(pattern, everything())
-  }
-
-eh_over_plot <- eh_over %>% 
-  unnest(cols = c(eh))
-
-eh_over_plot
+pca_rotations_over <- pca_out_over %>% select(seed, rotations) %>% unnest(cols = c(rotations))
 ```
 
 #### Viz
 
 ```{r}
-eh_over_plot %>%  
-  filter(seed == 3) %>% 
-  gather(key = Chemicals, value = Loadings, -pattern, -seed) %>%
+pca_rotations_over %>%  
+  filter(seed == 7) %>% 
+  mutate(Chemicals = labels) %>% 
+  select(seed, Chemicals, PC1:PC5) %>% 
+  gather(key = PC, value = Loadings, -Chemicals, -seed) %>%
   mutate(Chemicals = fct_inorder(Chemicals)) %>% 
   mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
                                                      ifelse(str_detect(Chemicals, "^M"), "Phthalates",
                                                             ifelse(str_detect(Chemicals, "pcb"), "PCBs",
                                                                    "Phenols")))) %>% 
+    group_by(PC) %>%
+  mutate(Loadings = case_when(
+    any(PC == "PC1" & Chemicals == "pcb28" & Loadings > 0) ~ -Loadings,
+    any(PC == "PC2" & Chemicals == "MEP" & Loadings > 0) ~ -Loadings,
+    any(PC == "PC3" & Chemicals == "BDE99" & Loadings > 0) ~ -Loadings,
+    any(PC == "PC4" & Chemicals == "bpa" & Loadings > 0) ~ -Loadings,
+    TRUE ~ Loadings # These dont change plot at all, should be able to standardize all 100 sims
+  )) %>%
   ggplot(aes(x = Chemicals, y = Loadings)) + geom_col(aes(fill = Group)) +
-  facet_wrap(.~pattern) + theme_bw() +
+  facet_wrap(.~PC) + theme_bw() +
   theme(axis.text.x = element_blank(),
         legend.position = "bottom",
         strip.background = element_blank())
 
-eh_over_plot %>%  
-  mutate(pattern1 = ifelse(pcb146 > 0.5, 1,
-                          ifelse(BDE17 > 0.5, 2,
-                                ifelse(MECPP > 0.5, 3,
-                                       ifelse(tcs > 0.5, 4, 5))))) %>% 
-  gather(key = Chemicals, value = Loadings, -pattern, -pattern1, -seed) %>%
+pca_rotations_over %>%  
+  mutate(Chemicals = rep(labels, 100)) %>% 
+  select(seed, Chemicals, PC1:PC5) %>% 
+  gather(key = PC, value = Loadings, -Chemicals, -seed) %>%
   mutate(Chemicals = fct_inorder(Chemicals)) %>% 
   mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
                                                      ifelse(str_detect(Chemicals, "^M"), "Phthalates",
                                                             ifelse(str_detect(Chemicals, "pcb"), "PCBs",
                                                                    "Phenols")))) %>% 
+  group_by(PC, seed) %>%
+  mutate(Loadings = case_when(
+    any(PC == "PC1" & Chemicals == "pcb28" & Loadings < 0) ~ -Loadings,
+    any(PC == "PC2" & Chemicals == "BDE99" & Loadings < 0) ~ -Loadings,
+    any(PC == "PC3" & Chemicals == "MEP" & Loadings < 0) ~ -Loadings,
+    any(PC == "PC4" & Chemicals == "bpa" & Loadings < 0) ~ -Loadings,
+    TRUE ~ Loadings
+  )) %>%
   ggplot(aes(x = Group, y = Loadings)) + geom_jitter(aes(color = Group), alpha = 0.5, size = 0.1, height = 0) +
   geom_boxplot(aes(x = Group, color = Group), width = .45, outlier.shape = NA) +
-  facet_wrap(.~pattern1) + theme_bw() +
+  facet_wrap(.~PC) + theme_bw() +
   theme(legend.position = "none",
         strip.background = element_blank())
 ```
 
 ```{r}
-eh_over_plot %>%  
-  mutate(pattern1 = ifelse(pcb146 > 0.5, 1,
-                          ifelse(BDE17 > 0.5, 2,
-                                ifelse(MECPP > 0.5, 3,
-                                       ifelse(tcs > 0.5, 4, 5))))) %>% 
-  gather(key = Chemicals, value = Loadings, -pattern, -pattern1, -seed) %>%
+pca_rotations_over %>%  
+  mutate(Chemicals = rep(labels, 100)) %>% 
+  select(seed, Chemicals, PC1:PC5) %>% 
+  gather(key = PC, value = Loadings, -Chemicals, -seed) %>%
   mutate(Chemicals = fct_inorder(Chemicals)) %>% 
-  group_by(Chemicals, pattern1) %>% 
+  group_by(PC, seed) %>%
+  mutate(Loadings = case_when(
+    any(PC == "PC1" & Chemicals == "pcb28" & Loadings < 0) ~ -Loadings,
+    any(PC == "PC2" & Chemicals == "BDE99" & Loadings < 0) ~ -Loadings,
+    any(PC == "PC3" & Chemicals == "MEP" & Loadings < 0) ~ -Loadings,
+    any(PC == "PC4" & Chemicals == "bpa" & Loadings < 0) ~ -Loadings,
+    TRUE ~ Loadings
+  )) %>%
+  ungroup() %>% 
+  group_by(Chemicals, PC) %>% 
   summarise(med = median(Loadings),
             upper = quantile(Loadings, 0.75),
             lower = quantile(Loadings, 0.25)) %>% 
@@ -591,25 +384,102 @@ eh_over_plot %>%
                                                                    "Phenols")))) %>% 
   ggplot(aes(x = Chemicals, y = med)) + 
   geom_pointrange(aes(color = Group, min = lower, max = upper), alpha = 0.75, size = 0.25) +
-  facet_wrap(.~pattern1) + theme_bw() +
+  facet_wrap(.~PC) + theme_bw() +
   theme(axis.text.x = element_blank(),
         legend.position = "bottom",
         strip.background = element_blank())
 ```
 
-### Scores
+### Correlated  Scores
 
 ```{r}
-get_ewa_over <- function(seed) {
-  ewa <- readMat(paste0("./Sims/Iterate_Out/ewa_over_", seed, ".mat"))[[1]]
-  ewa <- as_tibble(ewa)
-}
+sim_cor
 
-ewa_over <- tibble(seed = 1:100) %>% 
-  mutate(ewa = map(seed, ~get_ewa(.x)))
+pca_out_cor <- sim_cor %>% 
+  mutate(rotations = map(sim, ~get_rotations(.x)),
+         ex = map(sim, ~get_x(.x)))
 
-ewa_over_plot <- ewa_over %>% 
-  unnest(cols = c(ewa))
+pca_rotations_cor <- pca_out_cor %>% select(seed, rotations) %>% unnest(cols = c(rotations))
+```
 
-ewa_over_plot
+#### Viz
+
+```{r}
+pca_rotations_cor %>%  
+  filter(seed == 7) %>% 
+  mutate(Chemicals = labels) %>% 
+  select(seed, Chemicals, PC1:PC5) %>% 
+  gather(key = PC, value = Loadings, -Chemicals, -seed) %>%
+  mutate(Chemicals = fct_inorder(Chemicals)) %>% 
+  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
+                                                     ifelse(str_detect(Chemicals, "^M"), "Phthalates",
+                                                            ifelse(str_detect(Chemicals, "pcb"), "PCBs",
+                                                                   "Phenols")))) %>% 
+    group_by(PC) %>%
+  mutate(Loadings = case_when(
+    any(PC == "PC1" & Chemicals == "pcb28" & Loadings > 0) ~ -Loadings,
+    any(PC == "PC2" & Chemicals == "MEP" & Loadings > 0) ~ -Loadings,
+    any(PC == "PC3" & Chemicals == "BDE99" & Loadings > 0) ~ -Loadings,
+    any(PC == "PC4" & Chemicals == "bpa" & Loadings > 0) ~ -Loadings,
+    TRUE ~ Loadings # These dont change plot at all, should be able to standardize all 100 sims
+  )) %>%
+  ggplot(aes(x = Chemicals, y = Loadings)) + geom_col(aes(fill = Group)) +
+  facet_wrap(.~PC) + theme_bw() +
+  theme(axis.text.x = element_blank(),
+        legend.position = "bottom",
+        strip.background = element_blank())
+
+pca_rotations_cor %>%  
+  mutate(Chemicals = rep(labels, 100)) %>% 
+  select(seed, Chemicals, PC1:PC5) %>% 
+  gather(key = PC, value = Loadings, -Chemicals, -seed) %>%
+  mutate(Chemicals = fct_inorder(Chemicals)) %>% 
+  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
+                                                     ifelse(str_detect(Chemicals, "^M"), "Phthalates",
+                                                            ifelse(str_detect(Chemicals, "pcb"), "PCBs",
+                                                                   "Phenols")))) %>% 
+  group_by(PC, seed) %>%
+  mutate(Loadings = case_when(
+    any(PC == "PC1" & Chemicals == "pcb28" & Loadings < 0) ~ -Loadings,
+    any(PC == "PC2" & Chemicals == "BDE99" & Loadings < 0) ~ -Loadings,
+    any(PC == "PC3" & Chemicals == "MEP" & Loadings < 0) ~ -Loadings,
+    any(PC == "PC4" & Chemicals == "bpa" & Loadings < 0) ~ -Loadings,
+    TRUE ~ Loadings
+  )) %>%
+  ggplot(aes(x = Group, y = Loadings)) + geom_jitter(aes(color = Group), alpha = 0.5, size = 0.1, height = 0) +
+  geom_boxplot(aes(x = Group, color = Group), width = .45, outlier.shape = NA) +
+  facet_wrap(.~PC) + theme_bw() +
+  theme(legend.position = "none",
+        strip.background = element_blank())
+```
+
+```{r}
+pca_rotations_over %>%  
+  mutate(Chemicals = rep(labels, 100)) %>% 
+  select(seed, Chemicals, PC1:PC5) %>% 
+  gather(key = PC, value = Loadings, -Chemicals, -seed) %>%
+  mutate(Chemicals = fct_inorder(Chemicals)) %>% 
+  group_by(PC, seed) %>%
+  mutate(Loadings = case_when(
+    any(PC == "PC1" & Chemicals == "pcb28" & Loadings < 0) ~ -Loadings,
+    any(PC == "PC2" & Chemicals == "BDE99" & Loadings < 0) ~ -Loadings,
+    any(PC == "PC3" & Chemicals == "MEP" & Loadings < 0) ~ -Loadings,
+    any(PC == "PC4" & Chemicals == "bpa" & Loadings < 0) ~ -Loadings,
+    TRUE ~ Loadings
+  )) %>%
+  ungroup() %>% 
+  group_by(Chemicals, PC) %>% 
+  summarise(med = median(Loadings),
+            upper = quantile(Loadings, 0.75),
+            lower = quantile(Loadings, 0.25)) %>% 
+  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
+                                                     ifelse(str_detect(Chemicals, "^M"), "Phthalates",
+                                                            ifelse(str_detect(Chemicals, "pcb"), "PCBs",
+                                                                   "Phenols")))) %>% 
+  ggplot(aes(x = Chemicals, y = med)) + 
+  geom_pointrange(aes(color = Group, min = lower, max = upper), alpha = 0.75, size = 0.25) +
+  facet_wrap(.~PC) + theme_bw() +
+  theme(axis.text.x = element_blank(),
+        legend.position = "bottom",
+        strip.background = element_blank())
 ```
