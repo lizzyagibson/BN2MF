@@ -1,4 +1,4 @@
-function [EWA, EH, EA] = NPBayesNMF(X,Kinit,num_iter)
+function [EWA, EH, EA, end_score, score] = NPBayesNMF(X,Kinit,num_iter)
 % X is the data matrix of non-negative values
 % Kinit is the maximum allowable factorization (initial). The algorithm tries to reduce this number.
 %       the size of EWA and EH indicate the learned factorization.
@@ -10,12 +10,23 @@ bnp_switch = 1;  % this turns on/off the Bayesian nonparametric part. I made the
 
 [dim,N] = size(X);
 
-% Try h with non-sparse prior
-%h01 = 1;
-h01 = 1/Kinit; % ###This was \gamma constant in Hotlzman, also <1, but topic-specific?###
+end_score = zeros(5, 1);
+
+% Not sure if i need this
+EA = [];
+EWA = [];
+EH = [];
+EW = [];
+
+for i = 1:5
+
+K = Kinit;
+    
+%h01 = 1; % Try h with non-sparse prior
+h01 = 1/Kinit;
 h02 = 1;
 
-w01 = 1; %1/dim; ###Changed this prior to correspond with Holtzman paper###
+w01 = 1;
 w02 = 1;
 W1 = gamrnd(dim*ones(dim,Kinit),1/dim);
 % gamrnd(A,B) generates random numbers from the gamma distribution 
@@ -31,8 +42,7 @@ H1 = ones(Kinit,N);
 H2 = ones(Kinit,N);
 % initializing variables
 
-K = Kinit;
-loss = zeros(num_iter, 1);
+score = zeros(num_iter, 1);
 
 for iter = 1:num_iter
   
@@ -84,20 +94,36 @@ for iter = 1:num_iter
     end
     K = length(A1);
     
-    loss(iter) = sum(sum(abs(X-(W1./W2)*diag(A1./A2)*(H1./H2))));
+    score(iter) = sum(sum(abs(X-(W1./W2)*diag(A1./A2)*(H1./H2))));
     
-%    stem(A1./A2); colorbar; pause(.5);
-    disp([num2str(iter) ' : ' num2str(sum(sum(abs(X-(W1./W2)*diag(A1./A2)*(H1./H2)))))]);
-
- if iter ~= 1 && abs(loss(iter-1)-loss(iter)) < 1e-5
-        break % Added convergence criteria, ok?
-  end
+    disp([num2str(iter) ' : ' num2str(sum(sum(abs(X-(W1./W2)*diag(A1./A2)*(H1./H2)))))]); 
+ 
+ if iter > 1 && abs(score(iter-1)-score(iter)) < 1e-5  
+     break
+ end
+  
 end
 
-EA = A1./A2;
-EWA = (W1./W2)*diag(A1./A2);
-EH = H1./H2;
-EW = (W1./W2);
-% expected values of WA and H are alpha/beta of the Gamma dist
+% EA = A1./A2;
+% EWA = (W1./W2)*diag(A1./A2);
+% EH = H1./H2;
+% EW = (W1./W2); 
 
+end_score(i) = score(end);  
+   
+if i > 1 && (end_score(i-1) > end_score(i))
+     EA = EA; 
+     EWA = EWA;  
+     EH = EH; 
+     EW = EW; 
+else    
+    EA = A1./A2;
+    EWA = (W1./W2)*diag(A1./A2);
+    EH = H1./H2;
+    EW = (W1./W2); 
+end
+   
+disp(['Run Number: ' num2str(i) '. Run score: ' num2str(end_score(i))]);
+
+end
 
