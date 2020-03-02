@@ -218,7 +218,7 @@ pca_rotations_dist <- pca_out_dist %>% select(seed, rotations) %>% unnest(cols =
 
 ```{r}
 pca_rotations_dist %>%  
-  filter(seed == 7) %>% 
+  filter(seed == 1) %>% 
   mutate(Chemicals = labels) %>% 
   select(seed, Chemicals, PC1:PC5) %>% 
   gather(key = PC, value = Loadings, -Chemicals, -seed) %>%
@@ -231,8 +231,8 @@ pca_rotations_dist %>%
   mutate(Loadings = case_when(
     any(PC == "PC1" & Chemicals == "pcb28" & Loadings > 0) ~ -Loadings,
     any(PC == "PC2" & Chemicals == "MEP" & Loadings > 0) ~ -Loadings,
-    any(PC == "PC3" & Chemicals == "BDE99" & Loadings > 0) ~ -Loadings,
-    any(PC == "PC4" & Chemicals == "bpa" & Loadings > 0) ~ -Loadings,
+    any(PC == "PC3" & Chemicals == "bpa" & Loadings < 0) ~ -Loadings,
+    any(PC == "PC4" & Chemicals == "BDE99" & Loadings < 0) ~ -Loadings,
     TRUE ~ Loadings # These dont change plot at all, should be able to standardize all 100 sims
   )) %>%
   ggplot(aes(x = Chemicals, y = Loadings)) + geom_col(aes(fill = Group)) +
@@ -241,7 +241,7 @@ pca_rotations_dist %>%
         legend.position = "bottom",
         strip.background = element_blank())
 
-pca_rotations %>%  
+pca_rotations_dist %>%  
   mutate(Chemicals = rep(labels, 100)) %>% 
   select(seed, Chemicals, PC1:PC5) %>% 
   gather(key = PC, value = Loadings, -Chemicals, -seed) %>%
@@ -253,9 +253,9 @@ pca_rotations %>%
   group_by(PC, seed) %>%
   mutate(Loadings = case_when(
     any(PC == "PC1" & Chemicals == "pcb28" & Loadings < 0) ~ -Loadings,
-    any(PC == "PC2" & Chemicals == "BDE99" & Loadings < 0) ~ -Loadings,
-    any(PC == "PC3" & Chemicals == "MEP" & Loadings < 0) ~ -Loadings,
-    any(PC == "PC4" & Chemicals == "bpa" & Loadings < 0) ~ -Loadings,
+    any(PC == "PC2" & Chemicals == "MEP" & Loadings < 0) ~ -Loadings,
+    any(PC == "PC3" & Chemicals == "bpa" & Loadings < 0) ~ -Loadings,
+    any(PC == "PC4" & Chemicals == "BDE99" & Loadings < 0) ~ -Loadings,
     TRUE ~ Loadings
   )) %>%
   ggplot(aes(x = Group, y = Loadings)) + geom_jitter(aes(color = Group), alpha = 0.5, size = 0.1, height = 0) +
@@ -266,7 +266,7 @@ pca_rotations %>%
 ```
 
 ```{r}
-pca_rotations %>%  
+pca_rotations_dist %>%  
   mutate(Chemicals = rep(labels, 100)) %>% 
   select(seed, Chemicals, PC1:PC5) %>% 
   gather(key = PC, value = Loadings, -Chemicals, -seed) %>%
@@ -274,9 +274,9 @@ pca_rotations %>%
   group_by(PC, seed) %>%
   mutate(Loadings = case_when(
     any(PC == "PC1" & Chemicals == "pcb28" & Loadings < 0) ~ -Loadings,
-    any(PC == "PC2" & Chemicals == "BDE99" & Loadings < 0) ~ -Loadings,
-    any(PC == "PC3" & Chemicals == "MEP" & Loadings < 0) ~ -Loadings,
-    any(PC == "PC4" & Chemicals == "bpa" & Loadings < 0) ~ -Loadings,
+    any(PC == "PC2" & Chemicals == "MEP" & Loadings < 0) ~ -Loadings,
+    any(PC == "PC3" & Chemicals == "bpa" & Loadings < 0) ~ -Loadings,
+    any(PC == "PC4" & Chemicals == "BDE99" & Loadings < 0) ~ -Loadings,
     TRUE ~ Loadings
   )) %>%
   ungroup() %>% 
@@ -321,14 +321,6 @@ pca_rotations_over %>%
                                                      ifelse(str_detect(Chemicals, "^M"), "Phthalates",
                                                             ifelse(str_detect(Chemicals, "pcb"), "PCBs",
                                                                    "Phenols")))) %>% 
-    group_by(PC) %>%
-  mutate(Loadings = case_when(
-    any(PC == "PC1" & Chemicals == "pcb28" & Loadings > 0) ~ -Loadings,
-    any(PC == "PC2" & Chemicals == "MEP" & Loadings > 0) ~ -Loadings,
-    any(PC == "PC3" & Chemicals == "BDE99" & Loadings > 0) ~ -Loadings,
-    any(PC == "PC4" & Chemicals == "bpa" & Loadings > 0) ~ -Loadings,
-    TRUE ~ Loadings # These dont change plot at all, should be able to standardize all 100 sims
-  )) %>%
   ggplot(aes(x = Chemicals, y = Loadings)) + geom_col(aes(fill = Group)) +
   facet_wrap(.~PC) + theme_bw() +
   theme(axis.text.x = element_blank(),
@@ -347,9 +339,9 @@ pca_rotations_over %>%
   group_by(PC, seed) %>%
   mutate(Loadings = case_when(
     any(PC == "PC1" & Chemicals == "pcb28" & Loadings < 0) ~ -Loadings,
-    any(PC == "PC2" & Chemicals == "BDE99" & Loadings < 0) ~ -Loadings,
-    any(PC == "PC3" & Chemicals == "MEP" & Loadings < 0) ~ -Loadings,
-    any(PC == "PC4" & Chemicals == "bpa" & Loadings < 0) ~ -Loadings,
+    any(PC == "PC2" & Chemicals == "MEP" & Loadings < 0) ~ -Loadings,
+    any(PC == "PC3" & Chemicals == "bpa" & Loadings < 0) ~ -Loadings,
+    any(PC == "PC4" & Chemicals == "BDE99" & Loadings < 0) ~ -Loadings,
     TRUE ~ Loadings
   )) %>%
   ggplot(aes(x = Group, y = Loadings)) + geom_jitter(aes(color = Group), alpha = 0.5, size = 0.1, height = 0) +
@@ -368,9 +360,9 @@ pca_rotations_over %>%
   group_by(PC, seed) %>%
   mutate(Loadings = case_when(
     any(PC == "PC1" & Chemicals == "pcb28" & Loadings < 0) ~ -Loadings,
-    any(PC == "PC2" & Chemicals == "BDE99" & Loadings < 0) ~ -Loadings,
-    any(PC == "PC3" & Chemicals == "MEP" & Loadings < 0) ~ -Loadings,
-    any(PC == "PC4" & Chemicals == "bpa" & Loadings < 0) ~ -Loadings,
+    any(PC == "PC2" & Chemicals == "MEP" & Loadings < 0) ~ -Loadings,
+    any(PC == "PC3" & Chemicals == "bpa" & Loadings < 0) ~ -Loadings,
+    any(PC == "PC4" & Chemicals == "BDE99" & Loadings < 0) ~ -Loadings,
     TRUE ~ Loadings
   )) %>%
   ungroup() %>% 
@@ -415,14 +407,6 @@ pca_rotations_cor %>%
                                                      ifelse(str_detect(Chemicals, "^M"), "Phthalates",
                                                             ifelse(str_detect(Chemicals, "pcb"), "PCBs",
                                                                    "Phenols")))) %>% 
-    group_by(PC) %>%
-  mutate(Loadings = case_when(
-    any(PC == "PC1" & Chemicals == "pcb28" & Loadings > 0) ~ -Loadings,
-    any(PC == "PC2" & Chemicals == "MEP" & Loadings > 0) ~ -Loadings,
-    any(PC == "PC3" & Chemicals == "BDE99" & Loadings > 0) ~ -Loadings,
-    any(PC == "PC4" & Chemicals == "bpa" & Loadings > 0) ~ -Loadings,
-    TRUE ~ Loadings # These dont change plot at all, should be able to standardize all 100 sims
-  )) %>%
   ggplot(aes(x = Chemicals, y = Loadings)) + geom_col(aes(fill = Group)) +
   facet_wrap(.~PC) + theme_bw() +
   theme(axis.text.x = element_blank(),
@@ -441,9 +425,9 @@ pca_rotations_cor %>%
   group_by(PC, seed) %>%
   mutate(Loadings = case_when(
     any(PC == "PC1" & Chemicals == "pcb28" & Loadings < 0) ~ -Loadings,
-    any(PC == "PC2" & Chemicals == "BDE99" & Loadings < 0) ~ -Loadings,
-    any(PC == "PC3" & Chemicals == "MEP" & Loadings < 0) ~ -Loadings,
-    any(PC == "PC4" & Chemicals == "bpa" & Loadings < 0) ~ -Loadings,
+    any(PC == "PC2" & Chemicals == "MEP" & Loadings < 0) ~ -Loadings,
+    any(PC == "PC3" & Chemicals == "bpa" & Loadings < 0) ~ -Loadings,
+    any(PC == "PC4" & Chemicals == "BDE99" & Loadings < 0) ~ -Loadings,
     TRUE ~ Loadings
   )) %>%
   ggplot(aes(x = Group, y = Loadings)) + geom_jitter(aes(color = Group), alpha = 0.5, size = 0.1, height = 0) +
@@ -454,7 +438,7 @@ pca_rotations_cor %>%
 ```
 
 ```{r}
-pca_rotations_over %>%  
+pca_rotations_cor %>%  
   mutate(Chemicals = rep(labels, 100)) %>% 
   select(seed, Chemicals, PC1:PC5) %>% 
   gather(key = PC, value = Loadings, -Chemicals, -seed) %>%
@@ -462,9 +446,9 @@ pca_rotations_over %>%
   group_by(PC, seed) %>%
   mutate(Loadings = case_when(
     any(PC == "PC1" & Chemicals == "pcb28" & Loadings < 0) ~ -Loadings,
-    any(PC == "PC2" & Chemicals == "BDE99" & Loadings < 0) ~ -Loadings,
-    any(PC == "PC3" & Chemicals == "MEP" & Loadings < 0) ~ -Loadings,
-    any(PC == "PC4" & Chemicals == "bpa" & Loadings < 0) ~ -Loadings,
+    any(PC == "PC2" & Chemicals == "MEP" & Loadings < 0) ~ -Loadings,
+    any(PC == "PC3" & Chemicals == "bpa" & Loadings < 0) ~ -Loadings,
+    any(PC == "PC4" & Chemicals == "BDE99" & Loadings < 0) ~ -Loadings,
     TRUE ~ Loadings
   )) %>%
   ungroup() %>% 

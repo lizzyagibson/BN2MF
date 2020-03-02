@@ -231,10 +231,10 @@ nmf_coef_dist %>%
 nmf_coef_dist %>%  
   mutate(pattern = rep(1:4, 100)) %>% 
   select(seed, pattern, everything()) %>% 
-  mutate(pattern1 = ifelse(pcb146 > 0.01, 1,
-                          ifelse(BDE17 > 0.01, 2,
-                                ifelse(MECPP > 0.01, 3,
-                                       ifelse(tcs > 0.01, 4, 5))))) %>% 
+  mutate(pattern1 = ifelse(pcb146 > 0.02 & pcb118 > bpa, 1,
+                          ifelse(BDE17 > 0.02, 2,
+                                ifelse(MECPP > 0.02, 3,
+                                       ifelse(tcs > 0.02, 4, 5))))) %>%
   gather(key = Chemicals, value = Loadings, -pattern, -pattern1, -seed) %>%
   mutate(Chemicals = fct_inorder(Chemicals)) %>% 
   mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
@@ -252,10 +252,10 @@ nmf_coef_dist %>%
 nmf_coef_dist %>%  
   mutate(pattern = rep(1:4, 100)) %>% 
   select(seed, pattern, everything()) %>% 
-  mutate(pattern1 = ifelse(pcb146 > 0.01, 1,
-                          ifelse(BDE17 > 0.01, 2,
-                                ifelse(MECPP > 0.01, 3,
-                                       ifelse(tcs > 0.01, 4, 5))))) %>% 
+  mutate(pattern1 = ifelse(pcb146 > 0.02 & pcb118 > bpa, 1,
+                          ifelse(BDE17 > 0.02, 2,
+                                ifelse(MECPP > 0.02, 3,
+                                       ifelse(tcs > 0.02, 4, 5))))) %>%
   gather(key = Chemicals, value = Loadings, -pattern, -pattern1, -seed) %>%
   mutate(Chemicals = fct_inorder(Chemicals)) %>% 
   group_by(Chemicals, pattern1) %>% 
@@ -309,10 +309,10 @@ nmf_coef_over %>%
 nmf_coef_over %>%  
   mutate(pattern = rep(1:4, 100)) %>% 
   select(seed, pattern, everything()) %>% 
-  mutate(pattern1 = ifelse(pcb146 > 0.01, 1,
-                          ifelse(BDE17 > 0.01, 2,
-                                ifelse(MECPP > 0.01, 3,
-                                       ifelse(tcs > 0.01, 4, 5))))) %>% 
+  mutate(pattern1 = ifelse(pcb146 > 0.02 & pcb118 > bpa, 1,
+                          ifelse(BDE17 > 0.02, 2,
+                                ifelse(MECPP > 0.02, 3,
+                                       ifelse(tcs > 0.02, 4, 5))))) %>%
   gather(key = Chemicals, value = Loadings, -pattern, -pattern1, -seed) %>%
   mutate(Chemicals = fct_inorder(Chemicals)) %>% 
   mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
@@ -330,10 +330,10 @@ nmf_coef_over %>%
 nmf_coef_over %>%  
   mutate(pattern = rep(1:4, 100)) %>% 
   select(seed, pattern, everything()) %>% 
-  mutate(pattern1 = ifelse(pcb146 > 0.01, 1,
-                          ifelse(BDE17 > 0.01, 2,
-                                ifelse(MECPP > 0.01, 3,
-                                       ifelse(tcs > 0.01, 4, 5))))) %>% 
+  mutate(pattern1 = ifelse(pcb146 > 0.02 & pcb118 > bpa, 1,
+                          ifelse(BDE17 > 0.02, 2,
+                                ifelse(MECPP > 0.02, 3,
+                                       ifelse(tcs > 0.02, 4, 5))))) %>%
   gather(key = Chemicals, value = Loadings, -pattern, -pattern1, -seed) %>%
   mutate(Chemicals = fct_inorder(Chemicals)) %>% 
   group_by(Chemicals, pattern1) %>% 
@@ -387,10 +387,10 @@ nmf_coef_cor %>%
 nmf_coef_cor %>%  
   mutate(pattern = rep(1:4, 100)) %>% 
   select(seed, pattern, everything()) %>% 
-  mutate(pattern1 = ifelse(pcb146 > 0.01, 1,
-                          ifelse(BDE17 > 0.01, 2,
-                                ifelse(MECPP > 0.01, 3,
-                                       ifelse(tcs > 0.01, 4, 5))))) %>% 
+  mutate(pattern1 = ifelse(pcb146 > 0.02 & pcb118 > bpa, 1,
+                          ifelse(BDE17 > 0.02, 2,
+                                ifelse(MECPP > 0.02, 3,
+                                       ifelse(tcs > 0.02, 4, 5))))) %>%
   gather(key = Chemicals, value = Loadings, -pattern, -pattern1, -seed) %>%
   mutate(Chemicals = fct_inorder(Chemicals)) %>% 
   mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
@@ -408,10 +408,10 @@ nmf_coef_cor %>%
 nmf_coef_cor %>%  
   mutate(pattern = rep(1:4, 100)) %>% 
   select(seed, pattern, everything()) %>% 
-  mutate(pattern1 = ifelse(pcb146 > 0.01, 1,
-                          ifelse(BDE17 > 0.01, 2,
-                                ifelse(MECPP > 0.01, 3,
-                                       ifelse(tcs > 0.01, 4, 5))))) %>% 
+  mutate(pattern1 = ifelse(pcb146 > 0.02 & pcb118 > bpa, 1,
+                          ifelse(BDE17 > 0.02, 2,
+                                ifelse(MECPP > 0.02, 3,
+                                       ifelse(tcs > 0.02, 4, 5))))) %>%
   gather(key = Chemicals, value = Loadings, -pattern, -pattern1, -seed) %>%
   mutate(Chemicals = fct_inorder(Chemicals)) %>% 
   group_by(Chemicals, pattern1) %>% 
@@ -427,5 +427,29 @@ nmf_coef_cor %>%
   facet_wrap(.~pattern1) + theme_bw() +
   theme(axis.text.x = element_blank(),
         legend.position = "bottom",
+        strip.background = element_blank()) + labs(y = "Median Loadings")
+```
+
+```{r}
+nmf_coef_cor %>%  
+  mutate(pattern = rep(1:4, 100),
+         seed = as.factor(seed)) %>% 
+  select(seed, pattern, everything()) %>% 
+  mutate(pattern1 = ifelse(pcb146 > 0.02 & pcb118 > bpa, 1,
+                          ifelse(BDE17 > 0.02, 2,
+                                ifelse(MECPP > 0.02, 3,
+                                       ifelse(tcs > 0.02, 4, 5))))) %>%
+  gather(key = Chemicals, value = Loadings, -pattern, -pattern1, -seed) %>%
+  mutate(Chemicals = fct_inorder(Chemicals)) %>% 
+  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
+                                                     ifelse(str_detect(Chemicals, "^M"), "Phthalates",
+                                                            ifelse(str_detect(Chemicals, "pcb"), "PCBs",
+                                                                   "Phenols")))) %>% 
+  ggplot(aes(x = Chemicals, y = Loadings)) + 
+  geom_line(aes(group = seed), alpha = 0.1, color = "grey") +
+  geom_point(aes(color = Group), alpha = 0.5, size = 0.1) +
+  facet_wrap(.~pattern1) + theme_bw() +
+  theme(legend.position = "none",
+        axis.text.x = element_blank(),
         strip.background = element_blank())
 ```
