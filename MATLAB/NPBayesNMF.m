@@ -1,4 +1,4 @@
-function [EWA, EH, EA, end_score, score] = NPBayesNMF(X,Kinit,num_iter)
+function [EWA, EH, EA] = NPBayesNMF(X,Kinit,num_iter)
 % X is the data matrix of non-negative values
 % Kinit is the maximum allowable factorization (initial). The algorithm tries to reduce this number.
 %       the size of EWA and EH indicate the learned factorization.
@@ -10,15 +10,15 @@ bnp_switch = 1;  % this turns on/off the Bayesian nonparametric part. I made the
 
 [dim,N] = size(X);
 
-end_score = zeros(5, 1);
+%end_score = zeros(10, 1);
 
 % Not sure if i need this
-EA = [];
-EWA = [];
-EH = [];
-EW = [];
+% EA = [];
+% EWA = [];
+% EH = [];
+% EW = [];
 
-for i = 1:5
+%for i = 1:10
 
 K = Kinit;
     
@@ -104,26 +104,24 @@ for iter = 1:num_iter
   
 end
 
-% EA = A1./A2;
-% EWA = (W1./W2)*diag(A1./A2);
-% EH = H1./H2;
-% EW = (W1./W2); 
+EA = A1./A2;
+EWA = (W1./W2)*diag(A1./A2);
+EH = H1./H2;
+EW = (W1./W2); 
 
-end_score(i) = score(end);  
-   
-if i > 1 && (end_score(i-1) > end_score(i))
-     EA = EA; 
-     EWA = EWA;  
-     EH = EH; 
-     EW = EW; 
-else    
+%end_score(i) = score(end);  
+
+% Among the results, use the fitted variational parameters that achieve the highest ELBO
+if i == 1 | (i > 1 &&  (end_score(i) >= max(end_score)))
     EA = A1./A2;
     EWA = (W1./W2)*diag(A1./A2);
     EH = H1./H2;
     EW = (W1./W2); 
 end
    
-disp(['Run Number: ' num2str(i) '. Run score: ' num2str(end_score(i))]);
+%disp(['Run Number: ' num2str(i) '. Run score: ' num2str(end_score(i))]);
+%disp(['Run Number: ' num2str(i) '. A vector: ']); 
+%A1./A2
+%EA
 
-end
-
+%end
