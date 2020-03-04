@@ -389,6 +389,8 @@ pca_out_cor <- sim_cor %>%
          ex = map(sim, ~get_x(.x)))
 
 pca_rotations_cor <- pca_out_cor %>% select(seed, rotations) %>% unnest(cols = c(rotations))
+
+pca_rotations_cor %>% filter(seed == 1) %>% select(PC1:PC4)
 ```
 
 #### Viz
