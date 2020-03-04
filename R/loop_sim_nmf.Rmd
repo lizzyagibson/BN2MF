@@ -350,7 +350,7 @@ full_dist %>%
 #### Viz
 
 ```{r}
-eh_dist_plot %>%  
+eh_dist_unnest %>%  
   filter(seed == 4) %>% 
   mutate(pattern = 1:4) %>% 
   gather(key = Chemicals, value = Loadings, -pattern, -seed) %>%
@@ -365,7 +365,7 @@ eh_dist_plot %>%
         legend.position = "bottom",
         strip.background = element_blank())
 
-eh_dist_plot %>%  
+eh_dist_unnest %>%  
   group_by(seed) %>% 
   mutate(pattern1 = ifelse(pcb146 > 0.5, 1,
                           ifelse(BDE17 > 0.5, 2,
@@ -385,7 +385,7 @@ eh_dist_plot %>%
 ```
 
 ```{r}
-eh_dist_plot %>%  
+eh_dist_unnest %>%  
   mutate(pattern1 = ifelse(pcb146 > 0.5, 1,
                           ifelse(BDE17 > 0.5, 2,
                                 ifelse(MECPP > 0.5, 3,
@@ -419,10 +419,10 @@ get_ewa <- function(seed) {
 ewa_dist <- tibble(seed = 1:100) %>% 
   mutate(ewa = map(seed, ~get_ewa(.x)))
 
-ewa_dist_plot <- ewa_dist %>% 
+ewa_dist_unnest <- ewa_dist %>% 
   unnest(cols = c(ewa))
 
-ewa_dist_plot
+ewa_dist_unnest
 ```
 
 ### Correlated Scores
@@ -552,10 +552,10 @@ get_ewa_cor <- function(seed) {
 ewa_cor <- tibble(seed = 1:100) %>% 
   mutate(ewa = map(seed, ~get_ewa_cor(.x)))
 
-ewa_cor_plot <- ewa_cor %>% 
+ewa_cor_unnest <- ewa_cor %>% 
   unnest(cols = c(ewa))
 
-ewa_cor_plot
+ewa_cor_unnest
 ```
 
 ### Overlapping Patterns
@@ -688,8 +688,8 @@ get_ewa_over <- function(seed) {
 ewa_over <- tibble(seed = 1:100) %>% 
   mutate(ewa = map(seed, ~get_ewa(.x)))
 
-ewa_over_plot <- ewa_over %>% 
+ewa_over_unnest <- ewa_over %>% 
   unnest(cols = c(ewa))
 
-ewa_over_plot
+ewa_over_unnest
 ```
