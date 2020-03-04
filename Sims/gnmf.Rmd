@@ -1,5 +1,5 @@
 ---
-title: "NMF & Sim Data"
+title: "GMF & Sim Data"
 author: "Lizzy Gibson"
 date: "2/18/2020"
 output: 
