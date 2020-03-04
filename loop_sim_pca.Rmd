@@ -48,8 +48,6 @@ create_patterns_dist <- function (seed) {
 
 patterns_dist_iter <- tibble(seed = 1:100) %>% 
  mutate(patterns = map(seed, ~create_patterns_dist(seed = .x)))
-
-patterns_dist_iter
 ```
 
 ### Simulate Scores
@@ -65,8 +63,6 @@ create_scores_dist <- function (seed) {
 
 scores_dist_iter <- tibble(seed = 1:100) %>% 
  mutate(scores = map(seed, ~create_scores_dist(seed = .x)))
-
-scores_dist_iter
 ```
 
 ### Simulate Chemical Exposures
@@ -92,8 +88,6 @@ add_noise <- function (seed, chem) {
 
 sim_dist <- sim_dist0 %>% 
  mutate(sim = map2(seed, chem, ~add_noise(seed = .x, chem = .y)))
-
-sim_dist
 ```  
 
 ## 2: Correlated Patterns
@@ -115,8 +109,6 @@ create_patterns_cor <- function (seed) {
 
 patterns_cor_iter <- tibble(seed = 1:100) %>% 
  mutate(patterns = map(seed, ~create_patterns_cor(seed = .x)))
-
-patterns_cor_iter
 ```
 
 ### Simulate Scores
@@ -136,8 +128,6 @@ create_scores_cor <- function (seed) {
 
 scores_cor_iter <- tibble(seed = 1:100) %>% 
  mutate(scores = map(seed, ~create_scores_cor(seed = .x)))
-
-scores_cor_iter
 ```
 
 ### Simulate Chemical Exposures
@@ -156,8 +146,6 @@ sim_cor0 <- sim_cor0 %>%
 ```{r}
 sim_cor <- sim_cor0 %>% 
  mutate(sim = map2(seed, chem, ~add_noise(seed = .x, chem = .y)))
-
-sim_cor
 ```  
 
 ## 3: Overlapping Patterns
@@ -186,8 +174,6 @@ sim_over0 <- sim_over0 %>%
 ```{r}
 sim_over <- sim_over0 %>% 
  mutate(sim = map2(seed, chem, ~add_noise(seed = .x, chem = .y)))
-
-sim_over
 ```  
 
 ## PCA
@@ -212,6 +198,21 @@ pca_out_dist <- sim_dist %>%
          ex = map(sim, ~get_x(.x)))
 
 pca_rotations_dist <- pca_out_dist %>% select(seed, rotations) %>% unnest(cols = c(rotations))
+
+pca_rotations_dist %>%  
+  mutate(Chemicals = rep(labels, 100)) %>% 
+  select(seed, Chemicals, PC1:PC5) %>% 
+  gather(key = PC, value = Loadings, -Chemicals, -seed) %>%
+  group_by(PC, seed) %>%
+  mutate(Loadings = case_when(
+    any(PC == "PC1" & Chemicals == "pcb28" & Loadings < 0) ~ -Loadings,
+    any(PC == "PC2" & Chemicals == "MEP" & Loadings < 0) ~ -Loadings,
+    any(PC == "PC3" & Chemicals == "bpa" & Loadings < 0) ~ -Loadings,
+    any(PC == "PC4" & Chemicals == "BDE99" & Loadings < 0) ~ -Loadings,
+    TRUE ~ Loadings
+  )) %>% 
+  pull()
+
 ```
 
 #### Viz
@@ -299,8 +300,6 @@ pca_rotations_dist %>%
 ### Overlapping Patterns
 
 ```{r}
-sim_over
-
 pca_out_over <- sim_over %>% 
   mutate(rotations = map(sim, ~get_rotations(.x)),
          ex = map(sim, ~get_x(.x)))
@@ -385,8 +384,6 @@ pca_rotations_over %>%
 ### Correlated  Scores
 
 ```{r}
-sim_cor
-
 pca_out_cor <- sim_cor %>% 
   mutate(rotations = map(sim, ~get_rotations(.x)),
          ex = map(sim, ~get_x(.x)))
