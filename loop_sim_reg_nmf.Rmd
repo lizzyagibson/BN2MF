@@ -20,193 +20,46 @@ library(tidyverse)
 library(R.matlab)
 ```
 
-## 1: Distinct Patterns
-
-### Simulate Patterns
-
-Generate 4 non-negative vectors of length 50 “by hand” — vectors should be overlapping a bit, and at this stage don’t have to look too much like pollution. just make 20 (of 50) elements 1 and the rest 0.
-
-Pattern matrix is 4*50, patterns by chemicals.
+## Load Sims
 
 ```{r}
-## Construct a matrix for 4 TRUE exposure patterns
-labels <-  c("pcb28", "pcb66", "pcb74", "pcb99", "pcb105", "pcb118", "pcb138_158", "pcb146", "pcb153", "pcb156", "pcb167",
-          "pcb170", "pcb178", "pcb183", "pcb187", "pcb180", "pcb189", "pcb194", "pcb196_203", "pcb199", "pcb206", "pcb209",
-          "BDE17", "BDE28", "BDE47", "BDE66", "BDE85", "BDE99", "BDE100", "BDE153", "BDE154", "BDE183", "BDE209", "MECPP",
-          "MEHHP", "MEOHP", "MCPP", "MIBP", "MBP", "MBZP", "MEP", "MEHP", "dcp_24", "dcp_25", "b_pb", "bp_3", "m_pb",
-          "p_pb", "tcs", "bpa")
-
-create_patterns_dist <- function (seed) {
-  set.seed(seed)
-  patterns_dist <- rbind(c(runif(22, 1, 2), rep(0, 11), rep(0, 17)),
-                       c(rep(0, 22), runif(11, 1, 2), rep(0, 17)),
-                       c(rep(0, 33), runif(9, 1, 2), rep(0, 8)),
-                       c(rep(0, 33), rep(0, 9), runif(8, 1, 2)))
-  colnames(patterns_dist) <- labels
-  patterns_dist
-}
-
-patterns_dist_iter <- tibble(seed = 1:100) %>% 
- mutate(patterns = map(seed, ~create_patterns_dist(seed = .x)))
-
-patterns_dist_iter
-```
-
-### Simulate Scores
-
-```{r}
-create_scores_dist <- function (seed) {
-  scores_dist <- matrix(nrow = 1000, ncol = 4)
-  set.seed(seed)
-  scores_dist <- exp(mvrnorm(n = 1000, mu = rep(1, 4), 
-                          Sigma = diag(rep(1, 4)))) # Independent log normal dist
-  scores_dist
-}
-
-scores_dist_iter <- tibble(seed = 1:100) %>% 
- mutate(scores = map(seed, ~create_scores_dist(seed = .x)))
-
-scores_dist_iter
-```
-
-### Simulate Chemical Exposures
-
-Multiple scores and vectors, and add to get the mixture.
-
-```{r}
-sim_dist0 <- full_join(scores_dist_iter, patterns_dist_iter, by = "seed")
-
-sim_dist0 <- sim_dist0 %>% 
-  mutate(chem = map2(scores, patterns, `%*%`))
-```
-
-### Simulate Noise
-
-```{r}
-add_noise <- function (seed, chem) {
-  noise <- list(mean=0, sd=1)
-  set.seed(seed)
-  chem_dist <- pmax(chem + rmatrix(1000, 50, dist=rnorm, mean=noise$mean, sd=noise$sd), 0)	
-  chem_dist
-}
-
-sim_dist <- sim_dist0 %>% 
- mutate(sim = map2(seed, chem, ~add_noise(seed = .x, chem = .y)))
-
+load("./Sims/Iterate/sim_dist.RDA")
 sim_dist
-```  
 
-## 2: Correlated Patterns
-
-### Simulate Patterns
-
-```{r}
-## Construct a matrix for 4 TRUE exposure patterns
-create_patterns_cor <- function (seed) {
-  set.seed(seed)
-  patterns_cor <- rbind(c(runif(22, 1, 2),   runif(11, 0.5, 1), rep(0, 17)),
-                         c(rep(0, 22),        runif(11, 1, 2),   runif(9, 0.5, 1),  rep(0, 8)),
-                         c(rep(0, 33),                           runif(9, 1, 2),    runif(8, 0.5, 1)),
-                         c(runif(22, 0.5, 1), rep(0, 11),        rep(0, 9),         runif(8, 1, 2)))
-  
-  colnames(patterns_cor) <- labels
-  patterns_cor
-}
-
-patterns_cor_iter <- tibble(seed = 1:100) %>% 
- mutate(patterns = map(seed, ~create_patterns_cor(seed = .x)))
-
-patterns_cor_iter
-```
-
-### Simulate Scores
-
-```{r}
-create_scores_cor <- function (seed) {
-  scores_cor <- matrix(nrow = 1000, ncol = 4)
-  cov <- matrix( c(1,    0.25, 0.15, 0.15,
-                  0.25, 1,    0.15, 0.15,
-                  0.15, 0.15, 1,    0.25,
-                  0.15, 0.15, 0.25, 1), nrow = 4)
-  
-  set.seed(seed)
-  scores_cor <- exp(mvrnorm(n = 1000, mu = rep(1, 4), 
-                          Sigma = cov)) # dists are kind of DEPENDENT
-  }
-
-scores_cor_iter <- tibble(seed = 1:100) %>% 
- mutate(scores = map(seed, ~create_scores_cor(seed = .x)))
-
-scores_cor_iter
-```
-
-### Simulate Chemical Exposures
-
-Multiple scores and vectors, and add to get the mixture.
-
-```{r}
-sim_cor0 <- full_join(scores_cor_iter, patterns_cor_iter, by = "seed")
-
-sim_cor0 <- sim_cor0 %>% 
-  mutate(chem = map2(scores, patterns, `%*%`))
-```
-
-### Simulate Noise
-
-```{r}
-sim_cor <- sim_cor0 %>% 
- mutate(sim = map2(seed, chem, ~add_noise(seed = .x, chem = .y)))
-
+load("./Sims/Iterate/sim_cor.RDA")
 sim_cor
-```  
 
-## 3: Overlapping Patterns
-
-### Simulate Patterns
-
-Use correlated patterns.
-
-### Simulate Scores
-
-Use distinct scores.
-
-### Simulate Chemical Exposures
-
-Multiple scores and vectors, and add to get the mixture.
-
-```{r}
-sim_over0 <- full_join(scores_dist_iter, patterns_cor_iter, by = "seed")
-
-sim_over0 <- sim_over0 %>% 
-  mutate(chem = map2(scores, patterns, `%*%`))
-```
-
-### Simulate Noise
-
-```{r}
-sim_over <- sim_over0 %>% 
- mutate(sim = map2(seed, chem, ~add_noise(seed = .x, chem = .y)))
-
+load("./Sims/Iterate/sim_over.RDA")
 sim_over
-```  
+```
 
 ## NMF
 
 ### Distinct Patterns
 
 ```{r}
-sim_dist
-
-coef(nmf(sim_dist$sim[[1]], rank = 4))
-
 get_coef <- function (sim) {
   as_tibble(coef(nmf(sim, rank = 4)))
 }
 
+get_pred <- function (sim) {
+  basis(nmf(sim, rank = 4)) %*% coef(nmf(sim, rank = 4))
+}
+
 nmf_out_dist <- sim_dist %>% 
-  mutate(coef = map(sim, ~get_coef(.x)))
+  mutate(coef = map(sim, ~get_coef(.x)),
+         pred = map(sim, ~get_pred(.x)))
 
 nmf_coef_dist <- nmf_out_dist %>% select(seed, coef) %>% unnest(cols = c(coef))
+```
+
+#### Norm
+
+```{r}
+nmf_out_dist %>%
+  mutate(norm_all = map2(sim, pred, ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>% 
+  unnest(norm_all) %>% 
+  pull(norm_all) %>% summary()
 ```
 
 #### Viz
@@ -277,14 +130,20 @@ nmf_coef_dist %>%
 ### Overlapping Patterns
 
 ```{r}
-sim_over
-
-coef(nmf(sim_over$sim[[1]], rank = 4))
-
 nmf_out_over <- sim_over %>% 
-  mutate(coef = map(sim, ~get_coef(.x)))
+  mutate(coef = map(sim, ~get_coef(.x)),
+         pred = map(sim, ~get_pred(.x)))
 
 nmf_coef_over <- nmf_out_over %>% select(seed, coef) %>% unnest(cols = c(coef))
+```
+
+#### Norm
+
+```{r}
+nmf_out_over %>%
+  mutate(norm_all = map2(sim, pred, ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>% 
+  unnest(norm_all) %>% 
+  pull(norm_all) %>% summary()
 ```
 
 #### Viz
@@ -355,14 +214,20 @@ nmf_coef_over %>%
 ### Correlated Scores
 
 ```{r}
-sim_cor
-
-coef(nmf(sim_cor$sim[[1]], rank = 4))
-
 nmf_out_cor <- sim_cor %>% 
-  mutate(coef = map(sim, ~get_coef(.x)))
+  mutate(coef = map(sim, ~get_coef(.x)),
+         pred = map(sim, ~get_pred(.x)))
 
 nmf_coef_cor <- nmf_out_cor %>% select(seed, coef) %>% unnest(cols = c(coef))
+```
+
+#### Norm
+
+```{r}
+nmf_out_cor %>%
+  mutate(norm_all = map2(sim, pred, ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>% 
+  unnest(norm_all) %>% 
+  pull(norm_all) %>% summary()
 ```
 
 #### Viz
@@ -428,28 +293,4 @@ nmf_coef_cor %>%
   theme(axis.text.x = element_blank(),
         legend.position = "bottom",
         strip.background = element_blank()) + labs(y = "Median Loadings")
-```
-
-```{r}
-nmf_coef_cor %>%  
-  mutate(pattern = rep(1:4, 100),
-         seed = as.factor(seed)) %>% 
-  select(seed, pattern, everything()) %>% 
-  mutate(pattern1 = ifelse(pcb146 > 0.02 & pcb118 > bpa, 1,
-                          ifelse(BDE17 > 0.02, 2,
-                                ifelse(MECPP > 0.02, 3,
-                                       ifelse(tcs > 0.02, 4, 5))))) %>%
-  gather(key = Chemicals, value = Loadings, -pattern, -pattern1, -seed) %>%
-  mutate(Chemicals = fct_inorder(Chemicals)) %>% 
-  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
-                                                     ifelse(str_detect(Chemicals, "^M"), "Phthalates",
-                                                            ifelse(str_detect(Chemicals, "pcb"), "PCBs",
-                                                                   "Phenols")))) %>% 
-  ggplot(aes(x = Chemicals, y = Loadings)) + 
-  geom_line(aes(group = seed), alpha = 0.1, color = "grey") +
-  geom_point(aes(color = Group), alpha = 0.5, size = 0.1) +
-  facet_wrap(.~pattern1) + theme_bw() +
-  theme(legend.position = "none",
-        axis.text.x = element_blank(),
-        strip.background = element_blank())
 ```
