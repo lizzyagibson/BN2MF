@@ -20,6 +20,8 @@ library(tidyverse)
 library(R.matlab)
 ```
 
+# Simulations
+
 ## 1: Distinct Patterns
 
 ### Simulate Patterns
@@ -47,15 +49,10 @@ create_patterns_dist <- function (seed) {
                        c(rep(0, 33), rep(0, 9), runif(8, 1, 2)))
   colnames(patterns_dist) <- labels
   patterns_dist
-  #patterns_dist <- as_tibble(patterns_dist)
 }
 
 patterns_dist_iter <- tibble(seed = 1:100) %>% 
- mutate(patterns = map(seed, ~create_patterns_dist(seed = .x)) #,
-        #patterns = map(patterns, ~div_sd(vars = .x))
-        )
-
-patterns_dist_iter[1,2][[1]]
+ mutate(patterns = map(seed, ~create_patterns_dist(seed = .x)))
 ```
 
 ### Simulate Scores
@@ -71,8 +68,6 @@ create_scores_dist <- function (seed) {
 
 scores_dist_iter <- tibble(seed = 1:100) %>% 
  mutate(scores = map(seed, ~create_scores_dist(seed = .x)))
-
-scores_dist_iter
 ```
 
 ### Simulate Chemical Exposures
@@ -98,17 +93,12 @@ add_noise <- function (seed, chem) {
 
 sim_dist <- sim_dist0 %>% 
  mutate(sim = map2(seed, chem, ~add_noise(seed = .x, chem = .y)))
-
-sim_dist
 ```  
 
 ### Visualize
 
 ```{r, echo = FALSE, fig.height = 7}
-chem_dist <- sim_dist$sim[[30]] %>% 
-  as_tibble(.)
-
-cormat <- round(cor(chem_dist, use = "complete.obs"),2)
+cormat <- round(cor(as_tibble(sim_dist$sim[[30]]), use = "complete.obs"),2)
 
 melted_cormat <- melt(cormat) %>% rename(Correlation = value)
 
@@ -155,8 +145,6 @@ patterns_cor_iter <- tibble(seed = 1:100) %>%
  mutate(patterns = map(seed, ~create_patterns_cor(seed = .x)) #,
         #patterns = map(patterns, ~div_sd(vars = .x))
         )
-
-patterns_cor_iter
 ```
 
 ### Simulate Scores
@@ -176,8 +164,6 @@ create_scores_cor <- function (seed) {
 
 scores_cor_iter <- tibble(seed = 1:100) %>% 
  mutate(scores = map(seed, ~create_scores_cor(seed = .x)))
-
-scores_cor_iter
 ```
 
 ### Simulate Chemical Exposures
@@ -196,17 +182,12 @@ sim_cor0 <- sim_cor0 %>%
 ```{r}
 sim_cor <- sim_cor0 %>% 
  mutate(sim = map2(seed, chem, ~add_noise(seed = .x, chem = .y)))
-
-sim_cor
 ```  
 
 ### Visualize
 
 ```{r, echo = FALSE, fig.height = 7}
-chem_cor <- sim_cor$sim[[5]] %>% 
-  as_tibble(.)
-
-cormat <- round(cor(chem_cor, use = "complete.obs"),2)
+cormat <- round(cor(as_tibble(sim_cor$sim[[5]]), use = "complete.obs"),2)
 
 melted_cormat <- melt(cormat) %>% rename(Correlation = value)
 
@@ -263,14 +244,11 @@ sim_over <- sim_over0 %>%
 ### Visualize
 
 ```{r, echo = FALSE, fig.height = 7}
-chem_over <- sim_over$sim[[5]] %>% 
-  as_tibble(.)
+cormat3 <- round(cor(as_tibble(sim_over$sim[[5]]), use = "complete.obs"),2)
 
-cormat <- round(cor(chem_over, use = "complete.obs"),2)
+melted_cormat3 <- melt(cormat3) %>% rename(Correlation = value)
 
-melted_cormat <- melt(cormat) %>% rename(Correlation = value)
-
-ggplot(data = melted_cormat, aes(x = Var1, y = Var2)) +
+ggplot(data = melted_cormat3, aes(x = Var1, y = Var2)) +
   geom_tile(aes(fill = Correlation), colour = "white") +
   scale_fill_gradient2(low = "#00BFC4", mid = "white", high = "#F8766D",
                        midpoint = 0,
@@ -292,31 +270,31 @@ ggplot(data = melted_cormat, aes(x = Var1, y = Var2)) +
 #}
 ```
 
-## GNMF Results
+# GNMF Results
 
-### Distinct Patterns
+## 1. Distinct Patterns
 
 ```{r}
-get_eh <- function(seed) {
+get_eh_dist <- function(seed) {
   eh <- readMat(paste0("./Sims/Iterate_Out/eh_dist_", seed, ".mat"))[[1]]
   eh <- as_tibble(eh)
 }
 
-eh_dist <- tibble(seed = 1:100) %>% 
-  mutate(eh = map(seed, ~get_eh(.x)))
+eh_dist_raw <- tibble(seed = 1:100) %>% 
+  mutate(eh = map(seed, ~get_eh_dist(.x)))
 
 for (i in 1:100) {
-  colnames(eh_dist$eh[[i]]) <- labels
+  colnames(eh_dist_raw$eh[[i]]) <- labels
   
-  eh_dist$eh[[i]] <- eh_dist$eh[[i]] %>% 
+  eh_dist_raw$eh[[i]] <- eh_dist_raw$eh[[i]] %>% 
                       mutate(pattern = 1:nrow(.)) %>% 
                       select(pattern, everything())
   }
 ```
 
 ```{r}
-eh_dist_unnest <- eh_dist %>% 
-  unnest(cols = c(eh)) %>% select(-pattern)
+eh_dist_unnest <- eh_dist_raw %>% 
+  unnest(cols = c(eh))
 
 # Reorder patterns
 eh_dist_unnest %>% 
@@ -325,26 +303,77 @@ eh_dist_unnest %>%
                                 ifelse(MECPP > 0.5, 3,
                                        ifelse(tcs > 0.5, 4, 5))))) %>% pull(pattern1) %>% table()
 
-full_dist <- eh_dist_unnest %>% 
+eh_dist <- eh_dist_unnest %>% 
   mutate(pattern1 = ifelse(pcb146 > 0.5 & pcb28 > bpa, 1,
                           ifelse(BDE17 > 0.5, 2,
                                 ifelse(MECPP > 0.5, 3,
                                        ifelse(tcs > 0.5, 4, 5))))) %>% 
   select(seed, pattern1, everything()) %>% 
   arrange(seed, pattern1) %>% 
-  mutate(pattern1 = fct_inorder(as.factor(pattern1))) %>% 
-  select(-pattern1) %>% 
-  nest(eh = pcb28:bpa) %>% 
-  full_join(., patterns_dist_iter, by = "seed") %>% 
-  mutate(patterns = map(patterns, ~div_sd(.x))) %>% # ???
-  mutate(eh = map(eh, ~div_sd(.x)))
+  mutate(pattern1 = fct_inorder(as.factor(pattern1)),
+         pattern1 = as.integer(pattern1)) %>% 
+  nest(eh = pcb28:bpa, eh_match = pattern:pattern1) # %>% 
+  # mutate(patterns = map(patterns, ~div_sd(.x))) %>% # ???
+  # mutate(eh = map(eh, ~div_sd(.x)))
+```
+
+#### Scores
+
+```{r}
+get_ewa_dist <- function(seed) {
+  ewa <- readMat(paste0("./Sims/Iterate_Out/ewa_dist_", seed, ".mat"))[[1]]
+  ewa <- as_tibble(ewa)
+}
+
+ewa_dist_raw <- tibble(seed = 1:100) %>% 
+  mutate(ewa = map(seed, ~get_ewa_dist(.x)))
+
+ewa_dist_unnest <- ewa_dist_raw %>% 
+  unnest(cols = c(ewa))
+```
+
+#### Norms
+
+```{r}
+full_dist <- full_join(eh_dist, ewa_dist_raw, by = "seed") %>% 
+    full_join(., sim_dist, by = "seed") %>% 
+  select(-chem) %>% 
+    mutate(new_ewa = map(ewa, ~.x[NA,]))
+
+full_dist[50,]$eh_match[[1]]
+full_dist[50,]$ewa[[1]]
+
+for (j in 1:nrow(full_dist)) {
+for (i in 1:nrow(full_dist$eh[[1]])) {
+    if (full_dist[j,]$eh_match[[1]][i,1] == 1) {
+        full_dist[j,]$new_ewa[[1]][,i] <- full_dist[j,]$ewa[[1]][,1]
+      } else if (full_dist[j,]$eh_match[[1]][i,1] == 2) {
+        full_dist[j,]$new_ewa[[1]][,i] <- full_dist[j,]$ewa[[1]][,2]
+      } else if (full_dist[j,]$eh_match[[1]][i,1] == 3) {
+        full_dist[j,]$new_ewa[[1]][,i] <- full_dist[j,]$ewa[[1]][,3]
+      } else if (full_dist[j,]$eh_match[[1]][i,1] == 4) {
+        full_dist[j,]$new_ewa[[1]][,i] <- full_dist[j,]$ewa[[1]][,4]
+      } else {}
+}
+}
+
+full_dist[50,]$new_ewa[[1]]
 
 full_dist %>% 
-  # filter(!(seed %in% c(30,85))) %>% # Two seeds with 5 patterns
-  mutate(norm = map2(patterns, eh, ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>% 
-  unnest(norm) %>% 
-  pull(norm) %>% summary()
+  filter(!(seed %in% c(19, 21, 39))) %>% 
+  mutate(norm_loadings = map2(patterns, eh, ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>% 
+  unnest(norm_loadings) %>% 
+  pull(norm_loadings) %>% summary()
 # this is really good when both are standardized
+
+full_dist %>%
+  filter(!(seed %in% c(19, 21, 39))) %>% 
+  mutate(ewa = map(ewa, as.matrix),
+         eh = map(eh, as.matrix)) %>% 
+  mutate(pred = map2(ewa, eh, `%*%`)) %>% 
+  mutate(norm_all = map2(sim, pred, ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>% 
+  unnest(norm_all) %>% 
+  pull(norm_all) %>% summary()
 ```
 
 #### Viz
@@ -371,7 +400,7 @@ eh_dist_unnest %>%
                           ifelse(BDE17 > 0.5, 2,
                                 ifelse(MECPP > 0.5, 3,
                                        ifelse(tcs > 0.5, 4, 5))))) %>% 
-  gather(key = Chemicals, value = Loadings, -pattern1, -seed) %>% 
+  gather(key = Chemicals, value = Loadings, -pattern1, -pattern, -seed) %>% 
   mutate(Chemicals = fct_inorder(Chemicals)) %>% 
   mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
                                                      ifelse(str_detect(Chemicals, "^M"), "Phthalates",
@@ -390,7 +419,7 @@ eh_dist_unnest %>%
                           ifelse(BDE17 > 0.5, 2,
                                 ifelse(MECPP > 0.5, 3,
                                        ifelse(tcs > 0.5, 4, 5))))) %>% 
-  gather(key = Chemicals, value = Loadings, -pattern1, -seed) %>%
+  gather(key = Chemicals, value = Loadings, -pattern1, -pattern, -seed) %>%
   mutate(Chemicals = fct_inorder(Chemicals)) %>% 
   group_by(Chemicals, pattern1) %>% 
   summarise(med = median(Loadings),
@@ -408,24 +437,7 @@ eh_dist_unnest %>%
         strip.background = element_blank())
 ```
 
-#### Scores
-
-```{r}
-get_ewa <- function(seed) {
-  ewa <- readMat(paste0("./Sims/Iterate_Out/ewa_dist_", seed, ".mat"))[[1]]
-  ewa <- as_tibble(ewa)
-}
-
-ewa_dist <- tibble(seed = 1:100) %>% 
-  mutate(ewa = map(seed, ~get_ewa(.x)))
-
-ewa_dist_unnest <- ewa_dist %>% 
-  unnest(cols = c(ewa))
-
-ewa_dist_unnest
-```
-
-### Correlated Scores
+### 2. Correlated Scores
 
 ```{r}
 get_eh_cor <- function(seed) {
@@ -433,19 +445,19 @@ get_eh_cor <- function(seed) {
   eh <- as_tibble(eh)
 }
 
-eh_cor <- tibble(seed = 1:100) %>% 
+eh_cor_raw <- tibble(seed = 1:100) %>% 
   mutate(eh = map(seed, ~get_eh_cor(.x)))
 
 for (i in 1:100) {
-  colnames(eh_cor$eh[[i]]) <- labels
+  colnames(eh_cor_raw$eh[[i]]) <- labels
   
-  eh_cor$eh[[i]] <- eh_cor$eh[[i]] %>% 
+  eh_cor_raw$eh[[i]] <- eh_cor_raw$eh[[i]] %>% 
                       mutate(pattern = 1:nrow(.)) %>% 
                       select(pattern, everything())
   }
 
-eh_cor_unnest <- eh_cor %>% 
-  unnest(cols = c(eh)) %>% select(-pattern)
+eh_cor_unnest <- eh_cor_raw %>% 
+  unnest(cols = c(eh)) 
 ```
 
 ```{r}
@@ -456,26 +468,74 @@ eh_cor_unnest %>%
                                 ifelse(MECPP > 0.5, 3,
                                        ifelse(tcs > 0.5, 4, 5))))) %>% pull(pattern1) %>% table()
 
-full_cor <- eh_cor_unnest %>% 
+eh_cor <- eh_cor_unnest %>% 
   mutate(pattern1 = ifelse(pcb146 > 0.5 & pcb28 > bpa, 1,
                           ifelse(BDE17 > 0.5, 2,
                                 ifelse(MECPP > 0.5, 3,
                                        ifelse(tcs > 0.5, 4, 5))))) %>% 
   select(seed, pattern1, everything()) %>% 
   arrange(seed, pattern1) %>% 
-  mutate(pattern1 = fct_inorder(as.factor(pattern1))) %>% 
-  select(-pattern1) %>% 
-  nest(eh = pcb28:bpa) %>% 
-  full_join(., patterns_dist_iter, by = "seed") %>% 
-  mutate(patterns = map(patterns, ~div_sd(.x))) %>% # ???
-  mutate(eh = map(eh, ~div_sd(.x)))
+  mutate(pattern1 = fct_inorder(as.factor(pattern1)),
+         pattern1 = as.integer(pattern1)) %>% 
+  nest(eh = pcb28:bpa, eh_match = pattern:pattern1) # %>% 
+  # mutate(patterns = map(patterns, ~div_sd(.x))) %>% # ???
+  # mutate(eh = map(eh, ~div_sd(.x)))
+```
+
+#### Scores
+
+```{r}
+get_ewa_cor <- function(seed) {
+  ewa <- readMat(paste0("./Sims/Iterate_Out/ewa_cor_", seed, ".mat"))[[1]]
+  ewa <- as_tibble(ewa)
+}
+
+ewa_cor_raw <- tibble(seed = 1:100) %>% 
+  mutate(ewa = map(seed, ~get_ewa_cor(.x)))
+
+ewa_cor_unnest <- ewa_cor_raw %>% 
+  unnest(cols = c(ewa))
+```
+
+#### Norm
+
+```{r}
+full_cor <- full_join(eh_cor, ewa_cor_raw, by = "seed") %>% 
+    full_join(., sim_cor, by = "seed") %>% 
+    select(-chem) %>% 
+    mutate(new_ewa = map(ewa, ~.x[NA,]))
+
+full_cor[50,]$eh_match[[1]]
+full_cor[50,]$ewa[[1]]
+
+for (j in 1:100) {
+for (i in 1:4) {
+    if (full_cor[j,]$eh_match[[1]][i,1] == 1) {
+      full_cor[j,]$new_ewa[[1]][,i] <- full_cor[j,]$ewa[[1]][,1]
+    } else if (full_cor[j,]$eh_match[[1]][i,1] == 2) {
+      full_cor[j,]$new_ewa[[1]][,i] <- full_cor[j,]$ewa[[1]][,2]
+    } else if (full_cor[j,]$eh_match[[1]][i,1] == 3) {
+      full_cor[j,]$new_ewa[[1]][,i] <- full_cor[j,]$ewa[[1]][,3]
+    } else if (full_cor[j,]$eh_match[[1]][i,1] == 4) {
+      full_cor[j,]$new_ewa[[1]][,i] <- full_cor[j,]$ewa[[1]][,4]
+    } else {}
+}
+}
+
+full_cor[50,]$new_ewa[[1]]
 
 full_cor %>% 
-  #filter(!(seed %in% c(30,85)))
-  mutate(norm = map2(patterns, eh, ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>% 
-  unnest(norm) %>% 
-  pull(norm) %>% summary()
-# this is really good when both are standardized
+  mutate(norm_loadings = map2(patterns, eh, ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>% 
+  unnest(norm_loadings) %>% 
+  pull(norm_loadings) %>% summary()
+
+full_cor %>%
+  mutate(ewa = map(ewa, as.matrix),
+         eh = map(eh, as.matrix)) %>% 
+  mutate(pred = map2(ewa, eh, `%*%`)) %>% 
+  mutate(norm_all = map2(sim, pred, ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>% 
+  unnest(norm_all) %>% 
+  pull(norm_all) %>% summary()
 ```
 
 #### Viz
@@ -487,7 +547,7 @@ eh_cor_unnest %>%
                                 ifelse(MECPP > 0.5, 3,
                                        ifelse(tcs > 0.5, 4, 5))))) %>% 
   filter(seed == 3) %>% 
-  gather(key = Chemicals, value = Loadings, -pattern1, -seed) %>%
+  gather(key = Chemicals, value = Loadings, -pattern1, -pattern, -seed) %>%
   mutate(Chemicals = fct_inorder(Chemicals)) %>% 
   mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
                                                      ifelse(str_detect(Chemicals, "^M"), "Phthalates",
@@ -504,7 +564,7 @@ eh_cor_unnest %>%
                           ifelse(BDE17 > 0.5, 2,
                                 ifelse(MECPP > 0.5, 3,
                                        ifelse(tcs > 0.5, 4, 5))))) %>% 
-  gather(key = Chemicals, value = Loadings, -pattern1, -seed) %>%
+  gather(key = Chemicals, value = Loadings, -pattern1, -pattern, -seed) %>%
   mutate(Chemicals = fct_inorder(Chemicals)) %>% 
   mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
                                                      ifelse(str_detect(Chemicals, "^M"), "Phthalates",
@@ -523,7 +583,7 @@ eh_cor_unnest %>%
                           ifelse(BDE17 > 0.5, 2,
                                 ifelse(MECPP > 0.5, 3,
                                        ifelse(tcs > 0.5, 4, 5))))) %>% 
-  gather(key = Chemicals, value = Loadings, -pattern1, -seed) %>%
+  gather(key = Chemicals, value = Loadings, -pattern1, -pattern, -seed) %>%
   mutate(Chemicals = fct_inorder(Chemicals)) %>% 
   group_by(Chemicals, pattern1) %>% 
   summarise(med = median(Loadings),
@@ -539,23 +599,6 @@ eh_cor_unnest %>%
   theme(axis.text.x = element_blank(),
         legend.position = "bottom",
         strip.background = element_blank())
-```
-
-#### Scores
-
-```{r}
-get_ewa_cor <- function(seed) {
-  ewa <- readMat(paste0("./Sims/Iterate_Out/ewa_cor_", seed, ".mat"))[[1]]
-  ewa <- as_tibble(ewa)
-}
-
-ewa_cor <- tibble(seed = 1:100) %>% 
-  mutate(ewa = map(seed, ~get_ewa_cor(.x)))
-
-ewa_cor_unnest <- ewa_cor %>% 
-  unnest(cols = c(ewa))
-
-ewa_cor_unnest
 ```
 
 ### Overlapping Patterns
@@ -566,19 +609,19 @@ get_eh_over <- function(seed) {
   eh <- as_tibble(eh)
 }
 
-eh_over <- tibble(seed = 1:100) %>% 
+eh_over_raw <- tibble(seed = 1:100) %>% 
   mutate(eh = map(seed, ~get_eh_over(.x)))
 
 for (i in 1:100) {
-  colnames(eh_over$eh[[i]]) <- labels
+  colnames(eh_over_raw$eh[[i]]) <- labels
   
-  eh_over$eh[[i]] <- eh_over$eh[[i]] %>% 
+  eh_over_raw$eh[[i]] <- eh_over_raw$eh[[i]] %>% 
                       mutate(pattern = 1:nrow(.)) %>% 
                       select(pattern, everything())
   }
 
-eh_over_unnest <- eh_over %>% 
-  unnest(cols = c(eh)) %>% select(-pattern)
+eh_over_unnest <- eh_over_raw %>% 
+  unnest(cols = c(eh))
 
 eh_over_unnest %>% 
   mutate(pattern1 = ifelse(pcb146 > 0.5 & pcb28 > bpa, 1,
@@ -586,44 +629,93 @@ eh_over_unnest %>%
                                 ifelse(MECPP > 0.5, 3,
                                        ifelse(tcs > 0.5, 4, 5))))) %>% pull(pattern1) %>% table()
 
-full_over <- eh_over_unnest %>% 
+eh_over <- eh_over_unnest %>% 
   mutate(pattern1 = ifelse(pcb146 > 0.5 & pcb28 > bpa, 1,
                           ifelse(BDE17 > 0.5, 2,
                                 ifelse(MECPP > 0.5, 3,
                                        ifelse(tcs > 0.5, 4, 5))))) %>% 
   select(seed, pattern1, everything()) %>% 
-  arrange(seed, pattern1) %>% 
-  mutate(pattern1 = fct_inorder(as.factor(pattern1))) %>% 
-  select(-pattern1) %>% 
-  nest(eh = pcb28:bpa) %>% 
-  full_join(., patterns_cor_iter, by = "seed") %>% 
-  mutate(patterns = map(patterns, ~div_sd(.x))) %>% # ???
-  mutate(eh = map(eh, ~div_sd(.x)))
+  arrange(seed, pattern) %>% 
+  mutate(pattern1 = fct_inorder(as.factor(pattern1)),
+         pattern1 = as.integer(pattern1)) %>% 
+  nest(eh = pcb28:bpa , eh_match = pattern:pattern1) # %>% 
+  # mutate(patterns = map(patterns, ~div_sd(.x))) %>% # ???
+  # mutate(eh = map(eh, ~div_sd(.x)))
+```
 
-full_over %>% filter(seed == 26)
+### Scores
 
-full_over %>% 
+```{r}
+get_ewa_over <- function(seed) {
+  ewa <- readMat(paste0("./Sims/Iterate_Out/ewa_over_", seed, ".mat"))[[1]]
+  ewa <- as_tibble(ewa)
+}
+
+ewa_over_raw <- tibble(seed = 1:100) %>% 
+  mutate(ewa = map(seed, ~get_ewa_over(.x)))
+
+ewa_over_unnest <- ewa_over_raw %>% 
+  unnest(cols = c(ewa))
+```
+
+#### Norms
+
+```{r}
+full_over <- full_join(eh_over, ewa_cor_raw, by = "seed") %>% 
+    full_join(., sim_over, by = "seed") %>% 
+  select(-chem) %>% 
+    mutate(new_ewa = map(ewa, ~.x[NA,]))
+
+full_over[50,]$eh_match[[1]]
+full_over[50,]$ewa[[1]]
+
+for (j in 1:100) {
+for (i in 1:4) {
+    if (full_over[j,]$eh_match[[1]][i,2] == 1) {
+      full_over[j,]$new_ewa[[1]][,1] <- full_over[j,]$ewa[[1]][,i]
+    } else if (full_over[j,]$eh_match[[1]][i,2] == 2) {
+      full_over[j,]$new_ewa[[1]][,2] <- full_over[j,]$ewa[[1]][,i]
+    } else if (full_over[j,]$eh_match[[1]][i,2] == 3) {
+      full_over[j,]$new_ewa[[1]][,3] <- full_over[j,]$ewa[[1]][,i]
+    } else if (full_over[j,]$eh_match[[1]][i,2] == 4) {
+      full_over[j,]$new_ewa[[1]][,4] <- full_over[j,]$ewa[[1]][,i]
+    } else {}
+}
+}
+
+full_over[50,]$new_ewa[[1]]
+
+# reorder patterns 
+full_over %>% select(seed, eh_match, eh, patterns) %>% 
   filter(!(seed %in% c(26, 64))) %>% # Two seeds with 5 patterns
-  mutate(norm = map2(patterns, eh, ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>% 
-  unnest(norm) %>% 
-  pull(norm) %>% summary()
+  mutate(norm_loadings = map2(patterns, eh, ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>% 
+  unnest(norm_loadings) %>% 
+  pull(norm_loadings) %>% summary()
+
+full_over %>%
+  filter(seed %in% c(26, 64))
+  
+full_over %>%
+  filter(!(seed %in% c(26, 64))) %>% # Two seeds with 5 patterns
+  mutate(ewa = map(ewa, as.matrix),
+         eh = map(eh, as.matrix)) %>% 
+  mutate(pred = map2(ewa, eh, `%*%`),
+         pred = map(pred, ~.x/sd(.x))) %>% 
+  mutate(norm_all = map2(sim, pred, ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>% 
+  unnest(norm_all) %>% 
+  pull(norm_all) %>% summary()
 ```
 
 #### Viz
 
 ```{r}
-norm(as.matrix(full_over[1,]$patterns[[1]]) - as.matrix(full_over[1,]$eh[[1]]), type = "F")/norm(as.matrix(full_over[1,]$patterns[[1]]), type = "F")
-
-full_over[1,]$patterns[[1]]
-full_over[1,]$eh[[1]]
-
 eh_over_unnest %>%  
   filter(seed == 1) %>% 
   mutate(pattern1 = ifelse(pcb146 > 0.5 & pcb28 > bpa, 1,
                           ifelse(BDE17 > 0.5, 2,
                                 ifelse(MECPP > 0.5, 3,
                                        ifelse(tcs > 0.5, 4, 5))))) %>% 
-  gather(key = Chemicals, value = Loadings, -pattern1, -seed) %>%
+  gather(key = Chemicals, value = Loadings, -pattern1, -pattern, -seed) %>%
   mutate(Chemicals = fct_inorder(Chemicals)) %>% 
   mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
                                                      ifelse(str_detect(Chemicals, "^M"), "Phthalates",
@@ -640,7 +732,7 @@ eh_over_unnest %>%
                           ifelse(BDE17 > 0.5, 2,
                                 ifelse(MECPP > 0.5, 3,
                                        ifelse(tcs > 0.5, 4, 5))))) %>% 
-  gather(key = Chemicals, value = Loadings, -pattern1, -seed) %>%
+  gather(key = Chemicals, value = Loadings, -pattern1, -pattern, -seed) %>%
   mutate(Chemicals = fct_inorder(Chemicals)) %>% 
   mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
                                                      ifelse(str_detect(Chemicals, "^M"), "Phthalates",
@@ -659,7 +751,7 @@ eh_over_unnest %>%
                           ifelse(BDE17 > 0.5, 2,
                                 ifelse(MECPP > 0.5, 3,
                                        ifelse(tcs > 0.5, 4, 5))))) %>% 
-  gather(key = Chemicals, value = Loadings, -pattern1, -seed) %>%
+  gather(key = Chemicals, value = Loadings, -pattern1, -pattern, -seed) %>%
   mutate(Chemicals = fct_inorder(Chemicals)) %>% 
   group_by(Chemicals, pattern1) %>% 
   summarise(med = median(Loadings),
@@ -677,19 +769,3 @@ eh_over_unnest %>%
         strip.background = element_blank())
 ```
 
-### Scores
-
-```{r}
-get_ewa_over <- function(seed) {
-  ewa <- readMat(paste0("./Sims/Iterate_Out/ewa_over_", seed, ".mat"))[[1]]
-  ewa <- as_tibble(ewa)
-}
-
-ewa_over <- tibble(seed = 1:100) %>% 
-  mutate(ewa = map(seed, ~get_ewa(.x)))
-
-ewa_over_unnest <- ewa_over %>% 
-  unnest(cols = c(ewa))
-
-ewa_over_unnest
-```
