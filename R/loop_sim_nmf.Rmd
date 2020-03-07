@@ -20,7 +20,7 @@ library(tidyverse)
 library(R.matlab)
 ```
 
-## Load Sims
+# Load Sims
 
 ```{r}
 load(here::here("./Sims/Iterate/sim_dist.RDA"))
@@ -39,9 +39,9 @@ labels <-  c("pcb28", "pcb66", "pcb74", "pcb99", "pcb105", "pcb118", "pcb138_158
           "p_pb", "tcs", "bpa")
 ```
 
-## GNMF Results
+# GNMF Results
 
-### 1. Distinct Patterns
+## 1. Distinct Patterns
 
 ```{r}
 get_eh_dist <- function(seed) {
@@ -71,7 +71,7 @@ eh_dist_unnest %>%
                                        ifelse(tcs > 0.5, 4, 5))))) %>% pull(pattern1) %>% table()
 ```
 
-#### Scores
+### Scores
 
 ```{r}
 get_ewa_dist <- function(seed) {
@@ -86,13 +86,74 @@ ewa_dist_unnest <- ewa_dist %>%
   unnest(cols = c(ewa))
 ```
 
-#### Norms
+#### Match Scores
 
 ```{r}
 full_dist <- full_join(eh_dist, ewa_dist, by = "seed") %>% 
     full_join(., sim_dist, by = "seed") %>% 
   select(-chem)
 
+match_patterns <- function (eh_unnested) {
+  eh_reordered <- eh_unnested %>% 
+  mutate(pattern1 = ifelse(pcb146 > 0.5 & pcb28 > bpa, 1,
+                          ifelse(BDE17 > 0.5, 2,
+                                ifelse(MECPP > 0.5, 3,
+                                       ifelse(tcs > 0.5, 4, 5))))) %>% # Switch patterns later to compare EH to loadings
+  select(pattern1, everything())
+  eh_reordered
+}
+
+match_scores <- function (patterns, scores) {
+  for (j in 1:nrow(patterns)) {
+    for (i in 1:ncol(scores)) {
+      if (patterns[j,2] == j && scores[1,j] == j && patterns[j,1] == i) {
+        scores[1002,j] = i 
+      }
+    }
+  } 
+  scores <- scores[c(1, 1002, 2:1001),]
+  scores
+}
+
+scores_matched <- full_dist %>% 
+  mutate(eh = map(eh, ~cbind(pattern = 1:nrow(.x), .x)),
+         ewa = map(ewa, ~rbind(pattern = 1:ncol(.x), .x)),
+         eh_reordered = map(eh, ~match_patterns(eh_unnested = .x)),
+         ewa_reordered = ewa,
+         ewa_reordered = map2(eh_reordered, ewa_reordered, ~match_scores(patterns = .x, scores = .y)))
+```
+
+#### Arrange Scores
+
+```{r}
+reorder_patterns <- function (eh_unnested) {
+  eh_reordered <- eh_unnested %>% 
+  arrange(pattern1) %>%
+  mutate(pattern1 = fct_inorder(as.factor(pattern1)),
+         pattern1 = as.integer(pattern1)) %>% 
+    select(-pattern1, -pattern)
+  eh_reordered
+}
+
+reorder_scores <- function (ewa_unnested) {
+  ewa_reordered <- scores_matched$ewa_reordered[[2]] %>% 
+    t(.) %>% as_tibble(.) %>% 
+  arrange(V2) %>%
+  mutate(V2 = fct_inorder(as.factor(V2)),
+         V2 = as.integer(V2)) %>% 
+    t(.) %>% as_tibble(.) %>% 
+    slice(3:1002)
+  ewa_reordered
+}
+
+scores_ordered <- scores_matched %>% 
+  mutate(eh_reordered = map(eh_reordered, ~reorder_patterns(.x)),
+         ewa_reordered = map(ewa_reordered, ~reorder_scores(.x)))
+```
+
+### Norms
+
+```{r}
 # All
 full_dist %>%
   filter(!(seed %in% c(19, 21, 39))) %>% 
@@ -103,70 +164,33 @@ full_dist %>%
   unnest(norm_all) %>% 
   pull(norm_all) %>% summary()
 
-eh_dist_reorder <- eh_dist_unnest %>% 
-  mutate(pattern1 = ifelse(pcb146 > 0.5 & pcb28 > bpa, 1,
-                          ifelse(BDE17 > 0.5, 2,
-                                ifelse(MECPP > 0.5, 3,
-                                       ifelse(tcs > 0.5, 4, 5))))) %>%
-  select(seed, pattern1, everything()) %>%
-  arrange(seed, pattern1) %>%
-  mutate(pattern1 = fct_inorder(as.factor(pattern1)),
-         pattern1 = as.integer(pattern1))
+# eh_dist_reorder <- eh_dist_unnest %>% 
+#   mutate(pattern1 = ifelse(pcb146 > 0.5 & pcb28 > bpa, 1,
+#                           ifelse(BDE17 > 0.5, 2,
+#                                 ifelse(MECPP > 0.5, 3,
+#                                        ifelse(tcs > 0.5, 4, 5))))) %>%
+#   select(seed, pattern1, everything()) %>%
+#   arrange(seed, pattern1) %>%
+#   mutate(pattern1 = fct_inorder(as.factor(pattern1)),
+#          pattern1 = as.integer(pattern1))
   
 # Loadings (ordered, not standardized)
-eh_dist_reorder %>% 
-  nest(eh = pcb28:bpa, eh_match = pattern1) %>% 
-  left_join(., sim_dist, by = "seed") %>% 
+scores_ordered %>% 
   filter(!(seed %in% c(19, 21, 39))) %>% 
-  mutate(norm_loadings = map2(patterns, eh, ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>% 
+  mutate(norm_loadings = map2(patterns, eh_reordered, 
+                              ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>% 
   unnest(norm_loadings) %>% 
   pull(norm_loadings) %>% summary()
 ```
 
-#### Arrange Scores
-
 ```{r}
-to_order <- full_join(eh_dist, ewa_dist, by = "seed")
-to_order$eh[[1]]
-
-reorder_patterns <- function (eh_unnested) {
-  eh_reordered <- eh_unnested %>% 
-  mutate(pattern1 = ifelse(pcb146 > 0.5 & pcb28 > bpa, 1,
-                          ifelse(BDE17 > 0.5, 2,
-                                ifelse(MECPP > 0.5, 3,
-                                       ifelse(tcs > 0.5, 4, 5))))) %>% # Switch patterns later to compare EH to loadings
-  select(pattern1, everything()) #%>%
-  # arrange(pattern1) %>%
-  # mutate(pattern1 = fct_inorder(as.factor(pattern1)),
-  #        pattern1 = as.integer(pattern1))
-  eh_reordered
-}
-
-order_patterns <- to_order %>% 
-  mutate(eh = map(eh, ~cbind(pattern = 1:nrow(.x), .x)),
-         ewa = map(ewa, ~rbind(pattern = 1:ncol(.x), .x)),
-         eh_reordered = map(eh, ~reorder_patterns(eh_unnested = .x)),
-         ewa_reordered = ewa)
-
-reorder_scores <- function (old, new, patterns, scores) {}
-
-
-pat <- order_patterns$eh_reordered[[54]]
-sco <- order_patterns$ewa[[54]]
-new_sco <- order_patterns$ewa_reordered[[54]]
-  
-for (j in 1:nrow(pat)) {
-    for (i in 1:ncol(sco)) {
-      if (pat[j,2] == j && sco[1,j] == j && pat[j,1] == i) {
-        new_sco[1002,j] = i 
-        #new_sco <- new_sco %>% (V1, 1002, everything())
-      }
-    }
-} 
-
-new_sco[c(1,1002),]
-pat[,1:2]
-
+# Scores (ordered, not standardized)
+scores_ordered %>% 
+  filter(!(seed %in% c(19, 21, 39))) %>% 
+  mutate(norm_scores = map2(scores, ewa_reordered, 
+                              ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>% 
+  unnest(norm_scores) %>% 
+  pull(norm_scores) %>% summary()
 ```
 
 #### Viz
@@ -196,26 +220,6 @@ eh_dist_reorder %>%
   geom_boxplot(aes(x = Group, color = Group), width = .45, outlier.shape = NA) +
   facet_wrap(.~pattern1) + theme_bw() +
   theme(legend.position = "none",
-        strip.background = element_blank())
-```
-
-```{r}
-eh_dist_reorder %>% 
-  gather(key = Chemicals, value = Loadings, -pattern1, -seed) %>%
-  mutate(Chemicals = fct_inorder(Chemicals)) %>% 
-  group_by(Chemicals, pattern1) %>% 
-  summarise(med = median(Loadings),
-            upper = quantile(Loadings, 0.75),
-            lower = quantile(Loadings, 0.25)) %>% 
-  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
-                                                     ifelse(str_detect(Chemicals, "^M"), "Phthalates",
-                                                            ifelse(str_detect(Chemicals, "pcb"), "PCBs",
-                                                                   "Phenols")))) %>% 
-  ggplot(aes(x = Chemicals, y = med)) + 
-  geom_pointrange(aes(color = Group, min = lower, max = upper), alpha = 0.75, size = 0.25) +
-  facet_wrap(.~pattern1) + theme_bw() +
-  theme(axis.text.x = element_blank(),
-        legend.position = "bottom",
         strip.background = element_blank())
 ```
 
