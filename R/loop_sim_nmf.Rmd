@@ -107,7 +107,7 @@ eh_dist_reorder <- eh_dist_unnest %>%
   mutate(pattern1 = ifelse(pcb146 > 0.5 & pcb28 > bpa, 1,
                           ifelse(BDE17 > 0.5, 2,
                                 ifelse(MECPP > 0.5, 3,
-                                       ifelse(tcs > 0.5, 4, 5))))) %>% # Switch patterns later to compare EH to loadings
+                                       ifelse(tcs > 0.5, 4, 5))))) %>%
   select(seed, pattern1, everything()) %>%
   arrange(seed, pattern1) %>%
   mutate(pattern1 = fct_inorder(as.factor(pattern1)),
@@ -135,26 +135,38 @@ reorder_patterns <- function (eh_unnested) {
                           ifelse(BDE17 > 0.5, 2,
                                 ifelse(MECPP > 0.5, 3,
                                        ifelse(tcs > 0.5, 4, 5))))) %>% # Switch patterns later to compare EH to loadings
-  select(pattern1, everything()) %>%
-  arrange(pattern1) %>%
-  mutate(pattern1 = fct_inorder(as.factor(pattern1)),
-         pattern1 = as.integer(pattern1))
+  select(pattern1, everything()) #%>%
+  # arrange(pattern1) %>%
+  # mutate(pattern1 = fct_inorder(as.factor(pattern1)),
+  #        pattern1 = as.integer(pattern1))
   eh_reordered
 }
 
-ordered_patterns <- to_order %>% 
+order_patterns <- to_order %>% 
   mutate(eh = map(eh, ~cbind(pattern = 1:nrow(.x), .x)),
          ewa = map(ewa, ~rbind(pattern = 1:ncol(.x), .x)),
-         eh_reordered = map(eh, ~reorder_patterns(eh_unnested = .x)))
+         eh_reordered = map(eh, ~reorder_patterns(eh_unnested = .x)),
+         ewa_reordered = ewa)
 
-reorder_scores <- function (old, new, patterns, scores) {
-  for (j in 1:length(old)) {
-    for (i in 1:length(new)) {
-      
-      
+reorder_scores <- function (old, new, patterns, scores) {}
+
+
+pat <- order_patterns$eh_reordered[[54]]
+sco <- order_patterns$ewa[[54]]
+new_sco <- order_patterns$ewa_reordered[[54]]
+  
+for (j in 1:nrow(pat)) {
+    for (i in 1:ncol(sco)) {
+      if (pat[j,2] == j && sco[1,j] == j && pat[j,1] == i) {
+        new_sco[1002,j] = i 
+        #new_sco <- new_sco %>% (V1, 1002, everything())
+      }
     }
-  }  
-}
+} 
+
+new_sco[c(1,1002),]
+pat[,1:2]
+
 ```
 
 #### Viz
