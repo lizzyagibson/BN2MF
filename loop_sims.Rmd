@@ -62,38 +62,38 @@ create_scores_dist <- function (seed) {
 }
 
 scores_dist_iter <- tibble(seed = 1:100) %>% 
- mutate(scores = map(seed, ~create_scores_dist(seed = .x)))
+ mutate(scores0 = map(seed, ~create_scores_dist(seed = .x)))
 ```
+
+### Simulate Noise
+
+```{r}
+add_noise_score <- function (seed, score) {
+  noise <- list(mean=0, sd=1)
+  set.seed(seed)
+  score_noise <- pmax(score + rmatrix(1000, 4, dist=rnorm, mean=noise$mean, sd=noise$sd), 0)	
+  score_noise
+}
+
+scores_dist_noise <- scores_dist_iter %>% 
+ mutate(scores = map2(seed, scores0, ~add_noise_score(seed = .x, score = .y)))
+```  
 
 ### Simulate Chemical Exposures
 
 Multiple scores and vectors, and add to get the mixture.
 
 ```{r}
-sim_dist0 <- full_join(scores_dist_iter, patterns_dist_iter, by = "seed")
+sim_dist <- full_join(scores_dist_noise, patterns_dist_iter, by = "seed")
 
-sim_dist0 <- sim_dist0 %>% 
-  mutate(chem = map2(scores, patterns, `%*%`))
+sim_dist <- sim_dist %>% 
+  mutate(sim = map2(scores, patterns, `%*%`))
 ```
-
-### Simulate Noise
-
-```{r}
-add_noise <- function (seed, chem) {
-  noise <- list(mean=0, sd=1)
-  set.seed(seed)
-  chem_dist <- pmax(chem + rmatrix(1000, 50, dist=rnorm, mean=noise$mean, sd=noise$sd), 0)	
-  chem_dist
-}
-
-sim_dist <- sim_dist0 %>% 
- mutate(sim = map2(seed, chem, ~add_noise(seed = .x, chem = .y)))
-```  
 
 ### Save
 
 ```{r}
-save(sim_dist, file = "./Sims/Iterate/sim_dist.RDA")
+#save(sim_dist, file = "./Sims/Iterate/sim_dist.RDA")
 ```
 
 ## 2: Correlated Patterns
@@ -133,31 +133,31 @@ create_scores_cor <- function (seed) {
   }
 
 scores_cor_iter <- tibble(seed = 1:100) %>% 
- mutate(scores = map(seed, ~create_scores_cor(seed = .x)))
+ mutate(scores0 = map(seed, ~create_scores_cor(seed = .x)))
 ```
+
+### Simulate Noise
+
+```{r}
+scores_cor_noise <- scores_cor_iter %>% 
+ mutate(scores = map2(seed, scores0, ~add_noise_score(seed = .x, score = .y)))
+```  
 
 ### Simulate Chemical Exposures
 
 Multiple scores and vectors, and add to get the mixture.
 
 ```{r}
-sim_cor0 <- full_join(scores_cor_iter, patterns_cor_iter, by = "seed")
+sim_cor <- full_join(scores_cor_noise, patterns_cor_iter, by = "seed")
 
-sim_cor0 <- sim_cor0 %>% 
-  mutate(chem = map2(scores, patterns, `%*%`))
+sim_cor <- sim_cor %>% 
+  mutate(sim = map2(scores, patterns, `%*%`))
 ```
-
-### Simulate Noise
-
-```{r}
-sim_cor <- sim_cor0 %>% 
- mutate(sim = map2(seed, chem, ~add_noise(seed = .x, chem = .y)))
-```  
 
 ### Save
 
 ```{r}
-save(sim_cor, file = "./Sims/Iterate/sim_cor.RDA")
+#save(sim_cor, file = "./Sims/Iterate/sim_cor.RDA")
 ```
 
 ## 3: Overlapping Patterns
@@ -175,21 +175,14 @@ Use distinct scores.
 Multiple scores and vectors, and add to get the mixture.
 
 ```{r}
-sim_over0 <- full_join(scores_dist_iter, patterns_cor_iter, by = "seed")
+sim_over <- full_join(scores_dist_noise, patterns_cor_iter, by = "seed")
 
-sim_over0 <- sim_over0 %>% 
-  mutate(chem = map2(scores, patterns, `%*%`))
+sim_over <- sim_over %>% 
+  mutate(sim = map2(scores, patterns, `%*%`))
 ```
-
-### Simulate Noise
-
-```{r}
-sim_over <- sim_over0 %>% 
- mutate(sim = map2(seed, chem, ~add_noise(seed = .x, chem = .y)))
-```  
 
 ### Save
 
 ```{r}
-save(sim_over, file = "./Sims/Iterate/sim_over.RDA")
+#save(sim_over, file = "./Sims/Iterate/sim_over.RDA")
 ```

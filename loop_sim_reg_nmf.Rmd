@@ -53,13 +53,31 @@ nmf_out_dist <- sim_dist %>%
 nmf_coef_dist <- nmf_out_dist %>% select(seed, coef) %>% unnest(cols = c(coef))
 ```
 
-#### Norm
+#### Norms
 
 ```{r}
+#All
 nmf_out_dist %>%
   mutate(norm_all = map2(sim, pred, ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>% 
   unnest(norm_all) %>% 
   pull(norm_all) %>% summary()
+
+#Coefs
+nmf_coef_dist %>%
+  mutate(pattern1 = as.factor(ifelse(pcb146 > 0.01 & pcb118 > bpa, 1,
+                          ifelse(BDE17 > 0.02, 2,
+                                ifelse(MECPP > 0.02, 3,
+                                       ifelse(tcs > 0.02, 4, 5)))))) %>%
+  select(seed, pattern1, everything()) %>% arrange(seed, pattern1) %>% 
+  mutate(pattern1 = fct_inorder(pattern1)) %>% 
+  select(-pattern1) %>% 
+  nest(reorder_coef = pcb28:bpa) %>% 
+  left_join(., nmf_out_dist, by = "seed") %>% 
+  select(seed, patterns, reorder_coef) %>% 
+  mutate(norm_coefs = map2(patterns, reorder_coef, ~norm(as.matrix(.x) - as.matrix(.y), "F") / 
+                                norm(as.matrix(.x), "F"))) %>% 
+  unnest(norm_coefs) %>% 
+  pull(norm_coefs) %>% summary()
 ```
 
 #### Viz
@@ -69,14 +87,18 @@ nmf_coef_dist %>%
   filter(seed == 3) %>%
   mutate(pattern = 1:4) %>% 
   select(seed, pattern, everything()) %>% 
-  gather(key = Chemicals, value = Loadings, -pattern, -seed) %>%
+    mutate(pattern1 = ifelse(pcb146 > 0.01 & pcb118 > bpa, 1,
+                          ifelse(BDE17 > 0.02, 2,
+                                ifelse(MECPP > 0.02, 3,
+                                       ifelse(tcs > 0.02, 4, 5))))) %>%
+  gather(key = Chemicals, value = Loadings, -pattern,-pattern1, -seed) %>%
   mutate(Chemicals = fct_inorder(Chemicals)) %>% 
   mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
                                                      ifelse(str_detect(Chemicals, "^M"), "Phthalates",
                                                             ifelse(str_detect(Chemicals, "pcb"), "PCBs",
                                                                    "Phenols")))) %>% 
   ggplot(aes(x = Chemicals, y = Loadings)) + geom_col(aes(fill = Group)) +
-  facet_wrap(.~pattern) + theme_bw() +
+  facet_wrap(.~pattern1) + theme_bw() +
   theme(axis.text.x = element_blank(),
         legend.position = "bottom",
         strip.background = element_blank())
@@ -84,7 +106,7 @@ nmf_coef_dist %>%
 nmf_coef_dist %>%  
   mutate(pattern = rep(1:4, 100)) %>% 
   select(seed, pattern, everything()) %>% 
-  mutate(pattern1 = ifelse(pcb146 > 0.02 & pcb118 > bpa, 1,
+  mutate(pattern1 = ifelse(pcb146 > 0.01 & pcb118 > bpa, 1,
                           ifelse(BDE17 > 0.02, 2,
                                 ifelse(MECPP > 0.02, 3,
                                        ifelse(tcs > 0.02, 4, 5))))) %>%
@@ -105,7 +127,7 @@ nmf_coef_dist %>%
 nmf_coef_dist %>%  
   mutate(pattern = rep(1:4, 100)) %>% 
   select(seed, pattern, everything()) %>% 
-  mutate(pattern1 = ifelse(pcb146 > 0.02 & pcb118 > bpa, 1,
+  mutate(pattern1 = ifelse(pcb146 > 0.01 & pcb118 > bpa, 1,
                           ifelse(BDE17 > 0.02, 2,
                                 ifelse(MECPP > 0.02, 3,
                                        ifelse(tcs > 0.02, 4, 5))))) %>%
@@ -140,10 +162,28 @@ nmf_coef_over <- nmf_out_over %>% select(seed, coef) %>% unnest(cols = c(coef))
 #### Norm
 
 ```{r}
+#All
 nmf_out_over %>%
   mutate(norm_all = map2(sim, pred, ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>% 
   unnest(norm_all) %>% 
   pull(norm_all) %>% summary()
+
+#Coefs
+nmf_coef_over %>%
+  mutate(pattern1 = as.factor(ifelse(pcb146 > 0.01 & pcb118 > bpa, 1,
+                          ifelse(BDE17 > 0.02, 2,
+                                ifelse(MECPP > 0.02, 3,
+                                       ifelse(tcs > 0.02, 4, 5)))))) %>%
+  select(seed, pattern1, everything()) %>% arrange(seed, pattern1) %>% 
+  mutate(pattern1 = fct_inorder(pattern1)) %>% 
+  select(-pattern1) %>% 
+  nest(reorder_coef = pcb28:bpa) %>% 
+  left_join(., nmf_out_dist, by = "seed") %>% 
+  select(seed, patterns, reorder_coef) %>% 
+  mutate(norm_coefs = map2(patterns, reorder_coef, ~norm(as.matrix(.x) - as.matrix(.y), "F") / 
+                                norm(as.matrix(.x), "F"))) %>% 
+  unnest(norm_coefs) %>% 
+  pull(norm_coefs) %>% summary()
 ```
 
 #### Viz
@@ -224,10 +264,28 @@ nmf_coef_cor <- nmf_out_cor %>% select(seed, coef) %>% unnest(cols = c(coef))
 #### Norm
 
 ```{r}
+# All
 nmf_out_cor %>%
   mutate(norm_all = map2(sim, pred, ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>% 
   unnest(norm_all) %>% 
   pull(norm_all) %>% summary()
+
+# Coefs
+nmf_coef_cor %>%
+  mutate(pattern1 = as.factor(ifelse(pcb146 > 0.01 & pcb118 > bpa, 1,
+                          ifelse(BDE17 > 0.02, 2,
+                                ifelse(MECPP > 0.02, 3,
+                                       ifelse(tcs > 0.02, 4, 5)))))) %>%
+  select(seed, pattern1, everything()) %>% arrange(seed, pattern1) %>% 
+  mutate(pattern1 = fct_inorder(pattern1)) %>% 
+  select(-pattern1) %>% 
+  nest(reorder_coef = pcb28:bpa) %>% 
+  left_join(., nmf_out_dist, by = "seed") %>% 
+  select(seed, patterns, reorder_coef) %>% 
+  mutate(norm_coefs = map2(patterns, reorder_coef, ~norm(as.matrix(.x) - as.matrix(.y), "F") / 
+                                norm(as.matrix(.x), "F"))) %>% 
+  unnest(norm_coefs) %>% 
+  pull(norm_coefs) %>% summary()
 ```
 
 #### Viz
@@ -294,3 +352,47 @@ nmf_coef_cor %>%
         legend.position = "bottom",
         strip.background = element_blank()) + labs(y = "Median Loadings")
 ```
+
+## Standardize
+
+```{r}
+apply(apply(sim_over$sim[[1]], 2, function(x) x/sd(x)), 2, sd)
+
+standardize <- function (any_matrix) {
+  apply(any_matrix, 2, function(x) x/sd(x))
+  }
+  
+dist_norm <- nmf_out_dist %>% 
+  mutate(sd_patterns = map(patterns, ~standardize(.x)),
+         sd_coef = map(coef, ~standardize(.x))) %>% 
+  mutate(norm_coef = map2(sd_patterns, sd_coef, 
+                              ~norm(as.matrix(.x) - as.matrix(.y), "F") / 
+                                norm(as.matrix(.x), "F"))) %>% 
+  unnest(norm_coef) %>% 
+  pull(norm_coef) %>% summary()
+
+over_norm <- nmf_out_over %>% 
+  mutate(sd_patterns = map(patterns, ~standardize(.x)),
+         sd_coef = map(coef, ~standardize(.x))) %>% 
+  mutate(norm_coef = map2(sd_patterns, sd_coef, 
+                              ~norm(as.matrix(.x) - as.matrix(.y), "F") / 
+                                norm(as.matrix(.x), "F"))) %>% 
+  unnest(norm_coef) %>% 
+  pull(norm_coef) %>% summary()
+  
+cor_norm <- nmf_out_cor %>% 
+  mutate(sd_patterns = map(patterns, ~standardize(.x)),
+         sd_coef = map(coef, ~standardize(.x))) %>% 
+  mutate(norm_coef = map2(sd_patterns, sd_coef, 
+                              ~norm(as.matrix(.x) - as.matrix(.y), "F") / 
+                                norm(as.matrix(.x), "F"))) %>% 
+  unnest(norm_coef) %>% 
+  pull(norm_coef)
+
+summary(over_norm)
+summary(cor_norm)
+summary(dist_norm)
+(sum(cor_norm) + sum(dist_norm) + sum(over_norm)) / 300
+```
+
+

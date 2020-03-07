@@ -40,9 +40,7 @@ sim_over
 
 ```{r}
 get_loadings <- function (sim) {
-  loadings <- matrix(factanal(sim, 4, rotation="promax")$loadings, ncol = 4)
-  colnames(loadings) <- c("f1", "f2", "f3", "f4")
-  loadings
+  matrix(factanal(sim, 4, rotation="promax")$loadings, ncol = 4)
 }
 
 get_pred <- function (sim) {
@@ -54,14 +52,12 @@ fa_out_dist <- sim_dist %>%
   mutate(loadings = map(sim, ~get_loadings(.x)),
          pred = map(sim, ~get_pred(.x)))
 
-fa_out_dist$loadings[[1]]
-
 fa_loadings_dist <- fa_out_dist %>% select(seed, loadings) %>% 
   mutate(F1 = map(loadings, ~.[,1]),
          F2 = map(loadings, ~.[,2]),
          F3 = map(loadings, ~.[,3]),
          F4 = map(loadings, ~.[,4])) %>% 
-  unnest(F1:F4)
+  unnest(F1:F4) %>% select(-loadings)
 
 labels <-  c("pcb28", "pcb66", "pcb74", "pcb99", "pcb105", "pcb118", "pcb138_158", "pcb146", "pcb153", "pcb156", "pcb167",
           "pcb170", "pcb178", "pcb183", "pcb187", "pcb180", "pcb189", "pcb194", "pcb196_203", "pcb199", "pcb206", "pcb209",
@@ -70,13 +66,22 @@ labels <-  c("pcb28", "pcb66", "pcb74", "pcb99", "pcb105", "pcb118", "pcb138_158
           "p_pb", "tcs", "bpa")
 ```
 
-#### Norm
+#### Norms
 
 ```{r}
+#All
 fa_out_dist %>%
   mutate(norm_all = map2(sim, pred, ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>% 
   unnest(norm_all) %>% 
   pull(norm_all) %>% summary()
+
+#Loadings (ordered, not scaled)
+fa_out_dist %>%
+  select(seed, patterns, loadings) %>% 
+  mutate(norm_loadings = map2(patterns, loadings, ~norm(as.matrix(.x) - as.matrix(t(.y)), "F") / 
+                                norm(as.matrix(.x), "F"))) %>% 
+  unnest(norm_loadings) %>% 
+  pull(norm_loadings) %>% summary()
 ```
 
 #### Viz
@@ -151,13 +156,22 @@ fa_loadings_over <- fa_out_over %>% select(seed, loadings) %>%
   unnest(F1:F4)
 ```
 
-#### Norm
+#### Norms
 
 ```{r}
+# All
 fa_out_over %>%
   mutate(norm_all = map2(sim, pred, ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>% 
   unnest(norm_all) %>% 
   pull(norm_all) %>% summary()
+
+#Loadings (ordered, not scaled)
+fa_out_over %>%
+  select(seed, patterns, loadings) %>% 
+  mutate(norm_loadings = map2(patterns, loadings, ~norm(as.matrix(.x) - as.matrix(t(.y)), "F") / 
+                                norm(as.matrix(.x), "F"))) %>% 
+  unnest(norm_loadings) %>% 
+  pull(norm_loadings) %>% summary()
 ```
 
 #### Viz
@@ -217,7 +231,7 @@ fa_loadings_over %>%
         strip.background = element_blank())
 ```
 
-### Correlated  Scores
+### Correlated Scores
 
 ```{r}
 fa_out_cor <- sim_cor %>% 
@@ -232,13 +246,22 @@ fa_loadings_cor <- fa_out_cor %>% select(seed, loadings) %>%
   unnest(F1:F4)
 ```
 
-#### Norm
+#### Norms
 
 ```{r}
+# All
 fa_out_cor %>%
   mutate(norm_all = map2(sim, pred, ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>% 
   unnest(norm_all) %>% 
   pull(norm_all) %>% summary()
+
+#Loadings (ordered, not scaled)
+fa_out_cor %>%
+  select(seed, patterns, loadings) %>% 
+  mutate(norm_loadings = map2(patterns, loadings, ~norm(as.matrix(.x) - as.matrix(t(.y)), "F") / 
+                                norm(as.matrix(.x), "F"))) %>% 
+  unnest(norm_loadings) %>% 
+  pull(norm_loadings) %>% summary()
 ```
 
 #### Viz
@@ -297,3 +320,45 @@ fa_loadings_cor %>%
         legend.position = "bottom",
         strip.background = element_blank())
 ```
+
+## Standardize
+
+```{r}
+standardize <- function (any_matrix) {
+  apply(any_matrix, 2, function(x) x/sd(x))
+  }
+  
+dist_norm <- fa_out_dist %>% 
+  mutate(sd_patterns = map(patterns, ~standardize(.x)),
+         sd_loadings = map(loadings, ~standardize(t(.x)))) %>% 
+  mutate(norm_loadings = map2(sd_patterns, sd_loadings, 
+                              ~norm(as.matrix(.x) - as.matrix(.y), "F") / 
+                                norm(as.matrix(.x), "F"))) %>% 
+  unnest(norm_loadings) %>% 
+  pull(norm_loadings)
+
+over_norm <- fa_out_over %>% 
+  mutate(sd_patterns = map(patterns, ~standardize(.x)),
+         sd_loadings = map(loadings, ~standardize(t(.x)))) %>% 
+  mutate(norm_loadings = map2(sd_patterns, sd_loadings, 
+                              ~norm(as.matrix(.x) - as.matrix(.y), "F") / 
+                                norm(as.matrix(.x), "F"))) %>% 
+  unnest(norm_loadings) %>% 
+  pull(norm_loadings)
+  
+cor_norm <- fa_out_cor %>% 
+  mutate(sd_patterns = map(patterns, ~standardize(.x)),
+         sd_loadings = map(loadings, ~standardize(t(.x)))) %>% 
+  mutate(norm_loadings = map2(sd_patterns, sd_loadings, 
+                              ~norm(as.matrix(.x) - as.matrix(.y), "F") / 
+                                norm(as.matrix(.x), "F"))) %>% 
+  unnest(norm_loadings) %>% 
+  pull(norm_loadings) 
+
+summary(over_norm)
+summary(cor_norm)
+summary(dist_norm)
+(sum(cor_norm) + sum(dist_norm) + sum(over_norm))/300
+```
+
+
