@@ -123,6 +123,40 @@ eh_dist_reorder %>%
   pull(norm_loadings) %>% summary()
 ```
 
+#### Arrange Scores
+
+```{r}
+to_order <- full_join(eh_dist, ewa_dist, by = "seed")
+to_order$eh[[1]]
+
+reorder_patterns <- function (eh_unnested) {
+  eh_reordered <- eh_unnested %>% 
+  mutate(pattern1 = ifelse(pcb146 > 0.5 & pcb28 > bpa, 1,
+                          ifelse(BDE17 > 0.5, 2,
+                                ifelse(MECPP > 0.5, 3,
+                                       ifelse(tcs > 0.5, 4, 5))))) %>% # Switch patterns later to compare EH to loadings
+  select(pattern1, everything()) %>%
+  arrange(pattern1) %>%
+  mutate(pattern1 = fct_inorder(as.factor(pattern1)),
+         pattern1 = as.integer(pattern1))
+  eh_reordered
+}
+
+ordered_patterns <- to_order %>% 
+  mutate(eh = map(eh, ~cbind(pattern = 1:nrow(.x), .x)),
+         ewa = map(ewa, ~rbind(pattern = 1:ncol(.x), .x)),
+         eh_reordered = map(eh, ~reorder_patterns(eh_unnested = .x)))
+
+reorder_scores <- function (old, new, patterns, scores) {
+  for (j in 1:length(old)) {
+    for (i in 1:length(new)) {
+      
+      
+    }
+  }  
+}
+```
+
 #### Viz
 
 ```{r}

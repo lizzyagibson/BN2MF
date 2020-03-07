@@ -23,13 +23,13 @@ library(R.matlab)
 ## Load Sims
 
 ```{r}
-load("./Sims/Iterate/sim_dist.RDA")
+load(here::here("./Sims/Iterate/sim_dist.RDA"))
 sim_dist
 
-load("./Sims/Iterate/sim_cor.RDA")
+load(here::here("./Sims/Iterate/sim_cor.RDA"))
 sim_cor
 
-load("./Sims/Iterate/sim_over.RDA")
+load(here::here("./Sims/Iterate/sim_over.RDA"))
 sim_over
 ```
 
@@ -46,7 +46,7 @@ get_pred <- function (sim) {
   basis(nmf(sim, rank = 4)) %*% coef(nmf(sim, rank = 4))
 }
 
-nmf_out_dist <- sim_dist %>% 
+nmf_out_dist <- sim_dist %>% filter(seed == 5) %>% 
   mutate(coef = map(sim, ~get_coef(.x)),
          pred = map(sim, ~get_pred(.x)))
 
