@@ -1,4 +1,4 @@
-function [EWA, EH, EA] = NPBayesNMF(X,Kinit,num_iter)
+function [EWA, EH] = NPBayesNMF(X,Kinit,num_iter)
 % X is the data matrix of non-negative values
 % Kinit is the maximum allowable factorization (initial). The algorithm tries to reduce this number.
 %       the size of EWA and EH indicate the learned factorization.
@@ -10,19 +10,19 @@ bnp_switch = 1;  % this turns on/off the Bayesian nonparametric part. I made the
 
 [dim,N] = size(X);
 
-%end_score = zeros(10, 1);
+end_score = zeros(100, 1);
 
-% Not sure if i need this
-% EA = [];
-% EWA = [];
-% EH = [];
-% EW = [];
+%Not sure if i need this
+EA = [];
+EWA = [];
+EH = [];
+EW = [];
 
-%for i = 1:10
+for i = 1:100
 
 K = Kinit;
     
-%h01 = 1; % Try h with non-sparse prior
+%h01 = 1; % Try h with non-sparse prior, yes!
 h01 = 1/Kinit;
 h02 = 1;
 
@@ -96,32 +96,33 @@ for iter = 1:num_iter
     
     score(iter) = sum(sum(abs(X-(W1./W2)*diag(A1./A2)*(H1./H2))));
     
-    disp([num2str(iter) ' : ' num2str(sum(sum(abs(X-(W1./W2)*diag(A1./A2)*(H1./H2)))))]); 
+    disp(['Run Number: ' num2str(i) '. Iter Number: ' num2str(iter) '. Iter Score: ' num2str(sum(sum(abs(X-(W1./W2)*diag(A1./A2)*(H1./H2)))))]); 
  
- if iter > 1 && abs(score(iter-1)-score(iter)) < 1e-5  
+ if iter > 1 && abs(score(iter-1)-score(iter)) < 1e-7  
      break
  end
   
 end
 
-EA = A1./A2;
-EWA = (W1./W2)*diag(A1./A2);
-EH = H1./H2;
-EW = (W1./W2); 
+% EA = A1./A2;
+% EWA = (W1./W2)*diag(A1./A2);
+% EH = H1./H2;
+% EW = (W1./W2); 
 
-%end_score(i) = score(end);  
+end_score(i) = score(find(score,1,'last'));  
 
 % Among the results, use the fitted variational parameters that achieve the highest ELBO
-if i == 1 | (i > 1 &&  (end_score(i) >= max(end_score)))
+if i == 1 | (i > 1 && (end_score(i) >= max(end_score)))
     EA = A1./A2;
     EWA = (W1./W2)*diag(A1./A2);
     EH = H1./H2;
     EW = (W1./W2); 
 end
    
-%disp(['Run Number: ' num2str(i) '. Run score: ' num2str(end_score(i))]);
-%disp(['Run Number: ' num2str(i) '. A vector: ']); 
-%A1./A2
-%EA
+% disp(['Run Number: ' num2str(i) '. Run score: ' num2str(end_score(i))]);
+% disp(['Run Number: ' num2str(i) '. A vector: ']); 
+% Aout = A1./A2;
+% Aout(1:4)
+% EA(1:4)
 
-%end
+end
