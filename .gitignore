@@ -6,6 +6,12 @@
 Stan/*.rData
 Sims/*.csv
 Sims/*.mat
-Sims/Iterate_Out/*
-Sims/Iterate/*
+Sims/Iterate_Out/**
+Sims/Iterate/**
 Resources/*.pdf
+R/*cache/**
+R/*cache-bkp/**
+R/*.html
+R/NMF_*/
+R/*files/**
+NMF*/**
