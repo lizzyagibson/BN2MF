@@ -84,10 +84,13 @@ add_noise <- function (seed, chem) {
   set.seed(seed)
   chem_dist <- pmax(chem + rmatrix(1000, 50, dist=rnorm, mean=noise$mean, sd=noise$sd), 0)	
   chem_dist
+  sim_noise <- chem_dist - chem
+  list(chem_dist = chem_dist, noise = sim_noise)
 }
 
 sim_dist <- sim_dist0 %>% 
- mutate(sim = map2(seed, chem, ~add_noise(seed = .x, chem = .y)))
+ mutate(sim = map2(seed, chem, ~add_noise(seed = .x, chem = .y)[[1]]),
+        noise = map2(seed, chem, function(x, y) {add_noise(x, y)[[2]]}))
 ```  
 
 ### Save
@@ -151,7 +154,8 @@ sim_cor0 <- sim_cor0 %>%
 
 ```{r}
 sim_cor <- sim_cor0 %>% 
- mutate(sim = map2(seed, chem, ~add_noise(seed = .x, chem = .y)))
+ mutate(sim = map2(seed, chem, ~add_noise(seed = .x, chem = .y)[[1]]),
+        noise = map2(seed, chem, function(x, y) {add_noise(x, y)[[2]]})) 
 ```  
 
 ### Save
@@ -185,7 +189,8 @@ sim_over0 <- sim_over0 %>%
 
 ```{r}
 sim_over <- sim_over0 %>% 
- mutate(sim = map2(seed, chem, ~add_noise(seed = .x, chem = .y)))
+ mutate(sim = map2(seed, chem, ~add_noise(seed = .x, chem = .y)[[1]]),
+        noise = map2(seed, chem, function(x, y) {add_noise(x, y)[[2]]}))
 ```  
 
 ### Save

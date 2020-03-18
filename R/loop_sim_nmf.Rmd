@@ -157,7 +157,6 @@ scores_ordered_dist <- scores_matched_dist %>%
 ```{r}
 # All
 full_dist %>%
-  filter(!(seed %in% c(19, 21, 39))) %>% 
   mutate(ewa = map(ewa, as.matrix),
          eh = map(eh, as.matrix)) %>% 
   mutate(pred = map2(ewa, eh, `%*%`)) %>% 
@@ -166,18 +165,60 @@ full_dist %>%
   pull(norm_all) %>% summary()
   
 # Loadings (ordered, not standardized)
+add_4 <- function(pattern) {
+  
+  if (nrow(pattern) == 3) {
+  pattern <- rbind(pattern, four = rep(0, times = ncol(pattern))) %>% as_tibble(.)
+  } else if (nrow(pattern) == 2) {
+  pattern <- rbind(pattern, three = rep(0, times = ncol(pattern)), four = rep(0, times = ncol(pattern))) %>% as_tibble(.)
+  } else {}
+  pattern
+}
+
+add_3 <- function(score) {
+  
+  if (ncol(score) == 3) {
+  score <- cbind(score, four = rep(0, times = nrow(score))) %>% as_tibble(.)
+  } else if (ncol(score) == 2) {
+  score <- cbind(score, three = rep(0, times = nrow(score)), four = rep(0, times = nrow(score))) %>% as_tibble(.)
+  } else {}
+  score
+}
+
+add_pattern <- function(pattern, true) {
+  
+  if (nrow(pattern) == 5) {
+  true <- rbind(true, four = rep(0, times = ncol(true))) %>% as_tibble(.)
+  } else if (nrow(pattern) == 6) {
+  true <- rbind(true, three = rep(0, times = ncol(true)), four = rep(0, times = ncol(true))) %>% as_tibble(.)
+  } else {}
+  true
+}
+
+add_score <- function(score, true) {
+  
+  if (ncol(score) == 5) {
+  true <- cbind(true, four = rep(0, times = nrow(true))) %>% as_tibble(.)
+  } else if (ncol(score) == 6) {
+  true <- cbind(true, three = rep(0, times = nrow(true)), four = rep(0, times = nrow(true))) %>% as_tibble(.)
+  } else {}
+  true
+}
+
 scores_ordered_dist %>% 
-  filter(!(seed %in% c(19, 21, 39))) %>% 
-  mutate(norm_loadings = map2(patterns, eh_reordered, 
+  mutate(patterns = map2(eh_reordered, patterns, add_pattern),
+         scores = map2(ewa_reordered, scores, add_score)) %>% 
+  mutate(norm_ehs = map2(patterns, eh_reordered, 
                               ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>% 
-  unnest(norm_loadings) %>% 
-  pull(norm_loadings) %>% summary()
+  unnest(norm_ehs) %>% 
+  pull(norm_ehs) %>% summary()
 ```
 
 ```{r}
 # Scores (ordered, not standardized)
 scores_ordered_dist %>% 
-  filter(!(seed %in% c(19, 21, 39))) %>% 
+  mutate(patterns = map2(eh_reordered, patterns, add_pattern),
+         scores = map2(ewa_reordered, scores, add_score)) %>% 
   mutate(norm_scores = map2(scores, ewa_reordered, 
                               ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>% 
   unnest(norm_scores) %>% 
@@ -304,12 +345,11 @@ full_cor %>%
   unnest(norm_all) %>% 
   pull(norm_all) %>% summary()
 
-# Loadings (ordered, not standardized)
 scores_ordered_cor %>% 
-  mutate(norm_loadings = map2(patterns, eh_reordered, 
+  mutate(norm_ehs = map2(patterns, eh_reordered, 
                               ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>% 
-  unnest(norm_loadings) %>% 
-  pull(norm_loadings) %>% summary()
+  unnest(norm_ehs) %>% 
+  pull(norm_ehs) %>% summary()
 ```
 
 ```{r}
@@ -441,7 +481,7 @@ scores_ordered_over <- scores_matched_over %>%
 
 ```{r}
 # All
-full_cor %>%
+full_over %>%
   mutate(ewa = map(ewa, as.matrix),
          eh = map(eh, as.matrix)) %>% 
   mutate(pred = map2(ewa, eh, `%*%`)) %>% 
@@ -449,19 +489,20 @@ full_cor %>%
   unnest(norm_all) %>% 
   pull(norm_all) %>% summary()
 
-# Loadings (ordered, not standardized)
 scores_ordered_over %>% 
-  filter(!(seed %in% c(26, 64))) %>% 
-  mutate(norm_loadings = map2(patterns, eh_reordered, 
+  mutate(patterns = map2(eh_reordered, patterns, add_pattern),
+         scores = map2(ewa_reordered, scores, add_score)) %>% 
+  mutate(norm_ehs = map2(patterns, eh_reordered, 
                               ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>% 
-  unnest(norm_loadings) %>% 
-  pull(norm_loadings) %>% summary()
+  unnest(norm_ehs) %>% 
+  pull(norm_ehs) %>% summary()
 ```
 
 ```{r}
 # Scores (ordered, not standardized)
 scores_ordered_over %>% 
-  filter(!(seed %in% c(26, 64))) %>% 
+  mutate(patterns = map2(eh_reordered, patterns, add_pattern),
+         scores = map2(ewa_reordered, scores, add_score)) %>% 
   mutate(norm_scores = map2(scores, ewa_reordered, 
                               ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>% 
   unnest(norm_scores) %>% 
@@ -513,47 +554,71 @@ eh_over_reorder %>%
 ### Loadings
 
 ```{r}
-standardize <- function (any_matrix) {
-  apply(any_matrix, 2, function(x) x/sd(x))
-  }
+standard <- function(row_matrix, column_matrix) {
+  sum_row <- apply(row_matrix, 1, function(x) sum(x))
+  row_out <-  as_tibble(apply(row_matrix, 1, function(x) x/sum(x))) # Divide patterns by pattern sum to normalize
+  col_out <- map2_dfr(as_tibble(column_matrix), sum_row, function(x,y) x*y) # multiply scores by pattern sum
+  list(row_out = row_out, col_out = col_out)
+}
 
-dist_norm <- eh_dist_reorder %>% 
-  select(-pattern1) %>% 
-  nest(reorder_eh = pcb28:bpa) %>% 
-  left_join(., full_dist, by = "seed") %>% 
-  filter(!(seed %in% c(19, 21, 39))) %>% 
-  mutate(sd_patterns = map(patterns, ~standardize(.x)),
-         sd_loadings = map(reorder_eh, ~standardize(.x))) %>% 
-  mutate(norm_loadings = map2(sd_patterns, sd_loadings, 
+# head(col_out)
+# head(col1_out)
+# all.equal(col_out, col1_out)
+# column_matrix <- scores_ordered_dist$scores[[1]]
+# row_matrix <- scores_ordered_dist$patterns[[1]]
+# colSums(standard(scores_ordered_dist$patterns[[19]], scores_ordered_dist$scores[[19]])[[1]])
+# map2(scores_ordered_dist$patterns, scores_ordered_dist$scores, standard)
+
+sd_dist_out <- scores_ordered_dist %>% 
+  select(-eh, -ewa, -sim, -noise) %>% 
+  mutate(sd_patterns = map2(patterns, scores, function(x,y) standard(x,y)[[1]]),
+         sd_scores   = map2(patterns, scores, function(x,y) standard(x,y)[[2]]),
+         sd_eh       = map2(eh_reordered, ewa_reordered,function(x,y) standard(x,y)[[1]]),
+         sd_ewa      = map2(eh_reordered, ewa_reordered, function(x,y) standard(x,y)[[2]])) %>% 
+  mutate(sd_patterns = map2(sd_eh, sd_patterns, add_score),
+         sd_scores   = map2(sd_ewa, sd_scores, add_score)) %>%
+  select(-eh_reordered, -ewa_reordered, -scores, -patterns)
+
+sd_over_out <- scores_ordered_over %>% 
+  select(-eh, -ewa, -sim, -noise) %>% 
+  mutate(sd_patterns = map2(patterns, scores, function(x,y) standard(x,y)[[1]]),
+         sd_scores   = map2(patterns, scores, function(x,y) standard(x,y)[[2]]),
+         sd_eh       = map2(eh_reordered, ewa_reordered,function(x,y) standard(x,y)[[1]]),
+         sd_ewa      = map2(eh_reordered, ewa_reordered, function(x,y) standard(x,y)[[2]])) %>% 
+  mutate(sd_patterns = map2(sd_eh, sd_patterns, add_score),
+         sd_scores   = map2(sd_ewa, sd_scores, add_score)) %>%
+  select(-eh_reordered, -ewa_reordered, -scores, -patterns)
+
+sd_cor_out <- scores_ordered_cor %>% 
+  select(-eh, -ewa, -sim, -noise) %>% 
+  mutate(sd_patterns = map2(patterns, scores, function(x,y) standard(x,y)[[1]]),
+         sd_scores   = map2(patterns, scores, function(x,y) standard(x,y)[[2]]),
+         sd_eh       = map2(eh_reordered, ewa_reordered,function(x,y) standard(x,y)[[1]]),
+         sd_ewa      = map2(eh_reordered, ewa_reordered, function(x,y) standard(x,y)[[2]])) %>% 
+  mutate(sd_patterns = map2(sd_eh, sd_patterns, add_score),
+         sd_scores   = map2(sd_ewa, sd_scores, add_score)) %>%
+  select(-eh_reordered, -ewa_reordered, -scores, -patterns)
+
+dist_norm <- sd_dist_out %>%
+mutate(norm_eh = map2(sd_patterns, sd_eh, 
                               ~norm(as.matrix(.x) - as.matrix(.y), "F") / 
                                 norm(as.matrix(.x), "F"))) %>% 
-  unnest(norm_loadings) %>% 
-  pull(norm_loadings)
+  unnest(norm_eh) %>% 
+  pull(norm_eh)
 
-over_norm <- eh_over_reorder %>% 
-  select(-pattern1) %>% 
-  nest(reorder_eh = pcb28:bpa) %>% 
-  left_join(., full_over, by = "seed") %>% 
-  filter(!(seed %in% c(26, 64))) %>% # Two seeds with 5 patterns
-  mutate(sd_patterns = map(patterns, ~standardize(.x)),
-         sd_loadings = map(reorder_eh, ~standardize(.x))) %>% 
-  mutate(norm_loadings = map2(sd_patterns, sd_loadings, 
+over_norm <- sd_over_out %>%   
+mutate(norm_eh = map2(sd_patterns, sd_eh, 
                               ~norm(as.matrix(.x) - as.matrix(.y), "F") / 
                                 norm(as.matrix(.x), "F"))) %>% 
-  unnest(norm_loadings) %>% 
-  pull(norm_loadings)
+  unnest(norm_eh) %>% 
+  pull(norm_eh)
   
-cor_norm <- eh_cor_reorder %>% 
-  select(-pattern1) %>% 
-  nest(reorder_eh = pcb28:bpa) %>% 
-  left_join(., full_cor, by = "seed") %>% 
-  mutate(sd_patterns = map(patterns, ~standardize(.x)),
-         sd_loadings = map(reorder_eh, ~standardize(.x))) %>% 
-  mutate(norm_loadings = map2(sd_patterns, sd_loadings, 
+cor_norm <- sd_cor_out %>%   
+mutate(norm_eh = map2(sd_patterns, sd_eh, 
                               ~norm(as.matrix(.x) - as.matrix(.y), "F") / 
                                 norm(as.matrix(.x), "F"))) %>% 
-  unnest(norm_loadings) %>% 
-  pull(norm_loadings)
+  unnest(norm_eh) %>% 
+  pull(norm_eh)
 
 summary(over_norm) 
 summary(cor_norm) 
@@ -563,46 +628,32 @@ summary(dist_norm)
 ```
 
 ### Scores
+
 ```{r}
-standardize <- function (any_matrix) {
-  apply(any_matrix, 2, function(x) x/sd(x))
-  }
-
-dist_norm <- scores_ordered_dist %>% 
-  select(seed, ewa_reordered, scores) %>% 
-  filter(!(seed %in% c(19, 21, 39))) %>% 
-  mutate(sd_scores = map(scores, ~standardize(.x)),
-         sd_ewa = map(ewa_reordered, ~standardize(.x))) %>% 
-  mutate(norm_scores = map2(sd_scores, sd_ewa, 
+dist_norm_ewa <- sd_dist_out %>% 
+mutate(norm_ewa = map2(sd_scores, sd_ewa, 
                               ~norm(as.matrix(.x) - as.matrix(.y), "F") / 
                                 norm(as.matrix(.x), "F"))) %>% 
-  unnest(norm_scores) %>% 
-  pull(norm_scores)
+  unnest(norm_ewa) %>% 
+  pull(norm_ewa)
 
-over_norm <- scores_ordered_over %>% 
-  select(seed, ewa_reordered, scores) %>% 
-  filter(!(seed %in% c(26, 64))) %>% 
-  mutate(sd_scores = map(scores, ~standardize(.x)),
-         sd_ewa = map(ewa_reordered, ~standardize(.x))) %>% 
-  mutate(norm_scores = map2(sd_scores, sd_ewa, 
+over_norm_ewa <- sd_over_out %>%   
+mutate(norm_ewa = map2(sd_scores, sd_ewa, 
                               ~norm(as.matrix(.x) - as.matrix(.y), "F") / 
                                 norm(as.matrix(.x), "F"))) %>% 
-  unnest(norm_scores) %>% 
-  pull(norm_scores)
-  
-cor_norm <- scores_ordered_cor %>% 
-  select(seed, ewa_reordered, scores) %>% 
-  mutate(sd_scores = map(scores, ~standardize(.x)),
-         sd_ewa = map(ewa_reordered, ~standardize(.x))) %>% 
-  mutate(norm_scores = map2(sd_scores, sd_ewa, 
+  unnest(norm_ewa) %>% 
+  pull(norm_ewa)
+
+cor_norm_ewa <- sd_cor_out %>%   
+mutate(norm_ewa = map2(sd_scores, sd_ewa, 
                               ~norm(as.matrix(.x) - as.matrix(.y), "F") / 
                                 norm(as.matrix(.x), "F"))) %>% 
-  unnest(norm_scores) %>% 
-  pull(norm_scores)
+  unnest(norm_ewa) %>% 
+  pull(norm_ewa)
 
-summary(over_norm) 
-summary(cor_norm) 
-summary(dist_norm)
+summary(over_norm_ewa) 
+summary(cor_norm_ewa) 
+summary(dist_norm_ewa)
 
-(sum(over_norm) + sum(cor_norm) + sum(dist_norm)) / 300
+(sum(over_norm_ewa) + sum(cor_norm_ewa) + sum(dist_norm_ewa)) / 300
 ```

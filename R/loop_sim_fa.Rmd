@@ -24,13 +24,13 @@ library(psych)
 ## Load Sims
 
 ```{r}
-load("./Sims/Iterate/sim_dist.RDA")
+load(here::here("./Sims/Iterate/sim_dist.RDA"))
 sim_dist
 
-load("./Sims/Iterate/sim_cor.RDA")
+load(here::here("./Sims/Iterate/sim_cor.RDA"))
 sim_cor
 
-load("./Sims/Iterate/sim_over.RDA")
+load(here::here("./Sims/Iterate/sim_over.RDA"))
 sim_over
 ```
 
@@ -39,25 +39,56 @@ sim_over
 ### Distinct Patterns
 
 ```{r}
-get_loadings <- function (sim) {
-  matrix(factanal(sim, 4, rotation="promax")$loadings, ncol = 4)
-}
+# check_fa <- function (sim) {
+#   set.seed(1988)
+#   fa_3 <- fa(sim, 3, scores = "Bartlett",rotate="promax")
+#   fa_4 <- fa(sim, 4, scores = "Bartlett",rotate="promax")
+#   fa_5 <- fa(sim, 5, scores = "Bartlett",rotate="promax")
+# 
+#   out <- c(fa_3$EBIC, fa_4$EBIC, fa_5$EBIC)
+#   out
+# }
+# 
+# bic <- sim_cor %>%
+#   mutate(bic = map(sim, check_fa)) %>% select(seed, bic) %>% unnest(cols = c(bic))
+# 
+# bic %>% mutate(rank = rep(1:3, times = 100)) %>%
+#   group_by(seed) %>%
+#   spread(rank, bic) %>%
+#   rename(three = 2, four = 3, five = 4) %>%
+#   mutate(rank = if (three < four && three < five) {
+#     fa_out <-3
+#   } else if (four < three && four < five) {
+#     fa_out <- 4
+#   } else {fa_out <- 5}) %>% pull(rank) %>% summary()
 
-get_pred <- function (sim) {
-  factanal(sim, 4, scores = "regression", rotation="promax")$scores %*% 
-    t(matrix(factanal(sim, 4, rotation="promax")$loadings, ncol = 4))
+get_fa <- function (sim) {
+  set.seed(1988)
+  fa_3 <- fa(sim, 3, scores = "regression", rotate = "promax")
+  fa_4 <- fa(sim, 4, scores = "regression", rotate = "promax")
+  fa_5 <- fa(sim, 5, scores = "regression", rotate = "promax")
+  
+ if (fa_5$EBIC < fa_4$EBIC && fa_5$EBIC < fa_3$EBIC) {
+    fa_out <- fa_5
+  } else if (fa_4$EBIC < fa_3$EBIC && fa_4$EBIC < fa_5$EBIC) {
+    fa_out <- fa_4
+  } else {fa_out <- fa_3}
+    
+  loadings <- matrix(fa_out$loadings, ncol = ncol(fa_out$scores))
+  fa_scores <- fa_out$scores
+  pred <- fa_scores %*% t(loadings)
+  list(fa_scores = fa_scores, loadings = loadings, pred = pred)
 }
 
 fa_out_dist <- sim_dist %>% 
-  mutate(loadings = map(sim, ~get_loadings(.x)),
-         pred = map(sim, ~get_pred(.x)))
+  mutate(fa_out = map(sim, get_fa),
+        loadings = map(fa_out, function(x){x[[2]]}),
+        pred = map(fa_out, function(x){x[[3]]}),
+        fa_scores = map(fa_out, function(x){x[[1]]}))
 
 fa_loadings_dist <- fa_out_dist %>% select(seed, loadings) %>% 
-  mutate(F1 = map(loadings, ~.[,1]),
-         F2 = map(loadings, ~.[,2]),
-         F3 = map(loadings, ~.[,3]),
-         F4 = map(loadings, ~.[,4])) %>% 
-  unnest(F1:F4) %>% select(-loadings)
+        mutate(loadings = map(loadings, as_tibble)) %>% 
+        unnest(loadings)
 
 labels <-  c("pcb28", "pcb66", "pcb74", "pcb99", "pcb105", "pcb118", "pcb138_158", "pcb146", "pcb153", "pcb156", "pcb167",
           "pcb170", "pcb178", "pcb183", "pcb187", "pcb180", "pcb189", "pcb194", "pcb196_203", "pcb199", "pcb206", "pcb209",
@@ -84,13 +115,22 @@ fa_out_dist %>%
   pull(norm_loadings) %>% summary()
 ```
 
+```{r}
+# Scores (ordered, not standardized)
+fa_out_dist %>% 
+  mutate(norm_scores = map2(scores, fa_scores, 
+                              ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>% 
+  unnest(norm_scores) %>% 
+  pull(norm_scores) %>% summary()
+```
+
 #### Viz
 
 ```{r}
 fa_loadings_dist %>%  
-  filter(seed == 1) %>% 
+  filter(seed == 77) %>% 
   mutate(Chemicals = labels) %>% 
-  select(seed, Chemicals, F1:F4) %>% 
+  select(seed, Chemicals, V1:V4) %>% 
   gather(key = Factor, value = Loadings, -Chemicals, -seed) %>%
   mutate(Chemicals = fct_inorder(Chemicals)) %>% 
   mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
@@ -105,7 +145,7 @@ fa_loadings_dist %>%
 
 fa_loadings_dist %>%  
   mutate(Chemicals = rep(labels, 100)) %>% 
-  select(seed, Chemicals, F1:F4) %>% 
+  select(seed, Chemicals, V1:V4) %>% 
   gather(key = Factor, value = Loadings, -Chemicals, -seed) %>%
   mutate(Chemicals = fct_inorder(Chemicals)) %>% 
   mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
@@ -116,28 +156,6 @@ fa_loadings_dist %>%
   geom_boxplot(aes(x = Group, color = Group), width = .45, outlier.shape = NA) +
   facet_wrap(.~Factor) + theme_bw() +
   theme(legend.position = "none",
-        strip.background = element_blank())
-```
-
-```{r}
-fa_loadings_dist %>%  
-  mutate(Chemicals = rep(labels, 100)) %>% 
-  select(seed, Chemicals, F1:F4) %>% 
-  gather(key = Factor, value = Loadings, -Chemicals, -seed) %>%
-  mutate(Chemicals = fct_inorder(Chemicals)) %>% 
-  group_by(Chemicals, Factor) %>% 
-  summarise(med = median(Loadings),
-            upper = quantile(Loadings, 0.75),
-            lower = quantile(Loadings, 0.25)) %>% 
-  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
-                                                     ifelse(str_detect(Chemicals, "^M"), "Phthalates",
-                                                            ifelse(str_detect(Chemicals, "pcb"), "PCBs",
-                                                                   "Phenols")))) %>% 
-  ggplot(aes(x = Chemicals, y = med)) + 
-  geom_pointrange(aes(color = Group, min = lower, max = upper), alpha = 0.75, size = 0.25) +
-  facet_wrap(.~Factor) + theme_bw() +
-  theme(axis.text.x = element_blank(),
-        legend.position = "bottom",
         strip.background = element_blank())
 ```
 
@@ -145,15 +163,14 @@ fa_loadings_dist %>%
 
 ```{r}
 fa_out_over <- sim_over %>% 
-  mutate(loadings = map(sim, ~get_loadings(.x)),
-         pred = map(sim, ~get_pred(.x)))
+  mutate(fa_out = map(sim, get_fa),
+        loadings = map(fa_out, function(x){x[[2]]}),
+        pred = map(fa_out, function(x){x[[3]]}),
+        fa_scores = map(fa_out, function(x){x[[1]]}))
 
 fa_loadings_over <- fa_out_over %>% select(seed, loadings) %>% 
-  mutate(F1 = map(loadings, ~.[,1]),
-         F2 = map(loadings, ~.[,2]),
-         F3 = map(loadings, ~.[,3]),
-         F4 = map(loadings, ~.[,4])) %>% 
-  unnest(F1:F4)
+  mutate(loadings = map(loadings, as_tibble)) %>% 
+  unnest(loadings)
 ```
 
 #### Norms
@@ -174,13 +191,22 @@ fa_out_over %>%
   pull(norm_loadings) %>% summary()
 ```
 
+```{r}
+# Scores (ordered, not standardized)
+fa_out_over %>% 
+  mutate(norm_scores = map2(scores, fa_scores, 
+                              ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>% 
+  unnest(norm_scores) %>% 
+  pull(norm_scores) %>% summary()
+```
+
 #### Viz
 
 ```{r}
 fa_loadings_over %>%  
   filter(seed == 7) %>% 
   mutate(Chemicals = labels) %>% 
-  select(seed, Chemicals, F1:F4) %>% 
+  select(seed, Chemicals, V1:V4) %>% 
   gather(key = Factor, value = Loadings, -Chemicals, -seed) %>%
   mutate(Chemicals = fct_inorder(Chemicals)) %>% 
   mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
@@ -195,7 +221,7 @@ fa_loadings_over %>%
 
 fa_loadings_over %>%  
   mutate(Chemicals = rep(labels, 100)) %>% 
-  select(seed, Chemicals, F1:F4) %>% 
+  select(seed, Chemicals, V1:V4) %>% 
   gather(key = Factor, value = Loadings, -Chemicals, -seed) %>%
   mutate(Chemicals = fct_inorder(Chemicals)) %>% 
   mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
@@ -206,28 +232,6 @@ fa_loadings_over %>%
   geom_boxplot(aes(x = Group, color = Group), width = .45, outlier.shape = NA) +
   facet_wrap(.~Factor) + theme_bw() +
   theme(legend.position = "none",
-        strip.background = element_blank())
-```
-
-```{r}
-fa_loadings_over %>%  
-  mutate(Chemicals = rep(labels, 100)) %>% 
-  select(seed, Chemicals, F1:F4) %>% 
-  gather(key = Factor, value = Loadings, -Chemicals, -seed) %>%
-  mutate(Chemicals = fct_inorder(Chemicals)) %>% 
-  group_by(Chemicals, Factor) %>% 
-  summarise(med = median(Loadings),
-            upper = quantile(Loadings, 0.75),
-            lower = quantile(Loadings, 0.25)) %>% 
-  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
-                                                     ifelse(str_detect(Chemicals, "^M"), "Phthalates",
-                                                            ifelse(str_detect(Chemicals, "pcb"), "PCBs",
-                                                                   "Phenols")))) %>% 
-  ggplot(aes(x = Chemicals, y = med)) + 
-  geom_pointrange(aes(color = Group, min = lower, max = upper), alpha = 0.75, size = 0.25) +
-  facet_wrap(.~Factor) + theme_bw() +
-  theme(axis.text.x = element_blank(),
-        legend.position = "bottom",
         strip.background = element_blank())
 ```
 
@@ -235,15 +239,14 @@ fa_loadings_over %>%
 
 ```{r}
 fa_out_cor <- sim_cor %>% 
-  mutate(loadings = map(sim, ~get_loadings(.x)),
-         pred = map(sim, ~get_pred(.x)))
+  mutate(fa_out = map(sim, get_fa),
+        loadings = map(fa_out, function(x){x[[2]]}),
+        pred = map(fa_out, function(x){x[[3]]}),
+        fa_scores = map(fa_out, function(x){x[[1]]}))
 
 fa_loadings_cor <- fa_out_cor %>% select(seed, loadings) %>% 
-  mutate(F1 = map(loadings, ~.[,1]),
-         F2 = map(loadings, ~.[,2]),
-         F3 = map(loadings, ~.[,3]),
-         F4 = map(loadings, ~.[,4])) %>% 
-  unnest(F1:F4)
+  mutate(loadings = map(loadings, as_tibble)) %>% 
+  unnest(loadings)
 ```
 
 #### Norms
@@ -264,13 +267,22 @@ fa_out_cor %>%
   pull(norm_loadings) %>% summary()
 ```
 
+```{r}
+# Scores (ordered, not standardized)
+fa_out_cor %>% 
+  mutate(norm_scores = map2(scores, fa_scores, 
+                              ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>% 
+  unnest(norm_scores) %>% 
+  pull(norm_scores) %>% summary()
+```
+
 #### Viz
 
 ```{r}
 fa_loadings_cor %>%  
   filter(seed == 7) %>% 
   mutate(Chemicals = labels) %>% 
-  select(seed, Chemicals, F1:F4) %>% 
+  select(seed, Chemicals, V1:V4) %>% 
   gather(key = Factor, value = Loadings, -Chemicals, -seed) %>%
   mutate(Chemicals = fct_inorder(Chemicals)) %>% 
   mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
@@ -285,7 +297,7 @@ fa_loadings_cor %>%
 
 fa_loadings_cor %>%  
   mutate(Chemicals = rep(labels, 100)) %>% 
-  select(seed, Chemicals, F1:F4) %>% 
+  select(seed, Chemicals, V1:V4) %>% 
   gather(key = Factor, value = Loadings, -Chemicals, -seed) %>%
   mutate(Chemicals = fct_inorder(Chemicals)) %>% 
   mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
@@ -299,66 +311,146 @@ fa_loadings_cor %>%
         strip.background = element_blank())
 ```
 
-```{r}
-fa_loadings_cor %>%  
-  mutate(Chemicals = rep(labels, 100)) %>% 
-  select(seed, Chemicals, F1:F4) %>% 
-  gather(key = Factor, value = Loadings, -Chemicals, -seed) %>%
-  mutate(Chemicals = fct_inorder(Chemicals)) %>% 
-  group_by(Chemicals, Factor) %>% 
-  summarise(med = median(Loadings),
-            upper = quantile(Loadings, 0.75),
-            lower = quantile(Loadings, 0.25)) %>% 
-  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
-                                                     ifelse(str_detect(Chemicals, "^M"), "Phthalates",
-                                                            ifelse(str_detect(Chemicals, "pcb"), "PCBs",
-                                                                   "Phenols")))) %>% 
-  ggplot(aes(x = Chemicals, y = med)) + 
-  geom_pointrange(aes(color = Group, min = lower, max = upper), alpha = 0.75, size = 0.25) +
-  facet_wrap(.~Factor) + theme_bw() +
-  theme(axis.text.x = element_blank(),
-        legend.position = "bottom",
-        strip.background = element_blank())
-```
-
 ## Standardize
 
+Divide loadings by stdev. Multiply scores by stdev of associated loading.
+
 ```{r}
-standardize <- function (any_matrix) {
-  apply(any_matrix, 2, function(x) x/sd(x))
-  }
+add_3 <- function(score) {
   
-dist_norm <- fa_out_dist %>% 
-  mutate(sd_patterns = map(patterns, ~standardize(.x)),
-         sd_loadings = map(loadings, ~standardize(t(.x)))) %>% 
-  mutate(norm_loadings = map2(sd_patterns, sd_loadings, 
-                              ~norm(as.matrix(.x) - as.matrix(.y), "F") / 
-                                norm(as.matrix(.x), "F"))) %>% 
-  unnest(norm_loadings) %>% 
-  pull(norm_loadings)
+  if (ncol(score) == 3) {
+  score <- cbind(score, four = rep(0, times = nrow(score))) %>% as_tibble(.)
+  } else if (ncol(score) == 2) {
+  score <- cbind(score, three = rep(0, times = nrow(score)), four = rep(0, times = nrow(score))) %>% as_tibble(.)
+  } else {}
+  score
+}
 
-over_norm <- fa_out_over %>% 
-  mutate(sd_patterns = map(patterns, ~standardize(.x)),
-         sd_loadings = map(loadings, ~standardize(t(.x)))) %>% 
-  mutate(norm_loadings = map2(sd_patterns, sd_loadings, 
-                              ~norm(as.matrix(.x) - as.matrix(.y), "F") / 
-                                norm(as.matrix(.x), "F"))) %>% 
-  unnest(norm_loadings) %>% 
-  pull(norm_loadings)
+add_4 <- function(pattern) {
   
-cor_norm <- fa_out_cor %>% 
-  mutate(sd_patterns = map(patterns, ~standardize(.x)),
-         sd_loadings = map(loadings, ~standardize(t(.x)))) %>% 
-  mutate(norm_loadings = map2(sd_patterns, sd_loadings, 
+  if (nrow(pattern) == 3) {
+  pattern <- rbind(pattern, four = rep(0, times = ncol(pattern))) %>% as_tibble(.)
+  } else if (nrow(pattern) == 2) {
+  pattern <- rbind(pattern, three = rep(0, times = ncol(pattern)), four = rep(0, times = ncol(pattern))) %>% as_tibble(.)
+  } else {}
+  pattern
+}
+add_pattern <- function(pattern, true) {
+  
+  if (nrow(pattern) == 5) {
+  true <- rbind(true, four = rep(0, times = ncol(true))) %>% as_tibble(.)
+  } else if (nrow(pattern) == 6) {
+  true <- rbind(true, three = rep(0, times = ncol(true)), four = rep(0, times = ncol(true))) %>% as_tibble(.)
+  } else {}
+  true
+}
+
+add_score <- function(score, true) {
+  
+  if (ncol(score) == 5) {
+  true <- cbind(true, four = rep(0, times = nrow(true))) %>% as_tibble(.)
+  } else if (ncol(score) == 6) {
+  true <- cbind(true, three = rep(0, times = nrow(true)), four = rep(0, times = nrow(true))) %>% as_tibble(.)
+  } else {}
+  true
+}
+
+standard <- function(row_matrix, column_matrix) {
+  sum_row <- apply(row_matrix, 1, function(x) sum(x))
+  row_out <-  as_tibble(apply(row_matrix, 1, function(x) x/sum(x))) # Divide patterns by pattern sum to normalize
+  col_out <- map2_dfr(as_tibble(column_matrix), sum_row, function(x,y) x*y) # multiply scores by pattern sum
+  list(row_out = row_out, col_out = col_out)
+}
+
+sd_dist_out <- fa_out_dist %>% 
+  select(-sim, -noise, -pred, -chem, -fa_out) %>% 
+  mutate(sd_patterns = map2(patterns, scores, function(x,y) standard(x,y)[[1]]),
+         sd_scores   = map2(patterns, scores, function(x,y) standard(x,y)[[2]]),
+         sd_fa_score       = map2(loadings, fa_scores,function(x,y) standard(t(x),y)[[2]]),
+         sd_loading     = map2(loadings, fa_scores, function(x,y) standard(t(x),y)[[1]])) %>% 
+  mutate(sd_patterns = map2(sd_loading, sd_patterns, add_pattern),
+         sd_scores   = map2(sd_fa_score, sd_scores, add_score),
+         sd_loading     = map(sd_loading, add_4),
+         sd_fa_score    = map(sd_fa_score, add_3)) %>%
+  select(-scores, -patterns, -loadings, -fa_scores)
+
+dist_norm <- sd_dist_out %>% 
+mutate(norm_eh = map2(sd_patterns, sd_loading, 
                               ~norm(as.matrix(.x) - as.matrix(.y), "F") / 
                                 norm(as.matrix(.x), "F"))) %>% 
-  unnest(norm_loadings) %>% 
-  pull(norm_loadings) 
+  unnest(norm_eh) %>% 
+  pull(norm_eh)
 
-summary(over_norm)
-summary(cor_norm)
+sd_over_out <- fa_out_over %>% 
+  select(-sim, -noise, -pred, -chem, -fa_out) %>% 
+  mutate(sd_patterns = map2(patterns, scores, function(x,y) standard(x,y)[[1]]),
+         sd_scores   = map2(patterns, scores, function(x,y) standard(x,y)[[2]]),
+         sd_fa_score       = map2(loadings, fa_scores,function(x,y) standard(t(x),y)[[2]]),
+         sd_loading     = map2(loadings, fa_scores, function(x,y) standard(t(x),y)[[1]])) %>% 
+  mutate(sd_patterns = map2(sd_loading, sd_patterns, add_pattern),
+         sd_scores   = map2(sd_fa_score, sd_scores, add_score),
+         sd_loading     = map(sd_loading, add_4),
+         sd_fa_score    = map(sd_fa_score, add_3)) %>%
+  select(-scores, -patterns, -loadings, -fa_scores)
+
+over_norm <- sd_over_out %>%   
+mutate(norm_eh = map2(sd_patterns, sd_loading, 
+                              ~norm(as.matrix(.x) - as.matrix(.y), "F") / 
+                                norm(as.matrix(.x), "F"))) %>% 
+  unnest(norm_eh) %>% 
+  pull(norm_eh)
+
+sd_cor_out <- fa_out_cor %>% 
+  select(-sim, -noise, -pred, -chem, -fa_out) %>% 
+  mutate(sd_patterns = map2(patterns, scores, function(x,y) standard(x,y)[[1]]),
+         sd_scores   = map2(patterns, scores, function(x,y) standard(x,y)[[2]]),
+         sd_fa_score       = map2(loadings, fa_scores,function(x,y) standard(t(x),y)[[2]]),
+         sd_loading     = map2(loadings, fa_scores, function(x,y) standard(t(x),y)[[1]])) %>% 
+  mutate(sd_patterns = map2(sd_loading, sd_patterns, add_pattern),
+         sd_scores   = map2(sd_fa_score, sd_scores, add_score),
+         sd_loading     = map(sd_loading, add_4),
+         sd_fa_score    = map(sd_fa_score, add_3)) %>%
+  select(-scores, -patterns, -loadings, -fa_scores)
+  
+cor_norm <- sd_cor_out %>%   
+mutate(norm_eh = map2(sd_patterns, sd_loading, 
+                              ~norm(as.matrix(.x) - as.matrix(.y), "F") / 
+                                norm(as.matrix(.x), "F"))) %>% 
+  unnest(norm_eh) %>% 
+  pull(norm_eh)
+
+summary(over_norm) 
+summary(cor_norm) 
 summary(dist_norm)
-(sum(cor_norm) + sum(dist_norm) + sum(over_norm))/300
+
+(sum(over_norm) + sum(cor_norm) + sum(dist_norm)) / 300
 ```
 
+```{r}
+dist_norm_fa_score <- sd_dist_out %>% 
+mutate(norm_fa_score = map2(sd_scores, sd_fa_score, 
+                              ~norm(as.matrix(.x) - as.matrix(.y), "F") / 
+                                norm(as.matrix(.x), "F"))) %>% 
+  unnest(norm_fa_score) %>% 
+  pull(norm_fa_score)
 
+over_norm_fa_score <- sd_over_out %>%   
+mutate(norm_fa_score = map2(sd_scores, sd_fa_score, 
+                              ~norm(as.matrix(.x) - as.matrix(.y), "F") / 
+                                norm(as.matrix(.x), "F"))) %>% 
+  unnest(norm_fa_score) %>% 
+  pull(norm_fa_score)
+
+cor_norm_fa_score <- sd_cor_out %>%   
+mutate(norm_fa_score = map2(sd_scores, sd_fa_score, 
+                              ~norm(as.matrix(.x) - as.matrix(.y), "F") / 
+                                norm(as.matrix(.x), "F"))) %>% 
+  unnest(norm_fa_score) %>% 
+  pull(norm_fa_score)
+
+summary(over_norm_fa_score) 
+summary(cor_norm_fa_score) 
+summary(dist_norm_fa_score)
+
+(sum(over_norm_fa_score) + sum(cor_norm_fa_score) + sum(dist_norm_fa_score)) / 300
+```
