@@ -22,8 +22,8 @@ for i = 1:100
 
 K = Kinit;
     
-%h01 = 1; % Try h with non-sparse prior, yes!
-h01 = 1/Kinit;
+h01 = 1; % Try h with non-sparse prior, yes!
+%h01 = 1/Kinit;
 h02 = 1;
 
 w01 = 1;
