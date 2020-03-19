@@ -22,7 +22,7 @@ library(R.matlab)
 
 ## Load Sims
 
-```{r}
+```{r, cache = TRUE}
 load(here::here("./Sims/Iterate/sim_dist.RDA"))
 sim_dist
 
@@ -70,7 +70,7 @@ nmf_coef_dist <- nmf_out_dist %>% select(seed, coef) %>% unnest(cols = c(coef))
 
 #### Match Scores
 
-```{r}
+```{r, cache = TRUE}
 match_patterns <- function (coef_unnested) {
   coef_reordered <- coef_unnested %>% 
     mutate(pattern1 = ifelse(pcb146 > 0.01 & pcb118 > bpa, 1,
@@ -104,7 +104,7 @@ scores_matched_dist <- nmf_out_dist %>%
 
 #### Arrange Scores
 
-```{r}
+```{r, cache = TRUE}
 reorder_patterns <- function (coef_unnested) {
   coef_reordered <- coef_unnested %>% 
   arrange(pattern1) %>%
@@ -132,7 +132,7 @@ scores_ordered_dist <- scores_matched_dist %>%
 
 #### Norms
 
-```{r}
+```{r, cache = TRUE}
 #All
 nmf_out_dist %>%
   mutate(norm_all = map2(sim, pred, function(x, y) {norm(as.matrix(x) - as.matrix(y), "F")/norm(as.matrix(x), "F")})) %>% 
@@ -140,14 +140,9 @@ nmf_out_dist %>%
   pull(norm_all) %>% summary()
 ```
 
-```{r}
+```{r, cache = TRUE}
 # coefs (ordered, not standardized)
-scores_ordered_dist %>% 
-  filter(seed %in% 16) %>% 
-  select(coef_reordered) %>% 
-  mutate(dim = map(coef_reordered, dim)) %>% pull(dim)
-
-add_4 <- function(pattern) {
+add_row <- function(pattern) {
   
   if (nrow(pattern) == 3) {
   pattern <- rbind(pattern, four = rep(0, times = ncol(pattern))) %>% as_tibble(.)
@@ -158,15 +153,15 @@ add_4 <- function(pattern) {
 }
 
 scores_ordered_dist %>% 
-  mutate(coef_reordered = map(coef_reordered, add_4)) %>% 
+  mutate(coef_reordered = map(coef_reordered, add_row)) %>% 
   mutate(norm_coefs = map2(patterns, coef_reordered, 
                               ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>% 
   unnest(norm_coefs) %>% 
   pull(norm_coefs) %>% summary()
 ```
 
-```{r}
-add_3 <- function(score) {
+```{r, cache = TRUE}
+add_column <- function(score) {
   
   if (ncol(score) == 3) {
   score <- cbind(score, four = rep(0, times = nrow(score))) %>% as_tibble(.)
@@ -177,17 +172,17 @@ add_3 <- function(score) {
 }
 
 # Scores (ordered, not standardized)
-scores_ordered_dist %>% 
-  mutate(basis_reordered = map(basis_reordered, add_3)) %>% 
-  mutate(norm_scores = map2(scores, basis_reordered, 
-                              ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>% 
-  unnest(norm_scores) %>% 
+scores_ordered_dist %>%
+  mutate(basis_reordered = map(basis_reordered, add_column)) %>%
+  mutate(norm_scores = map2(scores, basis_reordered,
+                              ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>%
+  unnest(norm_scores) %>%
   pull(norm_scores) %>% summary()
 ```
 
 #### Viz
 
-```{r}
+```{r, cache = TRUE}
 nmf_coef_dist %>%  
   filter(seed == 3) %>%
   mutate(pattern = 1:4) %>% 
@@ -228,7 +223,7 @@ nmf_coef_dist %>%
 
 ### Overlapping Patterns
 
-```{r}
+```{r, cache = TRUE}
 nmf_out_over <- sim_over %>% 
     mutate(nmf_out = map(sim, get_nmf),
         coef = map(nmf_out, function(x) {x[[2]]}),
@@ -241,7 +236,7 @@ nmf_coef_over <- nmf_out_over %>% select(seed, coef) %>% unnest(cols = c(coef))
 
 #### Match Scores
 
-```{r}
+```{r, cache = TRUE}
 scores_matched_over <- nmf_out_over %>% 
     mutate(coef = map(coef, ~cbind(pattern = 1:nrow(.x), .x)),
          basis = map(basis, ~rbind(pattern = 1:ncol(.x), .x)),
@@ -252,7 +247,7 @@ scores_matched_over <- nmf_out_over %>%
 
 #### Arrange Scores
 
-```{r}
+```{r, cache = TRUE}
 scores_ordered_over <- scores_matched_over %>% 
   mutate(coef_reordered = map(coef_reordered, ~reorder_patterns(.x)),
          basis_reordered = map(basis_reordered, ~reorder_scores(.x)))
@@ -260,7 +255,7 @@ scores_ordered_over <- scores_matched_over %>%
 
 #### Norms
 
-```{r}
+```{r, cache = TRUE}
 #All
 nmf_out_over %>%
   mutate(norm_all = map2(sim, pred, function(x, y) {norm(as.matrix(x) - as.matrix(y), "F")/norm(as.matrix(x), "F")})) %>% 
@@ -268,12 +263,7 @@ nmf_out_over %>%
   pull(norm_all) %>% summary()
 ```
 
-```{r}
-scores_ordered_over %>% 
-  filter(seed %in% 1:15) %>% 
-  select(coef_reordered) %>% 
-  mutate(dim = map(coef_reordered, dim)) %>% pull(dim)
-
+```{r, cache = TRUE}
 add_pattern <- function(pattern, true) {
   
   if (nrow(pattern) == 5) {
@@ -286,7 +276,7 @@ add_pattern <- function(pattern, true) {
 
 # coefs (ordered, not standardized)
 scores_ordered_over %>% 
-  mutate(coef_reordered = map(coef_reordered, add_4)) %>% 
+  mutate(coef_reordered = map(coef_reordered, add_row)) %>% 
   mutate(patterns = map2(coef_reordered, patterns, function(x,y) add_pattern(x,y))) %>% 
   mutate(norm_coefs = map2(patterns, coef_reordered, 
                               ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>% 
@@ -294,7 +284,7 @@ scores_ordered_over %>%
   pull(norm_coefs) %>% summary()
 ```
 
-```{r}
+```{r, cache = TRUE}
 add_score <- function(score, true) {
   
   if (ncol(score) == 5) {
@@ -306,18 +296,18 @@ add_score <- function(score, true) {
 }
 
 # Scores (ordered, not standardized)
-scores_ordered_over %>% 
-  mutate(basis_reordered = map(basis_reordered, add_3),
-         scores = map2(basis_reordered, scores, function(x,y) add_score(x,y))) %>% 
-  mutate(norm_scores = map2(scores, basis_reordered, 
-                              ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>% 
-  unnest(norm_scores) %>% 
+scores_ordered_over %>%
+  mutate(basis_reordered = map(basis_reordered, add_column),
+         scores = map2(basis_reordered, scores, function(x,y) add_score(x,y))) %>%
+  mutate(norm_scores = map2(scores, basis_reordered,
+                              ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>%
+  unnest(norm_scores) %>%
   pull(norm_scores) %>% summary()
 ```
 
 #### Viz
 
-```{r}
+```{r, cache = TRUE}
 nmf_coef_over %>%  
   filter(seed == 3) %>%
   mutate(pattern = 1:4) %>% 
@@ -354,7 +344,7 @@ nmf_coef_over %>%
 
 ### Correlated Scores
 
-```{r}
+```{r, cache = TRUE}
 nmf_out_cor <- sim_cor %>% 
     mutate(nmf_out = map(sim, get_nmf),
         coef = map(nmf_out, function(x) {x[[2]]}),
@@ -367,7 +357,7 @@ nmf_coef_cor <- nmf_out_cor %>% select(seed, coef) %>% unnest(cols = c(coef))
 
 #### Match Scores
 
-```{r}
+```{r, cache = TRUE}
 scores_matched_cor <- nmf_out_cor %>% 
     mutate(coef = map(coef, ~cbind(pattern = 1:nrow(.x), .x)),
          basis = map(basis, ~rbind(pattern = 1:ncol(.x), .x)),
@@ -378,7 +368,7 @@ scores_matched_cor <- nmf_out_cor %>%
 
 #### Arrange Scores
 
-```{r}
+```{r, cache = TRUE}
 scores_ordered_cor <- scores_matched_cor %>% 
   mutate(coef_reordered = map(coef_reordered, ~reorder_patterns(.x)),
          basis_reordered = map(basis_reordered, ~reorder_scores(.x)))
@@ -386,7 +376,7 @@ scores_ordered_cor <- scores_matched_cor %>%
 
 #### Norms
 
-```{r}
+```{r, cache = TRUE}
 #All
 nmf_out_cor %>%
   mutate(norm_all = map2(sim, pred, function(x, y) {norm(as.matrix(x) - as.matrix(y), "F")/norm(as.matrix(x), "F")})) %>% 
@@ -394,10 +384,10 @@ nmf_out_cor %>%
   pull(norm_all) %>% summary()
 ```
 
-```{r}
+```{r, cache = TRUE}
 # coefs (ordered, not standardized)
 scores_ordered_cor %>%
-  mutate(coef_reordered = map(coef_reordered, add_4)) %>% 
+  mutate(coef_reordered = map(coef_reordered, add_row)) %>% 
   mutate(patterns = map2(coef_reordered, patterns, function(x,y) add_pattern(x,y))) %>% 
   mutate(norm_coefs = map2(patterns, coef_reordered, 
                               ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>% 
@@ -405,20 +395,20 @@ scores_ordered_cor %>%
   pull(norm_coefs) %>% summary()
 ```
 
-```{r}
+```{r, cache = TRUE}
 # Scores (ordered, not standardized)
-scores_ordered_cor %>% 
-  mutate(basis_reordered = map(basis_reordered, add_3),
-         scores = map2(basis_reordered, scores, function(x,y) add_score(x,y))) %>% 
-  mutate(norm_scores = map2(scores, basis_reordered, 
-                              ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>% 
-  unnest(norm_scores) %>% 
+scores_ordered_cor %>%
+  mutate(basis_reordered = map(basis_reordered, add_column),
+         scores = map2(basis_reordered, scores, function(x,y) add_score(x,y))) %>%
+  mutate(norm_scores = map2(scores, basis_reordered,
+                              ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>%
+  unnest(norm_scores) %>%
   pull(norm_scores) %>% summary()
 ```
 
 #### Viz
 
-```{r}
+```{r, cache = TRUE}
 nmf_coef_cor %>%  
   filter(seed == 3) %>%
   mutate(pattern = 1:4) %>% 
@@ -456,9 +446,9 @@ nmf_coef_cor %>%
 
 ## Standardize
 
-Divide coefs by stdev. Multiply scores by stdev of associated coef.
+Divide coefs by sum to normalize. Multiply scores by sum of associated coef.
 
-```{r}
+```{r, cache = TRUE}
 standard <- function(row_matrix, column_matrix) {
   sum_row <- apply(row_matrix, 1, function(x) sum(x))
   row_out <-  as_tibble(apply(row_matrix, 1, function(x) x/sum(x))) # Divide patterns by pattern sum to normalize
@@ -474,8 +464,8 @@ sd_dist_out <- scores_ordered_dist %>%
          sd_coef     = map2(coef_reordered, basis_reordered, function(x,y) standard(x,y)[[1]])) %>% 
   mutate(sd_patterns = map2(sd_coef, sd_patterns, add_pattern),
          sd_scores   = map2(sd_basis, sd_scores, add_score),
-         sd_coef     = map(sd_coef, add_3),
-         sd_basis    = map(sd_basis, add_3)) %>%
+         sd_coef     = map(sd_coef, add_column),
+         sd_basis    = map(sd_basis, add_column)) %>%
   select(-coef_reordered, -basis_reordered, -scores, -patterns)
 
 dist_norm <- sd_dist_out %>% 
@@ -493,8 +483,8 @@ sd_over_out <- scores_ordered_over %>%
          sd_coef     = map2(coef_reordered, basis_reordered, function(x,y) standard(x,y)[[1]])) %>% 
   mutate(sd_patterns = map2(sd_coef, sd_patterns, add_score),
          sd_scores   = map2(sd_basis, sd_scores, add_score),
-         sd_coef     = map(sd_coef, add_3),
-         sd_basis    = map(sd_basis, add_3)) %>% 
+         sd_coef     = map(sd_coef, add_column),
+         sd_basis    = map(sd_basis, add_column)) %>% 
   select(-coef_reordered, -basis_reordered, -scores, -patterns)
 
 over_norm <- sd_over_out %>%   
@@ -512,8 +502,8 @@ sd_cor_out <- scores_ordered_cor %>%
          sd_coef     = map2(coef_reordered, basis_reordered, function(x,y) standard(x,y)[[1]])) %>% 
   mutate(sd_patterns = map2(sd_coef, sd_patterns, add_score),
          sd_scores   = map2(sd_basis, sd_scores, add_score),
-         sd_coef     = map(sd_coef, add_3),
-         sd_basis    = map(sd_basis, add_3)) %>%
+         sd_coef     = map(sd_coef, add_column),
+         sd_basis    = map(sd_basis, add_column)) %>%
   select(-coef_reordered, -basis_reordered, -scores, -patterns)
   
 cor_norm <- sd_cor_out %>%   
@@ -530,7 +520,7 @@ summary(dist_norm)
 (sum(over_norm) + sum(cor_norm) + sum(dist_norm)) / 300
 ```
 
-```{r}
+```{r, cache = TRUE}
 dist_norm_basis <- sd_dist_out %>% 
 mutate(norm_basis = map2(sd_scores, sd_basis, 
                               ~norm(as.matrix(.x) - as.matrix(.y), "F") / 
@@ -557,5 +547,230 @@ summary(cor_norm_basis)
 summary(dist_norm_basis)
 
 (sum(over_norm_basis) + sum(cor_norm_basis) + sum(dist_norm_basis)) / 300
+```
+
+## Summarize
+
+### Rank
+
+```{r}
+rank_d <- nmf_out_dist %>% 
+  mutate(rank = map(coef, nrow)) %>% 
+  select(rank) %>%
+  unnest(rank) %>%
+  group_by(rank) %>%
+  summarise(n = n()) %>%
+  mutate(Simulation = "Distinct") %>%
+  mutate(Proportion = n/100) %>%
+  select(Simulation, Rank = rank, Proportion)
+
+rank_o <- nmf_out_over %>% 
+  mutate(rank = map(coef, nrow)) %>%
+  select(rank) %>%
+  unnest(rank) %>%
+  group_by(rank) %>%
+  summarise(n = n()) %>%
+  mutate(Simulation = "Overlapping") %>%
+  mutate(Proportion = n/100) %>%
+  select(Simulation, Rank = rank, Proportion)
+
+rank_c <- nmf_out_cor %>% 
+  mutate(rank = map(coef, nrow)) %>%
+  select(rank = rank) %>%
+  unnest(rank) %>%
+  group_by(rank) %>%
+  summarise(n = n()) %>%
+  mutate(Simulation = "Correlated") %>%
+  mutate(Proportion = n/100) %>%
+  select(Simulation, Rank = rank, Proportion)
+
+
+rbind(rank_d, rank_o, rank_c) %>% knitr::kable()
+```
+
+### Norms
+
+#### Unstandardized
+
+```{r}
+scores_ordered_dist
+```
+
+```{r}
+dist_pred <- scores_ordered_dist %>%
+  mutate(norm_all = map2(sim, pred, function(x, y) {norm(as.matrix(x) - as.matrix(y), "F")/norm(as.matrix(x), "F")})) %>% 
+  unnest(norm_all) %>% 
+  pull(norm_all) %>% summary() %>% as.matrix() %>% t() %>% 
+  as_tibble() %>% mutate(Norm = "Relative Prediction Error",
+                         Simulation = "Distinct",
+                         Standardized = "No") %>% 
+  select(Simulation, Norm, Standardized, everything())
+```
+
+```{r}
+dist_load <- scores_ordered_dist %>% 
+  mutate(coef_reordered = map(coef_reordered, add_row)) %>% 
+  #mutate(patterns = map2(coef_reordered, patterns, function(x,y) add_pattern(x,y))) %>% 
+  mutate(norm_loadings = map2(patterns, coef_reordered, 
+                              ~norm(as.matrix(.x) - as.matrix(.y), "F") /
+                                norm(as.matrix(.x), "F"))) %>% 
+  unnest(norm_loadings) %>% 
+  pull(norm_loadings) %>% summary() %>% as.matrix() %>% t() %>% 
+  as_tibble() %>% mutate(Norm = "Relative Pattern Loading Error",
+                         Simulation = "Distinct",
+                         Standardized = "No") %>% 
+  select(Simulation, Norm, Standardized, everything())
+```
+
+```{r}
+dist_score <- scores_ordered_dist %>% 
+  mutate(basis_reordered = map(basis_reordered, add_column)) %>% 
+  mutate(norm_scores = map2(scores, basis_reordered, 
+                              ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>% 
+  unnest(norm_scores) %>% 
+  pull(norm_scores) %>% summary() %>% as.matrix() %>% t() %>% 
+  as_tibble() %>% mutate(Norm = "Relative Score Error",
+                         Simulation = "Distinct",
+                         Standardized = "No") %>% 
+  select(Simulation, Norm, Standardized, everything())
+```
+
+```{r}
+over_pred <- scores_ordered_over %>%
+  mutate(norm_all = map2(sim, pred, function(x, y) {norm(as.matrix(x) - as.matrix(y), "F")/norm(as.matrix(x), "F")})) %>% 
+  unnest(norm_all) %>% 
+  pull(norm_all) %>% summary() %>% as.matrix() %>% t() %>% 
+  as_tibble() %>% mutate(Norm = "Relative Prediction Error",
+                         Simulation = "Overlapping",
+                         Standardized = "No") %>% 
+  select(Simulation, Norm, Standardized, everything())
+```
+
+```{r}
+over_load <- scores_ordered_over %>% 
+  mutate(coef_reordered = map(coef_reordered, add_row)) %>% 
+  mutate(patterns = map2(coef_reordered, patterns, function(x,y) add_pattern(x,y))) %>% 
+  mutate(norm_loadings = map2(patterns, coef_reordered, 
+                              ~norm(as.matrix(.x) - as.matrix(.y), "F") /
+                                norm(as.matrix(.x), "F"))) %>% 
+  unnest(norm_loadings) %>% 
+  pull(norm_loadings) %>% summary() %>% as.matrix() %>% t() %>% 
+  as_tibble() %>% mutate(Norm = "Relative Pattern Loading Error",
+                         Simulation = "Overlapping",
+                         Standardized = "No") %>% 
+  select(Simulation, Norm, Standardized, everything())
+```
+
+```{r}
+over_score <- scores_ordered_over %>% 
+  mutate(basis_reordered = map(basis_reordered, add_column)) %>% 
+  mutate(scores = map2(basis_reordered, scores, function(x,y) add_score(x,y))) %>% 
+  mutate(norm_scores = map2(scores, basis_reordered, 
+                              ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>% 
+  unnest(norm_scores) %>% 
+  pull(norm_scores) %>% summary() %>% as.matrix() %>% t() %>% 
+  as_tibble() %>% mutate(Norm = "Relative Score Error",
+                         Simulation = "Overlapping",
+                         Standardized = "No") %>% 
+  select(Simulation, Norm, Standardized, everything())
+```
+
+```{r}
+cor_pred <- scores_ordered_cor %>%
+  mutate(norm_all = map2(sim, pred, function(x, y) {norm(as.matrix(x) - as.matrix(y), "F")/norm(as.matrix(x), "F")})) %>% 
+  unnest(norm_all) %>% 
+  pull(norm_all) %>% summary() %>% as.matrix() %>% t() %>% 
+  as_tibble() %>% mutate(Norm = "Relative Prediction Error",
+                         Simulation = "Correlated",
+                         Standardized = "No") %>% 
+  select(Simulation, Norm, Standardized, everything())
+
+cor_load <- scores_ordered_cor %>% 
+  mutate(coef_reordered = map(coef_reordered, add_row)) %>% 
+  mutate(patterns = map2(coef_reordered, patterns, function(x,y) add_pattern(x,y))) %>% 
+  mutate(norm_loadings = map2(patterns, coef_reordered, 
+                              ~norm(as.matrix(.x) - as.matrix(.y), "F") /
+                                norm(as.matrix(.x), "F"))) %>% 
+  unnest(norm_loadings) %>% 
+  pull(norm_loadings) %>% summary() %>% as.matrix() %>% t() %>% 
+  as_tibble() %>% mutate(Norm = "Relative Pattern Loading Error",
+                         Simulation = "Correlated",
+                         Standardized = "No") %>% 
+  select(Simulation, Norm, Standardized, everything())
+
+cor_score <- scores_ordered_cor %>% 
+  mutate(basis_reordered = map(basis_reordered, add_column)) %>% 
+  mutate(scores = map2(basis_reordered, scores, function(x,y) add_score(x,y))) %>% 
+  mutate(norm_scores = map2(scores, basis_reordered, 
+                              ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>% 
+  unnest(norm_scores) %>% 
+  pull(norm_scores) %>% summary() %>% as.matrix() %>% t() %>% 
+  as_tibble() %>% mutate(Norm = "Relative Score Error",
+                         Simulation = "Correlated",
+                         Standardized = "No") %>% 
+  select(Simulation, Norm, Standardized, everything())
+```
+
+```{r}
+rbind(dist_pred,
+      dist_load,
+      dist_score, 
+      over_pred,
+      over_load,
+      over_score,
+      cor_pred,
+      cor_load,
+      cor_score) %>% knitr::kable()
+```
+
+#### Standardized
+
+```{r}
+over_load_s <- summary(over_norm) %>% as.matrix() %>% t() %>% 
+  as_tibble() %>% mutate(Norm = "Relative Pattern Loading Error",
+                         Simulation = "Overlapping",
+                         Standardized = "Yes") %>% 
+  select(Simulation, Norm, Standardized, everything())
+
+cor_load_s <- summary(cor_norm) %>% as.matrix() %>% t() %>% 
+  as_tibble() %>% mutate(Norm = "Relative Pattern Loading Error",
+                         Simulation = "Correlated",
+                         Standardized = "Yes") %>% 
+  select(Simulation, Norm, Standardized, everything())
+
+dist_load_s <- summary(dist_norm) %>% as.matrix() %>% t() %>% 
+  as_tibble() %>% mutate(Norm = "Relative Pattern Loading Error",
+                         Simulation = "Distinct",
+                         Standardized = "Yes") %>% 
+  select(Simulation, Norm, Standardized, everything())
+```
+
+```{r}
+over_score_s <- summary(over_norm_basis) %>% as.matrix() %>% t() %>% 
+  as_tibble() %>% mutate(Norm = "Relative Score Error",
+                         Simulation = "Overlapping",
+                         Standardized = "Yes") %>% 
+  select(Simulation, Norm, Standardized, everything())
+
+cor_score_s <- summary(cor_norm_basis) %>% as.matrix() %>% t() %>% 
+  as_tibble() %>% mutate(Norm = "Relative Score Error",
+                         Simulation = "Correlated",
+                         Standardized = "Yes") %>% 
+  select(Simulation, Norm, Standardized, everything())
+
+dist_score_s <- summary(dist_norm_basis) %>% as.matrix() %>% t() %>% 
+  as_tibble() %>% mutate(Norm = "Relative Score Error",
+                         Simulation = "Distinct",
+                         Standardized = "Yes") %>% 
+  select(Simulation, Norm, Standardized, everything())
+```
+
+```{r}
+rbind(dist_load_s,
+      dist_score_s, 
+      over_load_s,
+      over_score_s,
+      cor_load_s,
+      cor_score_s) %>% knitr::kable()
 ```
 
