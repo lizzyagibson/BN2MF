@@ -354,6 +354,53 @@ rbind(pca_rank_d, pca_rank_o, pca_rank_c) %>% knitr::kable()
 #### Unstandardized
 
 ```{r, pca11}
+add_column <- function(score) {
+  
+  if (ncol(score) == 3) {
+  score <- cbind(score, four = rep(0, times = nrow(score))) %>% as_tibble(.)
+  } else if (ncol(score) == 2) {
+  score <- cbind(score, three = rep(0, times = nrow(score)), four = rep(0, times = nrow(score))) %>% as_tibble(.)
+  } else {}
+  score
+}
+
+add_row <- function(pattern) {
+  
+  if (nrow(pattern) == 3) {
+  pattern <- rbind(pattern, four = rep(0, times = ncol(pattern))) %>% as_tibble(.)
+  } else if (nrow(pattern) == 2) {
+  pattern <- rbind(pattern, three = rep(0, times = ncol(pattern)), four = rep(0, times = ncol(pattern))) %>% as_tibble(.)
+  } else {}
+  pattern
+}
+
+add_pattern <- function(pattern, true) {
+  
+  if (nrow(pattern) == 5) {
+  true <- rbind(true, four = rep(0, times = ncol(true))) %>% as_tibble(.)
+  } else if (nrow(pattern) == 6) {
+  true <- rbind(true, three = rep(0, times = ncol(true)), four = rep(0, times = ncol(true))) %>% as_tibble(.)
+  } else {}
+  true
+}
+
+add_score <- function(score, true) {
+  
+  if (ncol(score) == 5) {
+  true <- cbind(true, four = rep(0, times = nrow(true))) %>% as_tibble(.)
+  } else if (ncol(score) == 6) {
+  true <- cbind(true, three = rep(0, times = nrow(true)), four = rep(0, times = nrow(true))) %>% as_tibble(.)
+  } else {}
+  true
+}
+
+standard <- function(row_matrix, column_matrix) {
+  sum_row <- apply(row_matrix, 1, function(x) sum(x))
+  row_out <-  as_tibble(apply(row_matrix, 1, function(x) x/sum(x))) # Divide patterns by pattern sum to normalize
+  col_out <- map2_dfr(as_tibble(column_matrix), sum_row, function(x,y) x*y) # multiply scores by pattern sum
+  list(row_out = row_out, col_out = col_out)
+}
+
 pca_dist_pred <- pca_scores_matched_dist %>%
   mutate(norm_all = map2(sim, pred, function(x, y) {norm(as.matrix(x) - as.matrix(y), "F")/norm(as.matrix(x), "F")})) %>% 
   unnest(norm_all) %>% 
@@ -465,33 +512,6 @@ rbind(pca_dist_pred,
 
 
 ```{r, pca12}
-add_pattern <- function(pattern, true) {
-  
-  if (nrow(pattern) == 5) {
-  true <- rbind(true, four = rep(0, times = ncol(true))) %>% as_tibble(.)
-  } else if (nrow(pattern) == 6) {
-  true <- rbind(true, three = rep(0, times = ncol(true)), four = rep(0, times = ncol(true))) %>% as_tibble(.)
-  } else {}
-  true
-}
-
-add_score <- function(score, true) {
-  
-  if (ncol(score) == 5) {
-  true <- cbind(true, four = rep(0, times = nrow(true))) %>% as_tibble(.)
-  } else if (ncol(score) == 6) {
-  true <- cbind(true, three = rep(0, times = nrow(true)), four = rep(0, times = nrow(true))) %>% as_tibble(.)
-  } else {}
-  true
-}
-
-standard <- function(loading_matrix, score_matrix) {
-  sum_row <- apply(loading_matrix, 1, function(x) sum(x))
-  pattern_out <-  as_tibble(apply(loading_matrix, 1, function(x) x/sum(x))) # Divide patterns by pattern sum to normalize
-  score_out <- map2_dfr(as_tibble(score_matrix), sum_row, function(x,y) x*y) # multiply scores by pattern sum
-  list(pattern_out = pattern_out, score_out = score_out)
-}
-
 pca_sd_dist_out <- pca_scores_matched_dist %>% 
   mutate(sd_patterns = map2(patterns, scores, function(x,y) standard(x,y)[[1]]), # Normalize and Standardize first
          sd_scores   = map2(patterns, scores, function(x,y) standard(x,y)[[2]]),
