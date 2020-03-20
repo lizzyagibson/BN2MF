@@ -6,6 +6,8 @@ output:
   html_document:
     toc: TRUE
     toc_float: TRUE
+    toc_depth: 4
+    code_folding: hide
 ---
 
 ```{r setup, include=FALSE}
@@ -25,29 +27,24 @@ library(psych)
 
 ```{r}
 load(here::here("./Sims/Iterate/sim_dist.RDA"))
-sim_dist
 
 load(here::here("./Sims/Iterate/sim_cor.RDA"))
-sim_cor
 
 load(here::here("./Sims/Iterate/sim_over.RDA"))
-sim_over
 ```
 
-## Factor Analysis
+## Distinct Patterns
 
-### Distinct Patterns
-
-```{r, loop1, cache = TRUE}
+```{r, fa1}
 get_fa <- function (sim) {
   set.seed(1988)
   fa_3 <- fa(sim, 3, scores = "regression", rotate = "promax")
   fa_4 <- fa(sim, 4, scores = "regression", rotate = "promax")
   fa_5 <- fa(sim, 5, scores = "regression", rotate = "promax")
   
- if (fa_5$EBIC < fa_4$EBIC && fa_5$EBIC < fa_3$EBIC) {
+ if (fa_5$BIC < fa_4$BIC && fa_5$BIC < fa_3$BIC) {
     fa_out <- fa_5
-  } else if (fa_4$EBIC < fa_3$EBIC && fa_4$EBIC < fa_5$EBIC) {
+  } else if (fa_4$BIC < fa_3$BIC && fa_4$BIC < fa_5$BIC) {
     fa_out <- fa_4
   } else {fa_out <- fa_3}
     
@@ -74,36 +71,9 @@ labels <-  c("pcb28", "pcb66", "pcb74", "pcb99", "pcb105", "pcb118", "pcb138_158
           "p_pb", "tcs", "bpa")
 ```
 
-#### Norms
+### Viz
 
-```{r}
-#All
-fa_out_dist %>%
-  mutate(norm_all = map2(sim, pred, ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>% 
-  unnest(norm_all) %>% 
-  pull(norm_all) %>% summary()
-
-#Loadings (ordered, not scaled)
-fa_out_dist %>%
-  select(seed, patterns, loadings) %>% 
-  mutate(norm_loadings = map2(patterns, loadings, ~norm(as.matrix(.x) - as.matrix(t(.y)), "F") / 
-                                norm(as.matrix(.x), "F"))) %>% 
-  unnest(norm_loadings) %>% 
-  pull(norm_loadings) %>% summary()
-```
-
-```{r}
-# Scores (ordered, not standardized)
-fa_out_dist %>% 
-  mutate(norm_scores = map2(scores, fa_scores, 
-                              ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>% 
-  unnest(norm_scores) %>% 
-  pull(norm_scores) %>% summary()
-```
-
-#### Viz
-
-```{r}
+```{r, fa2}
 fa_loadings_dist %>%  
   filter(seed == 77) %>% 
   mutate(Chemicals = labels) %>% 
@@ -136,11 +106,9 @@ fa_loadings_dist %>%
         strip.background = element_blank())
 ```
 
-### Overlapping Patterns
+## Overlapping Patterns
 
-**In fa.stats(r = r, f = f, phi = phi, n.obs = n.obs, np.obs = np.obs,...: The estimated weights for the factor scores are probably incorrect.  Try a different factor score estimation method.**  
-
-```{r}
+```{r, fa3, warning=FALSE}
 fa_out_over <- sim_over %>% 
   mutate(fa_out = map(sim, get_fa),
         loadings = map(fa_out, function(x){x[[2]]}),
@@ -152,36 +120,9 @@ fa_loadings_over <- fa_out_over %>% select(seed, loadings) %>%
   unnest(loadings)
 ```
 
-#### Norms
+### Viz
 
-```{r}
-# All
-fa_out_over %>%
-  mutate(norm_all = map2(sim, pred, ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>% 
-  unnest(norm_all) %>% 
-  pull(norm_all) %>% summary()
-
-#Loadings (ordered, not scaled)
-fa_out_over %>%
-  select(seed, patterns, loadings) %>% 
-  mutate(norm_loadings = map2(patterns, loadings, ~norm(as.matrix(.x) - as.matrix(t(.y)), "F") / 
-                                norm(as.matrix(.x), "F"))) %>% 
-  unnest(norm_loadings) %>% 
-  pull(norm_loadings) %>% summary()
-```
-
-```{r}
-# Scores (ordered, not standardized)
-fa_out_over %>% 
-  mutate(norm_scores = map2(scores, fa_scores, 
-                              ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>% 
-  unnest(norm_scores) %>% 
-  pull(norm_scores) %>% summary()
-```
-
-#### Viz
-
-```{r}
+```{r, fa4}
 fa_loadings_over %>%  
   filter(seed == 7) %>% 
   mutate(Chemicals = labels) %>% 
@@ -214,9 +155,9 @@ fa_loadings_over %>%
         strip.background = element_blank())
 ```
 
-### Correlated Scores
+## Correlated Scores
 
-```{r, loop, cache = TRUE}
+```{r, fa5, warning=FALSE}
 fa_out_cor <- sim_cor %>% 
   mutate(fa_out = map(sim, get_fa),
         loadings = map(fa_out, function(x){x[[2]]}),
@@ -228,36 +169,9 @@ fa_loadings_cor <- fa_out_cor %>% select(seed, loadings) %>%
   unnest(loadings)
 ```
 
-#### Norms
+### Viz
 
-```{r}
-# All
-fa_out_cor %>%
-  mutate(norm_all = map2(sim, pred, ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>% 
-  unnest(norm_all) %>% 
-  pull(norm_all) %>% summary()
-
-#Loadings (ordered, not scaled)
-fa_out_cor %>%
-  select(seed, patterns, loadings) %>% 
-  mutate(norm_loadings = map2(patterns, loadings, ~norm(as.matrix(.x) - as.matrix(t(.y)), "F") / 
-                                norm(as.matrix(.x), "F"))) %>% 
-  unnest(norm_loadings) %>% 
-  pull(norm_loadings) %>% summary()
-```
-
-```{r}
-# Scores (ordered, not standardized)
-fa_out_cor %>% 
-  mutate(norm_scores = map2(scores, fa_scores, 
-                              ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>% 
-  unnest(norm_scores) %>% 
-  pull(norm_scores) %>% summary()
-```
-
-#### Viz
-
-```{r}
+```{r, fa6}
 fa_loadings_cor %>%  
   filter(seed == 7) %>% 
   mutate(Chemicals = labels) %>% 
@@ -290,11 +204,157 @@ fa_loadings_cor %>%
         strip.background = element_blank())
 ```
 
-## Standardize
+## Summarize
+
+### Rank
+
+```{r, fa7}
+fa_rank_d <- fa_out_dist %>% 
+  mutate(rank = map(loadings, ncol)) %>% 
+  select(rank) %>%
+  unnest(rank) %>%
+  group_by(rank) %>%
+  summarise(n = n()) %>%
+  mutate(Simulation = "Distinct") %>%
+  mutate(Proportion = n/100) %>%
+  select(Simulation, Rank = rank, Proportion)
+
+fa_rank_o <- fa_out_over %>% 
+  mutate(rank = map(loadings, ncol)) %>%
+  select(rank) %>%
+  unnest(rank) %>%
+  group_by(rank) %>%
+  summarise(n = n()) %>%
+  mutate(Simulation = "Overlapping") %>%
+  mutate(Proportion = n/100) %>%
+  select(Simulation, Rank = rank, Proportion)
+
+fa_rank_c <- fa_out_cor %>% 
+  mutate(rank = map(loadings, ncol)) %>%
+  select(rank = rank) %>%
+  unnest(rank) %>%
+  group_by(rank) %>%
+  summarise(n = n()) %>%
+  mutate(Simulation = "Correlated") %>%
+  mutate(Proportion = n/100) %>%
+  select(Simulation, Rank = rank, Proportion)
+
+rbind(fa_rank_d, fa_rank_o, fa_rank_c) %>% knitr::kable()
+```
+
+### Norms
+
+#### Unstandardized
+
+```{r, fa8}
+fa_dist_pred <- fa_out_dist %>%
+  mutate(norm_all = map2(sim, pred, function(x, y) {norm(as.matrix(x) - as.matrix(y), "F")/norm(as.matrix(x), "F")})) %>% 
+  unnest(norm_all) %>% 
+  pull(norm_all) %>% summary() %>% as.matrix() %>% t() %>% 
+  as_tibble() %>% mutate(Norm = "Prediction",
+                         Simulation = "Distinct",
+                         Standardized = "No") %>% 
+  select(Norm, Simulation, Standardized, everything())
+
+fa_dist_load <- fa_out_dist %>% 
+  mutate(norm_loadings = map2(patterns, loadings, 
+                              ~norm(as.matrix(.x) - as.matrix(t(.y)), "F") /
+                                norm(as.matrix(.x), "F"))) %>% 
+  unnest(norm_loadings) %>% 
+  pull(norm_loadings) %>% summary() %>% as.matrix() %>% t() %>% 
+  as_tibble() %>% mutate(Norm = "Loadings",
+                         Simulation = "Distinct",
+                         Standardized = "No") %>% 
+  select(Norm, Simulation, Standardized, everything())
+
+fa_dist_score <- fa_out_dist %>% 
+  mutate(fa_scores = map(fa_scores, add_column)) %>% 
+  mutate(norm_scores = map2(scores, fa_scores, 
+                              ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>% 
+  unnest(norm_scores) %>% 
+  pull(norm_scores) %>% summary() %>% as.matrix() %>% t() %>% 
+  as_tibble() %>% mutate(Norm = "Scores",
+                         Simulation = "Distinct",
+                         Standardized = "No") %>% 
+  select(Norm, Simulation, Standardized, everything())
+
+fa_over_pred <- fa_out_over %>%
+  mutate(norm_all = map2(sim, pred, function(x, y) {norm(as.matrix(x) - as.matrix(y), "F")/norm(as.matrix(x), "F")})) %>% 
+  unnest(norm_all) %>% 
+  pull(norm_all) %>% summary() %>% as.matrix() %>% t() %>% 
+  as_tibble() %>% mutate(Norm = "Prediction",
+                         Simulation = "Overlapping",
+                         Standardized = "No") %>% 
+  select(Norm, Simulation, Standardized, everything())
+
+fa_over_load <- fa_out_over %>% 
+  mutate(norm_loadings = map2(patterns, loadings, 
+                              ~norm(as.matrix(.x) - as.matrix(t(.y)), "F") /
+                                norm(as.matrix(.x), "F"))) %>% 
+  unnest(norm_loadings) %>% 
+  pull(norm_loadings) %>% summary() %>% as.matrix() %>% t() %>% 
+  as_tibble() %>% mutate(Norm = "Loadings",
+                         Simulation = "Overlapping",
+                         Standardized = "No") %>% 
+  select(Norm, Simulation, Standardized, everything())
+
+fa_over_score <- fa_out_over %>% 
+  mutate(norm_scores = map2(scores, fa_scores, 
+                              ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>% 
+  unnest(norm_scores) %>% 
+  pull(norm_scores) %>% summary() %>% as.matrix() %>% t() %>% 
+  as_tibble() %>% mutate(Norm = "Scores",
+                         Simulation = "Overlapping",
+                         Standardized = "No") %>% 
+  select(Norm, Simulation, Standardized, everything())
+
+fa_cor_pred <- fa_out_cor %>%
+  mutate(norm_all = map2(sim, pred, function(x, y) {norm(as.matrix(x) - as.matrix(y), "F")/norm(as.matrix(x), "F")})) %>% 
+  unnest(norm_all) %>% 
+  pull(norm_all) %>% summary() %>% as.matrix() %>% t() %>% 
+  as_tibble() %>% mutate(Norm = "Prediction",
+                         Simulation = "Correlated",
+                         Standardized = "No") %>% 
+  select(Norm, Simulation, Standardized, everything())
+
+fa_cor_load <- fa_out_cor %>% 
+  mutate(norm_loadings = map2(patterns, loadings, 
+                              ~norm(as.matrix(.x) - as.matrix(t(.y)), "F") /
+                                norm(as.matrix(.x), "F"))) %>% 
+  unnest(norm_loadings) %>% 
+  pull(norm_loadings) %>% summary() %>% as.matrix() %>% t() %>% 
+  as_tibble() %>% mutate(Norm = "Loadings",
+                         Simulation = "Correlated",
+                         Standardized = "No") %>% 
+  select(Norm, Simulation, Standardized, everything())
+
+fa_cor_score <- fa_out_cor %>% 
+  mutate(norm_scores = map2(scores, fa_scores, 
+                              ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>% 
+  unnest(norm_scores) %>% 
+  pull(norm_scores) %>% summary() %>% as.matrix() %>% t() %>% 
+  as_tibble() %>% mutate(Norm = "Scores",
+                         Simulation = "Correlated",
+                         Standardized = "No") %>% 
+  select(Norm, Simulation, Standardized, everything())
+
+rbind(fa_dist_pred,
+      fa_over_pred,
+      fa_cor_pred,
+      fa_dist_load,
+      fa_over_load,
+      fa_cor_load,
+      fa_dist_score, 
+      fa_over_score,
+      fa_cor_score) %>% 
+  mutate_if(is.numeric, round, 2) %>% knitr::kable()
+```
+
+#### Standardized
 
 Divide loadings by sum. Multiply scores by sum of associated loading.
 
-```{r}
+```{r, fa9}
 add_column <- function(score) {
   
   if (ncol(score) == 3) {
@@ -315,7 +375,7 @@ add_row <- function(pattern) {
   pattern
 }
 
-add_row_true <- function(pattern, true) {
+add_pattern <- function(pattern, true) {
   
   if (nrow(pattern) == 5) {
   true <- rbind(true, four = rep(0, times = ncol(true))) %>% as_tibble(.)
@@ -325,7 +385,7 @@ add_row_true <- function(pattern, true) {
   true
 }
 
-add_column_true <- function(score, true) {
+add_score <- function(score, true) {
   
   if (ncol(score) == 5) {
   true <- cbind(true, four = rep(0, times = nrow(true))) %>% as_tibble(.)
@@ -342,311 +402,126 @@ standard <- function(row_matrix, column_matrix) {
   list(row_out = row_out, col_out = col_out)
 }
 
-sd_dist_out <- fa_out_dist %>% 
+fa_sd_dist_out <- fa_out_dist %>% 
   select(-sim, -noise, -pred, -chem, -fa_out) %>% 
   mutate(sd_patterns = map2(patterns, scores, function(x,y) standard(x,y)[[1]]),
          sd_scores   = map2(patterns, scores, function(x,y) standard(x,y)[[2]]),
          sd_fa_score       = map2(loadings, fa_scores,function(x,y) standard(t(x),y)[[2]]),
          sd_loading     = map2(loadings, fa_scores, function(x,y) standard(t(x),y)[[1]])) %>% 
-  mutate(sd_patterns = map2(sd_loading, sd_patterns, add_row_true),
-         sd_scores   = map2(sd_fa_score, sd_scores, add_column_true),
+  mutate(sd_patterns = map2(sd_loading, sd_patterns, add_pattern),
+         sd_scores   = map2(sd_fa_score, sd_scores, add_score),
          sd_loading     = map(sd_loading, add_row),
          sd_fa_score    = map(sd_fa_score, add_column)) %>%
   select(-scores, -patterns, -loadings, -fa_scores)
 
-dist_norm <- sd_dist_out %>% 
+fa_dist_norm <- fa_sd_dist_out %>% 
 mutate(norm_eh = map2(sd_patterns, sd_loading, 
                               ~norm(as.matrix(.x) - as.matrix(.y), "F") / 
                                 norm(as.matrix(.x), "F"))) %>% 
   unnest(norm_eh) %>% 
   pull(norm_eh)
 
-sd_over_out <- fa_out_over %>% 
+fa_sd_over_out <- fa_out_over %>% 
   select(-sim, -noise, -pred, -chem, -fa_out) %>% 
   mutate(sd_patterns = map2(patterns, scores, function(x,y) standard(x,y)[[1]]),
          sd_scores   = map2(patterns, scores, function(x,y) standard(x,y)[[2]]),
          sd_fa_score       = map2(loadings, fa_scores,function(x,y) standard(t(x),y)[[2]]),
          sd_loading     = map2(loadings, fa_scores, function(x,y) standard(t(x),y)[[1]])) %>% 
-  mutate(sd_patterns = map2(sd_loading, sd_patterns, add_row_true),
-         sd_scores   = map2(sd_fa_score, sd_scores, add_column_true),
+  mutate(sd_patterns = map2(sd_loading, sd_patterns, add_pattern),
+         sd_scores   = map2(sd_fa_score, sd_scores, add_score),
          sd_loading     = map(sd_loading, add_row),
          sd_fa_score    = map(sd_fa_score, add_column)) %>%
   select(-scores, -patterns, -loadings, -fa_scores)
 
-over_norm <- sd_over_out %>%   
+fa_over_norm <- fa_sd_over_out %>%   
 mutate(norm_eh = map2(sd_patterns, sd_loading, 
                               ~norm(as.matrix(.x) - as.matrix(.y), "F") / 
                                 norm(as.matrix(.x), "F"))) %>% 
   unnest(norm_eh) %>% 
   pull(norm_eh)
 
-sd_cor_out <- fa_out_cor %>% 
+fa_sd_cor_out <- fa_out_cor %>% 
   select(-sim, -noise, -pred, -chem, -fa_out) %>% 
   mutate(sd_patterns = map2(patterns, scores, function(x,y) standard(x,y)[[1]]),
          sd_scores   = map2(patterns, scores, function(x,y) standard(x,y)[[2]]),
          sd_fa_score       = map2(loadings, fa_scores,function(x,y) standard(t(x),y)[[2]]),
          sd_loading     = map2(loadings, fa_scores, function(x,y) standard(t(x),y)[[1]])) %>% 
-  mutate(sd_patterns = map2(sd_loading, sd_patterns, add_row_true),
-         sd_scores   = map2(sd_fa_score, sd_scores, add_column_true),
+  mutate(sd_patterns = map2(sd_loading, sd_patterns, add_pattern),
+         sd_scores   = map2(sd_fa_score, sd_scores, add_score),
          sd_loading     = map(sd_loading, add_row),
          sd_fa_score    = map(sd_fa_score, add_column)) %>%
   select(-scores, -patterns, -loadings, -fa_scores)
   
-cor_norm <- sd_cor_out %>%   
+fa_cor_norm <- fa_sd_cor_out %>%   
 mutate(norm_eh = map2(sd_patterns, sd_loading, 
                               ~norm(as.matrix(.x) - as.matrix(.y), "F") / 
                                 norm(as.matrix(.x), "F"))) %>% 
   unnest(norm_eh) %>% 
   pull(norm_eh)
 
-summary(over_norm) 
-summary(cor_norm) 
-summary(dist_norm)
-
-(sum(over_norm) + sum(cor_norm) + sum(dist_norm)) / 300
-```
-
-```{r}
-dist_norm_fa_score <- sd_dist_out %>% 
+dist_norm_fa_score <- fa_sd_dist_out %>% 
 mutate(norm_fa_score = map2(sd_scores, sd_fa_score, 
                               ~norm(as.matrix(.x) - as.matrix(.y), "F") / 
                                 norm(as.matrix(.x), "F"))) %>% 
   unnest(norm_fa_score) %>% 
   pull(norm_fa_score)
 
-over_norm_fa_score <- sd_over_out %>%   
+over_norm_fa_score <- fa_sd_over_out %>%   
 mutate(norm_fa_score = map2(sd_scores, sd_fa_score, 
                               ~norm(as.matrix(.x) - as.matrix(.y), "F") / 
                                 norm(as.matrix(.x), "F"))) %>% 
   unnest(norm_fa_score) %>% 
   pull(norm_fa_score)
 
-cor_norm_fa_score <- sd_cor_out %>%   
+cor_norm_fa_score <- fa_sd_cor_out %>%   
 mutate(norm_fa_score = map2(sd_scores, sd_fa_score, 
                               ~norm(as.matrix(.x) - as.matrix(.y), "F") / 
                                 norm(as.matrix(.x), "F"))) %>% 
   unnest(norm_fa_score) %>% 
   pull(norm_fa_score)
 
-summary(over_norm_fa_score) 
-summary(cor_norm_fa_score) 
-summary(dist_norm_fa_score)
-
-(sum(over_norm_fa_score) + sum(cor_norm_fa_score) + sum(dist_norm_fa_score)) / 300
-```
-
-## Summarize
-
-### Rank
-
-```{r}
-rank_d <- fa_out_dist %>% 
-  mutate(rank = map(loadings, ncol)) %>% 
-  select(rank) %>%
-  unnest(rank) %>%
-  group_by(rank) %>%
-  summarise(n = n()) %>%
-  mutate(Simulation = "Distinct") %>%
-  mutate(Proportion = n/100) %>%
-  select(Simulation, Rank = rank, Proportion)
-
-rank_o <- fa_out_over %>% 
-  mutate(rank = map(loadings, ncol)) %>%
-  select(rank) %>%
-  unnest(rank) %>%
-  group_by(rank) %>%
-  summarise(n = n()) %>%
-  mutate(Simulation = "Overlapping") %>%
-  mutate(Proportion = n/100) %>%
-  select(Simulation, Rank = rank, Proportion)
-
-rank_c <- fa_out_cor %>% 
-  mutate(rank = map(loadings, ncol)) %>%
-  select(rank = rank) %>%
-  unnest(rank) %>%
-  group_by(rank) %>%
-  summarise(n = n()) %>%
-  mutate(Simulation = "Correlated") %>%
-  mutate(Proportion = n/100) %>%
-  select(Simulation, Rank = rank, Proportion)
-
-
-rbind(rank_d, rank_o, rank_c) %>% knitr::kable()
-```
-
-### Norms
-
-#### Unstandardized
-
-```{r}
-fa_out_dist
-```
-
-```{r}
-dist_pred <- fa_out_dist %>%
-  mutate(norm_all = map2(sim, pred, function(x, y) {norm(as.matrix(x) - as.matrix(y), "F")/norm(as.matrix(x), "F")})) %>% 
-  unnest(norm_all) %>% 
-  pull(norm_all) %>% summary() %>% as.matrix() %>% t() %>% 
-  as_tibble() %>% mutate(Norm = "Relative Prediction Error",
-                         Simulation = "Distinct",
-                         Standardized = "No") %>% 
-  select(Simulation, Norm, Standardized, everything())
-```
-
-```{r}
-dist_load <- fa_out_dist %>% 
-  mutate(norm_loadings = map2(patterns, loadings, 
-                              ~norm(as.matrix(.x) - as.matrix(t(.y)), "F") /
-                                norm(as.matrix(.x), "F"))) %>% 
-  unnest(norm_loadings) %>% 
-  pull(norm_loadings) %>% summary() %>% as.matrix() %>% t() %>% 
-  as_tibble() %>% mutate(Norm = "Relative Pattern Loading Error",
-                         Simulation = "Distinct",
-                         Standardized = "No") %>% 
-  select(Simulation, Norm, Standardized, everything())
-```
-
-```{r}
-dist_score <- fa_out_dist %>% 
-  mutate(fa_scores = map(fa_scores, add_column)) %>% 
-  mutate(norm_scores = map2(scores, fa_scores, 
-                              ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>% 
-  unnest(norm_scores) %>% 
-  pull(norm_scores) %>% summary() %>% as.matrix() %>% t() %>% 
-  as_tibble() %>% mutate(Norm = "Relative Score Error",
-                         Simulation = "Distinct",
-                         Standardized = "No") %>% 
-  select(Simulation, Norm, Standardized, everything())
-```
-
-```{r}
-over_pred <- fa_out_over %>%
-  mutate(norm_all = map2(sim, pred, function(x, y) {norm(as.matrix(x) - as.matrix(y), "F")/norm(as.matrix(x), "F")})) %>% 
-  unnest(norm_all) %>% 
-  pull(norm_all) %>% summary() %>% as.matrix() %>% t() %>% 
-  as_tibble() %>% mutate(Norm = "Relative Prediction Error",
-                         Simulation = "Overlapping",
-                         Standardized = "No") %>% 
-  select(Simulation, Norm, Standardized, everything())
-```
-
-```{r}
-over_load <- fa_out_over %>% 
-  mutate(norm_loadings = map2(patterns, loadings, 
-                              ~norm(as.matrix(.x) - as.matrix(t(.y)), "F") /
-                                norm(as.matrix(.x), "F"))) %>% 
-  unnest(norm_loadings) %>% 
-  pull(norm_loadings) %>% summary() %>% as.matrix() %>% t() %>% 
-  as_tibble() %>% mutate(Norm = "Relative Pattern Loading Error",
-                         Simulation = "Overlapping",
-                         Standardized = "No") %>% 
-  select(Simulation, Norm, Standardized, everything())
-```
-
-```{r}
-over_score <- fa_out_over %>% 
-  mutate(norm_scores = map2(scores, fa_scores, 
-                              ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>% 
-  unnest(norm_scores) %>% 
-  pull(norm_scores) %>% summary() %>% as.matrix() %>% t() %>% 
-  as_tibble() %>% mutate(Norm = "Relative Score Error",
-                         Simulation = "Overlapping",
-                         Standardized = "No") %>% 
-  select(Simulation, Norm, Standardized, everything())
-```
-
-```{r}
-cor_pred <- fa_out_cor %>%
-  mutate(norm_all = map2(sim, pred, function(x, y) {norm(as.matrix(x) - as.matrix(y), "F")/norm(as.matrix(x), "F")})) %>% 
-  unnest(norm_all) %>% 
-  pull(norm_all) %>% summary() %>% as.matrix() %>% t() %>% 
-  as_tibble() %>% mutate(Norm = "Relative Prediction Error",
-                         Simulation = "Correlated",
-                         Standardized = "No") %>% 
-  select(Simulation, Norm, Standardized, everything())
-
-cor_load <- fa_out_cor %>% 
-  mutate(norm_loadings = map2(patterns, loadings, 
-                              ~norm(as.matrix(.x) - as.matrix(t(.y)), "F") /
-                                norm(as.matrix(.x), "F"))) %>% 
-  unnest(norm_loadings) %>% 
-  pull(norm_loadings) %>% summary() %>% as.matrix() %>% t() %>% 
-  as_tibble() %>% mutate(Norm = "Relative Pattern Loading Error",
-                         Simulation = "Correlated",
-                         Standardized = "No") %>% 
-  select(Simulation, Norm, Standardized, everything())
-
-cor_score <- fa_out_cor %>% 
-  mutate(norm_scores = map2(scores, fa_scores, 
-                              ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>% 
-  unnest(norm_scores) %>% 
-  pull(norm_scores) %>% summary() %>% as.matrix() %>% t() %>% 
-  as_tibble() %>% mutate(Norm = "Relative Score Error",
-                         Simulation = "Correlated",
-                         Standardized = "No") %>% 
-  select(Simulation, Norm, Standardized, everything())
-```
-
-```{r}
-rbind(dist_pred,
-      dist_load,
-      dist_score, 
-      over_pred,
-      over_load,
-      over_score,
-      cor_pred,
-      cor_load,
-      cor_score) %>% knitr::kable()
-```
-
-#### Standardized
-
-```{r}
-over_load_s <- summary(over_norm) %>% as.matrix() %>% t() %>% 
-  as_tibble() %>% mutate(Norm = "Relative Pattern Loading Error",
+fa_over_load_s <- summary(fa_over_norm) %>% as.matrix() %>% t() %>% 
+  as_tibble() %>% mutate(Norm = "Loadings",
                          Simulation = "Overlapping",
                          Standardized = "Yes") %>% 
-  select(Simulation, Norm, Standardized, everything())
+  select(Norm, Simulation, Standardized, everything())
 
-cor_load_s <- summary(cor_norm) %>% as.matrix() %>% t() %>% 
-  as_tibble() %>% mutate(Norm = "Relative Pattern Loading Error",
+fa_cor_load_s <- summary(fa_cor_norm) %>% as.matrix() %>% t() %>% 
+  as_tibble() %>% mutate(Norm = "Loadings",
                          Simulation = "Correlated",
                          Standardized = "Yes") %>% 
-  select(Simulation, Norm, Standardized, everything())
+  select(Norm, Simulation, Standardized, everything())
 
-dist_load_s <- summary(dist_norm) %>% as.matrix() %>% t() %>% 
-  as_tibble() %>% mutate(Norm = "Relative Pattern Loading Error",
+fa_dist_load_s <- summary(fa_dist_norm) %>% as.matrix() %>% t() %>% 
+  as_tibble() %>% mutate(Norm = "Loadings",
                          Simulation = "Distinct",
                          Standardized = "Yes") %>% 
-  select(Simulation, Norm, Standardized, everything())
-```
+  select(Norm, Simulation, Standardized, everything())
 
-```{r}
-over_score_s <- summary(over_norm_fa_score) %>% as.matrix() %>% t() %>% 
-  as_tibble() %>% mutate(Norm = "Relative Score Error",
+fa_over_score_s <- summary(over_norm_fa_score) %>% as.matrix() %>% t() %>% 
+  as_tibble() %>% mutate(Norm = "Scores",
                          Simulation = "Overlapping",
                          Standardized = "Yes") %>% 
-  select(Simulation, Norm, Standardized, everything())
+  select(Norm, Simulation, Standardized, everything())
 
-cor_score_s <- summary(cor_norm_fa_score) %>% as.matrix() %>% t() %>% 
-  as_tibble() %>% mutate(Norm = "Relative Score Error",
+fa_cor_score_s <- summary(cor_norm_fa_score) %>% as.matrix() %>% t() %>% 
+  as_tibble() %>% mutate(Norm = "Scores",
                          Simulation = "Correlated",
                          Standardized = "Yes") %>% 
-  select(Simulation, Norm, Standardized, everything())
+  select(Norm, Simulation, Standardized, everything())
 
-dist_score_s <- summary(dist_norm_fa_score) %>% as.matrix() %>% t() %>% 
-  as_tibble() %>% mutate(Norm = "Relative Score Error",
+fa_dist_score_s <- summary(dist_norm_fa_score) %>% as.matrix() %>% t() %>% 
+  as_tibble() %>% mutate(Norm = "Scores",
                          Simulation = "Distinct",
                          Standardized = "Yes") %>% 
-  select(Simulation, Norm, Standardized, everything())
-```
+  select(Norm, Simulation, Standardized, everything())
 
-```{r}
-rbind(dist_load_s,
-      dist_score_s, 
-      over_load_s,
-      over_score_s,
-      cor_load_s,
-      cor_score_s) %>% knitr::kable()
+rbind(fa_dist_load_s,
+      fa_over_load_s,
+      fa_cor_load_s,
+      fa_dist_score_s, 
+      fa_over_score_s,
+      fa_cor_score_s) %>% 
+  mutate_if(is.numeric, round, 2) %>% knitr::kable()
 ```
 
