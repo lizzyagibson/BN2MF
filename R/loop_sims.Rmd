@@ -316,8 +316,7 @@ ggplot(data = labelled3, aes(x = Var1, y = Var2)) +
         panel.spacing = unit(0, "lines"),
         strip.background = element_blank(),
         legend.position = "bottom") + 
-        labs(title = "Simulated correlation structure for
-overlapping patterns & independent scores")
+        labs(title = "Simulated correlation structure for overlapping patterns & independent scores")
 ```
 
 ### Save
