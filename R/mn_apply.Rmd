@@ -19,6 +19,7 @@ library(MASS) # mvrnorm
 library(tidyverse)
 library(R.matlab)
 library(gplots)
+library(GGally)
 ```
 
 ## MN Data
@@ -88,39 +89,6 @@ ggplot(data = labelled, aes(x = Var1, y = Var2)) +
   facet_grid(Class2 ~ Class1, scales = "free", space = "free", switch = "both")
 ```
 
-```{r}
-cormat2 <- round(cor(edc_all, method = c("spearman"), use = "complete.obs"),2)
-
-melted_cormat2 <- melt(cormat2) %>% rename(Correlation = value)
-
-labelled2 <- melted_cormat2 %>% mutate(Class1 = ifelse(str_detect(Var1, "BDE"), "PBDEs",
-                                                     ifelse(str_detect(Var1, "^M"), "Phthalates",
-                                                            ifelse(str_detect(Var1, "pcb"), "PCBs",
-                                                                   "Phenols")))) %>%
-  mutate(Class2 = ifelse(str_detect(Var2, "BDE"), "PBDEs",
-                         ifelse(str_detect(Var2, "^M"), "Phthalates",
-                                ifelse(str_detect(Var2, "pcb"), "PCBs",
-                                       "Phenols")))) %>%
-  mutate(Class2 = factor(Class2, levels = c("Phthalates", "Phenols",
-                                            "PCBs", "PBDEs")))
-
-ggplot(data = labelled2, aes(x = Var1, y = Var2)) +
-  geom_tile(aes(fill = Correlation), colour = "white") +
-  scale_fill_gradient2(low = "#00BFC4", mid = "white", high = "#F8766D",
-                       midpoint = 0,
-                       na.value = "transparent", limits = c(-1, 1)) +
-  theme_grey(base_size = 15) + labs(x = "", y = "", title = "EDC correlations in Mothers & Newborns") +
-  scale_x_discrete(expand = c(0, 0)) +
-  scale_y_discrete(expand = c(0, 0)) +
-  theme(axis.text.x = element_blank(), axis.text.y = element_blank(),
-        panel.spacing = unit(0, "lines"),
-        strip.background = element_blank(),
-        strip.placement = "outside", legend.position = "bottom",
-        strip.text.x = element_text(size = 18),
-        strip.text.y = element_text(size = 18)) +
-  facet_grid(Class2 ~ Class1, scales = "free", space = "free", switch = "both")
-```
-
 ## GNMF
 
 ### Patterns
@@ -156,10 +124,13 @@ eh_cc %>%
         strip.background = element_blank())
 ```
 
-```{r}
-std_eh_cc <- apply(eh_cc, 1, function(x) x/sd(x)) %>% as_tibble()
+**Normalize over chemicals for data viz**
+
+```{r, fig.width=20, fig.height=20}
+std_eh_cc <- apply(eh_cc, 2, function(x) x/sum(x)) %>% as_tibble()
 
 std_eh_cc %>% 
+  t() %>% 
   as_tibble() %>% 
   mutate(Chemicals = labels) %>% 
   gather(key = Pattern, value = Loadings, -Chemicals) %>%
@@ -169,10 +140,12 @@ std_eh_cc %>%
                                                             ifelse(str_detect(Chemicals, "pcb"), "PCBs",
                                                                    "Phenols")))) %>% 
   ggplot(aes(x = Chemicals, y = Loadings)) + geom_col(aes(fill = Group)) +
-  facet_wrap(.~Pattern) + theme_bw() +
-  theme(axis.text.x = element_blank(),
-        legend.position = "bottom",
-        strip.background = element_blank())
+  facet_wrap(~Pattern) + theme_bw(base_size = 30) + coord_flip() +
+  theme(legend.position = "none",
+        strip.background = element_blank(),
+        axis.text.x = element_text(angle = 270, hjust = 1, size = 20),
+        axis.text.y = element_text(size = 25),
+        axis.title.x = element_text(angle = 180)) + labs(x="")
 ```
 
 ### Scores
@@ -185,39 +158,58 @@ ewa_cc <- ewa_cc %>%
   rename(P1 = 1, P2 = 2, P3 = 3)
 
 ewa_cc
+colSums(ewa_cc[,1:3])
 ```
 
-## Product Use
+#### Multiply by Pattern Sums
 
-```{r read}
-personal <- mn_edc %>% select(sid, eth, edu, age, care:creme_rinse)
-personal <- left_join(ewa_cc, personal, by = "sid") %>% select(-deodorant)
+```{r}
+std_eh <- apply(eh_cc, 1, function(x) sum(x)) %>% as.vector()
+
+ewa_cc[1,1] * std_eh[1]
+ewa_cc[1,2] * std_eh[2]
+ewa_cc[1,3] * std_eh[3]
+ewa_cc[92,1] * std_eh[1]
+ewa_cc[92,2] * std_eh[2]
+ewa_cc[92,3] * std_eh[3]
+
+ewa_sd <- t(t(as.matrix(ewa_cc %>% select(-sid))) * std_eh) %>% as_tibble() %>% 
+  mutate(sid = ewa_cc$sid)
 ```
 
-## Exposure Model
+## Raw
+
+### Product Use
+
+```{r read2}
+quest <- mn_edc %>% select(sid, eth, edu, age, care:creme_rinse)
+personal <- left_join(ewa_cc, quest, by = "sid") %>% select(-deodorant)
+```
+
+### Exposure Model
 
 ```{r}
 #function to take component and binary personal care product, regress, and output as tibble
 product_model <- function(P, product) {
 
-model <- lm(P ~ product + eth + age + edu, data = personal)
+  model <- lm(P ~ product + eth + age + edu, data = personal)
 
-betas_confint <- as.data.frame(model$coefficient[2]) %>% rownames_to_column() %>% 
-  cbind(., as_tibble(confint(model))[2,]) %>%
-  mutate(pvalue = summary(model)$coefficients[2, 4]) %>% 
-  rename(variable = 1, beta = 2, lower = 3, upper = 4) %>% 
-  as_tibble()
+  betas_confint <- as.data.frame(model$coefficient[2]) %>% rownames_to_column() %>% 
+    cbind(., as_tibble(confint(model))[2,]) %>%
+    mutate(pvalue = summary(model)$coefficients[2, 4]) %>% 
+    rename(variable = 1, beta = 2, lower = 3, upper = 4) %>% 
+    as_tibble()
 
-betas_confint
+  betas_confint
 }
 
-patterns <- personal %>% select(P1:P3) %>% as.matrix()
-prod <- personal %>% select(care:creme_rinse) %>% as.matrix()
+loop_patterns <- personal %>% select(P1:P3) %>% as.matrix()
+loop_prod <- personal %>% select(care:creme_rinse) %>% as.matrix()
 
 out_care <- tibble()
-for (j in 1:ncol(patterns)) {
-for (i in 1:ncol(prod)) {
-  out <- product_model(patterns[,j], prod[,i])
+for (j in 1:ncol(loop_patterns)) {
+for (i in 1:ncol(loop_prod)) {
+  out <- product_model(loop_patterns[,j], loop_prod[,i])
   out_care <- rbind(out_care, out)
 }
 }
@@ -227,7 +219,6 @@ model_out <- cbind(product = rep(colnames(personal)[8:20], times = 3),
   as_tibble(.)
 model_out
 ```
-
 
 ```{r}
 ### Heat Map
@@ -264,29 +255,36 @@ heatmap.2(heat, key.xlab = "Beta Coefficients",
           col = cols, density.info="none", trace="none", dendrogram = "none", key.title = "")
 ```
 
-## Standardized Model
+## Scaled by Pattern Sums
+### Product Use
 
-```{r}
-std_patterns <- apply(patterns, 2, function(x) x/sd(x))
-
-out_care_std <- tibble()
-for (j in 1:ncol(std_patterns)) {
-for (i in 1:ncol(prod)) {
-  out <- product_model(std_patterns[,j], prod[,i])
-  out_care_std <- rbind(out_care_std, out)
-}
-}
-
-model_out_std <- cbind(product = rep(colnames(personal)[8:20], times = 3), 
-                   pattern = rep(colnames(personal)[1:3], times = 13), out_care_std) %>% 
-  as_tibble(.)
-model_out_std
+```{r read}
+personal_sd <- left_join(ewa_sd, quest, by = "sid")
 ```
 
+### Exposure Model
+
+```{r}
+loop_patterns_sd <- personal_sd %>% select(P1:P3) %>% as.matrix()
+loop_prod_sd <- personal_sd %>% select(care:creme_rinse) %>% as.matrix()
+
+out_care_sd <- tibble()
+for (j in 1:ncol(loop_patterns)) {
+for (i in 1:ncol(loop_prod)) {
+  out_sd <- product_model(loop_patterns_sd[,j], loop_prod_sd[,i])
+  out_care_sd <- rbind(out_care_sd, out_sd)
+}
+}
+
+model_out_sd <- cbind(product = rep(colnames(personal_sd)[8:20], times = 3), 
+                   pattern = rep(colnames(personal_sd)[1:3], times = 13), out_care_sd) %>% 
+  as_tibble(.) %>% drop_na()
+model_out_sd
+```
 
 ```{r}
 ### Heat Map
-model_out_std %>% 
+model_out_sd %>% 
   ggplot(aes(x = pattern, y = product)) + 
   geom_tile(aes(fill = beta), colour = "white") + 
   scale_fill_gradient2(low = "blue", mid = "white", high = "red", 
@@ -299,29 +297,17 @@ model_out_std %>%
 ```
 
 ```{r}
-heat_std <- model_out_std %>% select(beta, pattern, product) %>% 
+heat_sd <- model_out_sd %>% select(beta, pattern, product) %>% 
   spread(pattern, beta) %>%
   select(-product) %>% 
   as.matrix()
 
-row.names(heat_std) <- model_out_std %>% select(beta, pattern, product) %>% 
+row.names(heat_sd) <- model_out_sd %>% select(beta, pattern, product) %>% 
   spread(pattern, beta) %>%
   select(product) %>% 
   as.matrix()
 
-heatmap.2(heat_std, key.xlab = "Beta Coefficients", 
+heatmap.2(heat_sd, key.xlab = "Beta Coefficients", 
                                margins =c(4,8), Colv = FALSE, keysize = 1.25,
           col = cols, density.info="none", trace="none", dendrogram = "none", key.title = "")
-```
-
-## Include Predictors
-
-```{r}
-edc_cc_ids <- cbind(cc_ids, edc_cc)
-
-predictors <- mn_edc %>% select(sid, care:creme_rinse) %>% select(-deodorant) %>% 
-  left_join(edc_cc_ids, ., by = "sid") %>% as_tibble() %>% select(-sid) %>% 
-  select(pcb28:pcb209, BDE28:BDE209, MECPP_sg_adj:MEHP_sg_adj, dcp_24_sg_adj:bpa_sg_adj, care:creme_rinse)
-
-#write_csv(predictors, "./Data/edc_pred.csv")
 ```
