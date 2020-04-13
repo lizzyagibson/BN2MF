@@ -287,7 +287,9 @@ sim_over <- sim_over0 %>%
 ```  
 
 ```{r}
-cormat3 <- round(cor(sim_over[100,5][[1]][[1]]),2)
+cormat3 <- round(cor(sim_over[100,4][[1]][[1]]),2)
+
+summary(sim_over[100,4][[1]][[1]])
 
 melted_cormat3 <- melt(cormat3) %>% rename(Correlation = value)
 
@@ -306,14 +308,16 @@ ggplot(data = labelled3, aes(x = Var1, y = Var2)) +
   geom_tile(aes(fill = Correlation), colour = "white") +
   scale_fill_gradient2(low = "#00BFC4", mid = "white", high = "#F8766D",
                        midpoint = 0,
-                       na.value = "transparent", limits = c(-1, 1)) +
+                       na.value = "transparent") +
   theme_grey() + labs(x = "", y = "") +
   scale_x_discrete(expand = c(0, 0)) +
   scale_y_discrete(expand = c(0, 0)) +
   theme(axis.text = element_blank(),
         panel.spacing = unit(0, "lines"),
         strip.background = element_blank(),
-        strip.placement = "outside", legend.position = "bottom") + ggtitle("Correlation w/ Overlapping Underlying Patterns")
+        legend.position = "bottom") + 
+        labs(title = "Simulated correlation structure for
+overlapping patterns & independent scores")
 ```
 
 ### Save
