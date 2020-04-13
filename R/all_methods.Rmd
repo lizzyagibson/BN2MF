@@ -2191,3 +2191,646 @@ rbind(nmf_sd_dist_load_s,
       nmf_sd_cor_score_s) %>% 
   mutate_if(is.numeric, round, 2) %>% knitr::kable()
 ```
+
+
+## Standardize Plots
+
+### npBNMF
+```{r, npb80}
+sd_npb_1 <- npb_scores_ordered_dist %>% 
+  select(-eh, -ewa, -sim, -noise) %>% 
+  mutate(sd_patterns = map2(patterns, scores, function(x,y) standard(x,y)[[1]]),
+         sd_eh       = map2(eh_reordered, ewa_reordered,function(x,y) standard(x,y)[[1]])) %>% 
+  select(-eh_reordered, -ewa_reordered, -scores, -patterns)
+
+sd_npb_2 <- npb_scores_ordered_over %>% 
+  select(-eh, -ewa, -sim, -noise) %>% 
+  mutate(sd_patterns = map2(patterns, scores, function(x,y) standard(x,y)[[1]]),
+         sd_eh       = map2(eh_reordered, ewa_reordered,function(x,y) standard(x,y)[[1]])) %>% 
+  select(-eh_reordered, -ewa_reordered, -scores, -patterns)
+
+sd_npb_3 <- npb_scores_ordered_cor %>% 
+  select(-eh, -ewa, -sim, -noise) %>% 
+  mutate(sd_patterns = map2(patterns, scores, function(x,y) standard(x,y)[[1]]),
+         sd_eh       = map2(eh_reordered, ewa_reordered,function(x,y) standard(x,y)[[1]])) %>% 
+  select(-eh_reordered, -ewa_reordered, -scores, -patterns)
+```
+
+```{r, fig.width=6}
+dist_patterns <- sd_npb_1 %>% 
+  mutate(sd_patterns = map(sd_patterns, function(x) as_tibble(t(x)))) %>% 
+  select(-sd_eh) %>% 
+  unnest(cols = c(sd_patterns))
+
+colnames(dist_patterns)[2:51] <- labels
+
+labelled_dist_patterns <- dist_patterns %>%
+  mutate(pattern1 = ifelse(pcb146 > 0.03 & pcb28 > bpa, 1,
+                          ifelse(BDE17 > 0.03, 2,
+                                ifelse(MECPP > 0.03, 3,
+                                       ifelse(tcs > 0.03, 4, 5))))) %>%
+  select(seed, pattern1, everything()) %>%
+  arrange(seed, pattern1) %>%
+  mutate(pattern1 = fct_inorder(as.factor(pattern1)),
+         pattern1 = as.integer(pattern1))
+
+labelled_dist_patterns %>%
+  gather(key = Chemicals, value = Loadings, -pattern1, -seed) %>%
+  mutate(Chemicals = fct_inorder(Chemicals)) %>%
+  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
+                                                     ifelse(str_detect(Chemicals, "^M"), "Phthalates",
+                                                            ifelse(str_detect(Chemicals, "pcb"), "PCBs",
+                                                                   "Phenols")))) %>%
+  ggplot(aes(x = Group, y = Loadings)) + geom_jitter(aes(color = Group), alpha = 0.5, size = 0.05, height = 0) +
+  geom_boxplot(aes(x = Group), alpha = 0.25, width = .4, outlier.shape = NA) +
+  facet_wrap(.~pattern1) + theme_bw() +
+  theme(legend.position = "none",
+        strip.background = element_blank()) + labs(title= "True Distinct Patterns", x = "", y = "Normalized Loadings")
+```
+
+```{r, fig.width=8}
+dist_nbp <- sd_npb_1 %>% 
+  mutate(sd_eh = map(sd_eh, function(x) as_tibble(t(x)))) %>% 
+  select(-sd_patterns) %>% 
+  unnest(cols = c(sd_eh))
+
+colnames(dist_nbp)[2:51] <- labels
+
+labelled_dist_nbp <- dist_nbp %>%
+  mutate(pattern1 = ifelse(pcb146 > 0.03 & pcb28 > bpa, 1,
+                          ifelse(BDE17 > 0.03, 2,
+                                ifelse(MECPP > 0.03, 3,
+                                       ifelse(tcs > 0.03, 4, 5))))) %>%
+  select(seed, pattern1, everything()) %>%
+  arrange(seed, pattern1) %>%
+  mutate(pattern1 = fct_inorder(as.factor(pattern1)),
+         pattern1 = as.integer(pattern1))
+
+labelled_dist_nbp %>%
+  gather(key = Chemicals, value = Loadings, -pattern1, -seed) %>%
+  mutate(Chemicals = fct_inorder(Chemicals)) %>%
+  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
+                                                     ifelse(str_detect(Chemicals, "^M"), "Phthalates",
+                                                            ifelse(str_detect(Chemicals, "pcb"), "PCBs",
+                                                                   "Phenols")))) %>%
+  ggplot(aes(x = Group, y = Loadings)) + geom_jitter(aes(color = Group), alpha = 0.5, size = 0.05, height = 0) +
+  geom_boxplot(aes(x = Group), alpha = 0.25, width = .4, outlier.shape = NA) +
+  facet_wrap(.~pattern1) + theme_bw() +
+  theme(legend.position = "none",
+        strip.background = element_blank()) + labs(title= "npBNMF Loadings, Distinct Patterns", x = "", y = "Normalized Loadings")
+```
+
+```{r, fig.width=6}
+over_patterns <- sd_npb_2 %>% 
+  mutate(sd_patterns = map(sd_patterns, function(x) as_tibble(t(x)))) %>% 
+  select(-sd_eh) %>% 
+  unnest(cols = c(sd_patterns))
+
+colnames(over_patterns)[2:51] <- labels
+
+labelled_over_patterns <- over_patterns %>%
+  mutate(pattern1 = ifelse(pcb146 > 0.02 & pcb28 > bpa, 1,
+                           ifelse(BDE17 > 0.02, 2,
+                                  ifelse(MECPP > 0.02, 3,
+                                         ifelse(tcs > 0.02, 4, 5))))) %>%
+  select(seed, pattern1, everything()) %>%
+  arrange(seed, pattern1) %>%
+  mutate(pattern1 = fct_inorder(as.factor(pattern1)),
+         pattern1 = as.integer(pattern1))
+
+labelled_over_patterns %>%
+  gather(key = Chemicals, value = Loadings, -pattern1, -seed) %>%
+  mutate(Chemicals = fct_inorder(Chemicals)) %>%
+  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
+                        ifelse(str_detect(Chemicals, "^M"), "Phthalates",
+                               ifelse(str_detect(Chemicals, "pcb"), "PCBs",
+                                      "Phenols")))) %>%
+  ggplot(aes(x = Group, y = Loadings)) + geom_jitter(aes(color = Group), alpha = 0.5, size = 0.05, height = 0) +
+  geom_boxplot(aes(x = Group), alpha = 0.25, width = .4, outlier.shape = NA) +
+  facet_wrap(.~pattern1) + theme_bw() +
+  theme(legend.position = "none",
+        strip.background = element_blank()) + labs(title= "True Overlapping Patterns", x = "", y = "Normalized Loadings")
+```
+
+```{r, fig.width=8}
+over_nbp <- sd_npb_2 %>% 
+  mutate(sd_eh = map(sd_eh, function(x) as_tibble(t(x)))) %>% 
+  select(-sd_patterns) %>% 
+  unnest(cols = c(sd_eh))
+
+colnames(over_nbp)[2:51] <- labels
+
+labelled_over_nbp <- over_nbp %>%
+  mutate(pattern1 = ifelse(pcb146 > 0.03 & pcb28 > bpa, 1,
+                           ifelse(BDE17 > 0.03, 2,
+                                  ifelse(MECPP > 0.03, 3,
+                                         ifelse(tcs > 0.03, 4, 5))))) %>%
+  select(seed, pattern1, everything()) %>%
+  arrange(seed, pattern1) %>%
+  mutate(pattern1 = fct_inorder(as.factor(pattern1)),
+         pattern1 = as.integer(pattern1))
+
+labelled_over_nbp %>%
+  gather(key = Chemicals, value = Loadings, -pattern1, -seed) %>%
+  mutate(Chemicals = fct_inorder(Chemicals)) %>%
+  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
+                        ifelse(str_detect(Chemicals, "^M"), "Phthalates",
+                               ifelse(str_detect(Chemicals, "pcb"), "PCBs",
+                                      "Phenols")))) %>%
+  ggplot(aes(x = Group, y = Loadings)) + geom_jitter(aes(color = Group), alpha = 0.5, size = 0.05, height = 0) +
+  geom_boxplot(aes(x = Group), alpha = 0.25, width = .4, outlier.shape = NA) +
+  facet_wrap(.~pattern1) + theme_bw() +
+  theme(legend.position = "none",
+        strip.background = element_blank()) + labs(title= "npBNMF Loadings, Overlapping Patterns", x = "", y = "Normalized Loadings")
+```
+
+```{r, fig.width=6}
+cor_patterns <- sd_npb_3 %>% 
+  mutate(sd_patterns = map(sd_patterns, function(x) as_tibble(t(x)))) %>% 
+  select(-sd_eh) %>% 
+  unnest(cols = c(sd_patterns))
+
+colnames(cor_patterns)[2:51] <- labels
+
+labelled_cor_patterns <- cor_patterns %>%
+  mutate(pattern1 = ifelse(pcb146 > 0.02 & pcb28 > bpa, 1,
+                           ifelse(BDE17 > 0.02, 2,
+                                  ifelse(MECPP > 0.02, 3,
+                                         ifelse(tcs > 0.02, 4, 5))))) %>%
+  select(seed, pattern1, everything()) %>%
+  arrange(seed, pattern1) %>%
+  mutate(pattern1 = fct_inorder(as.factor(pattern1)),
+         pattern1 = as.integer(pattern1))
+
+labelled_cor_patterns %>%
+  gather(key = Chemicals, value = Loadings, -pattern1, -seed) %>%
+  mutate(Chemicals = fct_inorder(Chemicals)) %>%
+  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
+                        ifelse(str_detect(Chemicals, "^M"), "Phthalates",
+                               ifelse(str_detect(Chemicals, "pcb"), "PCBs",
+                                      "Phenols")))) %>%
+  ggplot(aes(x = Group, y = Loadings)) + geom_jitter(aes(color = Group), alpha = 0.5, size = 0.05, height = 0) +
+  geom_boxplot(aes(x = Group), alpha = 0.25, width = .4, outlier.shape = NA) +
+  facet_wrap(.~pattern1) + theme_bw() +
+  theme(legend.position = "none",
+        strip.background = element_blank()) + labs(title= "True Corr Patterns", x = "", y = "Normalized Loadings")
+```
+
+```{r, fig.width=6}
+cor_nbp <- sd_npb_3 %>% 
+  mutate(sd_eh = map(sd_eh, function(x) as_tibble(t(x)))) %>% 
+  select(-sd_patterns) %>% 
+  unnest(cols = c(sd_eh))
+
+colnames(cor_nbp)[2:51] <- labels
+
+labelled_cor_nbp <- cor_nbp %>%
+  mutate(pattern1 = ifelse(pcb146 > 0.005 & pcb28 > bpa, 1,
+                           ifelse(BDE17 > 0.005 , 2,
+                                  ifelse(MECPP > 0.005 , 3,
+                                         ifelse(tcs > 0.005, 4, 5))))) %>%
+  select(seed, pattern1, everything()) %>%
+  arrange(seed, pattern1) %>%
+  mutate(pattern1 = fct_inorder(as.factor(pattern1)),
+         pattern1 = as.integer(pattern1))
+
+labelled_cor_nbp %>%
+  gather(key = Chemicals, value = Loadings, -pattern1, -seed) %>%
+  mutate(Chemicals = fct_inorder(Chemicals)) %>%
+  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
+                        ifelse(str_detect(Chemicals, "^M"), "Phthalates",
+                               ifelse(str_detect(Chemicals, "pcb"), "PCBs",
+                                      "Phenols")))) %>%
+  ggplot(aes(x = Group, y = Loadings)) + geom_jitter(aes(color = Group), alpha = 0.5, size = 0.05, height = 0) +
+  geom_boxplot(aes(x = Group), alpha = 0.25, width = .4, outlier.shape = NA) +
+  facet_wrap(.~pattern1) + theme_bw() +
+  theme(legend.position = "none",
+        strip.background = element_blank()) + labs(title= "npBNMF Loadings, Correlated Scores", x = "", y = "Normalized Loadings")
+```
+
+### FA
+```{r, fa90}
+fa_sd_1 <- fa_out_dist %>% 
+  select(-sim, -noise, -pred, -chem, -fa_out) %>% 
+  mutate(sd_patterns = map2(patterns, scores, function(x,y) standard(x,y)[[1]]),
+         sd_loading     = map2(loadings, fa_scores, function(x,y) standard(t(x),y)[[1]])) %>% 
+  select(-scores, -patterns, -loadings, -fa_scores)
+
+fa_sd_2 <- fa_out_over %>% 
+  select(-sim, -noise, -pred, -chem, -fa_out) %>% 
+  mutate(sd_patterns = map2(patterns, scores, function(x,y) standard(x,y)[[1]]),
+         sd_loading     = map2(loadings, fa_scores, function(x,y) standard(t(x),y)[[1]])) %>% 
+  select(-scores, -patterns, -loadings, -fa_scores)
+
+fa_sd_3 <- fa_out_cor %>% 
+    select(-sim, -noise, -pred, -chem, -fa_out) %>% 
+  mutate(sd_patterns = map2(patterns, scores, function(x,y) standard(x,y)[[1]]),
+         sd_loading     = map2(loadings, fa_scores, function(x,y) standard(t(x),y)[[1]])) %>% 
+  select(-scores, -patterns, -loadings, -fa_scores)
+```
+
+```{r, fig.width=6}
+dist_patterns <- fa_sd_1 %>% 
+  mutate(sd_patterns = map(sd_patterns, function(x) as_tibble(t(x)))) %>% 
+  select(-sd_loading) %>% 
+  unnest(cols = c(sd_patterns))
+
+colnames(dist_patterns)[2:51] <- labels
+
+labelled_dist_patterns <- dist_patterns %>%
+  mutate(pattern1 = ifelse(pcb146 > 0.03 & pcb28 > bpa, 1,
+                           ifelse(BDE17 > 0.03, 2,
+                                  ifelse(MECPP > 0.03, 3,
+                                         ifelse(tcs > 0.03, 4, 5))))) %>%
+  select(seed, pattern1, everything()) %>%
+  arrange(seed, pattern1) %>%
+  mutate(pattern1 = fct_inorder(as.factor(pattern1)),
+         pattern1 = as.integer(pattern1))
+
+labelled_dist_patterns %>%
+  gather(key = Chemicals, value = Loadings, -pattern1, -seed) %>%
+  mutate(Chemicals = fct_inorder(Chemicals)) %>%
+  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
+                        ifelse(str_detect(Chemicals, "^M"), "Phthalates",
+                               ifelse(str_detect(Chemicals, "pcb"), "PCBs",
+                                      "Phenols")))) %>%
+  ggplot(aes(x = Group, y = Loadings)) + geom_jitter(aes(color = Group), alpha = 0.5, size = 0.05, height = 0) +
+  geom_boxplot(aes(x = Group), alpha = 0.25, width = .4, outlier.shape = NA) +
+  facet_wrap(.~pattern1) + theme_bw() +
+  theme(legend.position = "none",
+        strip.background = element_blank()) + labs(title= "True Distinct Patterns", x = "", y = "Normalized Loadings")
+```
+
+```{r, fig.width=6}
+dist_fa <- fa_sd_1 %>% 
+  mutate(sd_loading = map(sd_loading, function(x) as_tibble(t(x)))) %>% 
+  select(-sd_patterns) %>% 
+  unnest(cols = c(sd_loading))
+
+colnames(dist_fa)[2:51] <- labels
+
+labelled_dist_fa <- dist_fa %>%
+  mutate(pattern1 = ifelse(pcb146 > 0.03 & pcb28 > bpa, 1,
+                           ifelse(BDE17 > 0.03, 2,
+                                  ifelse(MECPP > 0.03, 3,
+                                         ifelse(tcs > 0.03, 4, 5))))) %>%
+  select(seed, pattern1, everything()) %>%
+  arrange(seed, pattern1) %>%
+  mutate(pattern1 = fct_inorder(as.factor(pattern1)),
+         pattern1 = as.integer(pattern1))
+
+labelled_dist_fa %>%
+  gather(key = Chemicals, value = Loadings, -pattern1, -seed) %>%
+  mutate(Chemicals = fct_inorder(Chemicals)) %>%
+  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
+                        ifelse(str_detect(Chemicals, "^M"), "Phthalates",
+                               ifelse(str_detect(Chemicals, "pcb"), "PCBs",
+                                      "Phenols")))) %>%
+  ggplot(aes(x = Group, y = Loadings)) + geom_jitter(aes(color = Group), alpha = 0.5, size = 0.05, height = 0) +
+  geom_boxplot(aes(x = Group), alpha = 0.25, width = .4, outlier.shape = NA) +
+  facet_wrap(.~pattern1) + theme_bw() +
+  theme(legend.position = "none",
+        strip.background = element_blank()) + labs(title= "FA Loadings, Distinct Patterns", x = "", y = "Normalized Loadings")
+```
+
+```{r, fig.width=6}
+over_patterns <- fa_sd_2 %>% 
+  mutate(sd_patterns = map(sd_patterns, function(x) as_tibble(t(x)))) %>% 
+  select(-sd_loading) %>% 
+  unnest(cols = c(sd_patterns))
+
+colnames(over_patterns)[2:51] <- labels
+
+labelled_over_patterns <- over_patterns %>%
+  mutate(pattern1 = ifelse(pcb146 > 0.02 & pcb28 > bpa, 1,
+                           ifelse(BDE17 > 0.02, 2,
+                                  ifelse(MECPP > 0.02, 3,
+                                         ifelse(tcs > 0.02, 4, 5))))) %>%
+  select(seed, pattern1, everything()) %>%
+  arrange(seed, pattern1) %>%
+  mutate(pattern1 = fct_inorder(as.factor(pattern1)),
+         pattern1 = as.integer(pattern1))
+
+labelled_over_patterns %>%
+  gather(key = Chemicals, value = Loadings, -pattern1, -seed) %>%
+  mutate(Chemicals = fct_inorder(Chemicals)) %>%
+  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
+                        ifelse(str_detect(Chemicals, "^M"), "Phthalates",
+                               ifelse(str_detect(Chemicals, "pcb"), "PCBs",
+                                      "Phenols")))) %>%
+  ggplot(aes(x = Group, y = Loadings)) + geom_jitter(aes(color = Group), alpha = 0.5, size = 0.05, height = 0) +
+  geom_boxplot(aes(x = Group), alpha = 0.25, width = .4, outlier.shape = NA) +
+  facet_wrap(.~pattern1) + theme_bw() +
+  theme(legend.position = "none",
+        strip.background = element_blank()) + labs(title= "True Overlapping Patterns", x = "", y = "Normalized Loadings")
+```
+
+```{r, fig.width=6}
+over_fa <- fa_sd_2 %>% 
+  mutate(sd_loading = map(sd_loading, function(x) as_tibble(t(x)))) %>% 
+  select(-sd_patterns) %>% 
+  unnest(cols = c(sd_loading))
+
+colnames(over_fa)[2:51] <- labels
+
+labelled_over_fa <- over_fa %>%
+  mutate(pattern1 = ifelse(pcb146 > 0.01 & pcb28 > bpa, 1,
+                           ifelse(BDE17 > 0.015, 2,
+                                  ifelse(MECPP > 0.015, 3,
+                                         ifelse(tcs > 0.015, 4, 5))))) %>%
+  select(seed, pattern1, everything()) %>%
+  arrange(seed, pattern1) %>%
+  mutate(pattern1 = fct_inorder(as.factor(pattern1)),
+         pattern1 = as.integer(pattern1))
+
+labelled_over_fa %>%
+  gather(key = Chemicals, value = Loadings, -pattern1, -seed) %>%
+  mutate(Chemicals = fct_inorder(Chemicals)) %>%
+  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
+                        ifelse(str_detect(Chemicals, "^M"), "Phthalates",
+                               ifelse(str_detect(Chemicals, "pcb"), "PCBs",
+                                      "Phenols")))) %>%
+  ggplot(aes(x = Group, y = Loadings)) + geom_jitter(aes(color = Group), alpha = 0.5, size = 0.05, height = 0) +
+  geom_boxplot(aes(x = Group), alpha = 0.25, width = .4, outlier.shape = NA) +
+  facet_wrap(.~pattern1) + theme_bw() +
+  theme(legend.position = "none",
+        strip.background = element_blank()) + labs(title= "FA Loadings, Overlapping Patterns", x = "", y = "Normalized Loadings")
+```
+
+```{r, fig.width=6}
+cor_patterns <- fa_sd_3 %>% 
+  mutate(sd_patterns = map(sd_patterns, function(x) as_tibble(t(x)))) %>% 
+  select(-sd_loading) %>% 
+  unnest(cols = c(sd_patterns))
+
+colnames(cor_patterns)[2:51] <- labels
+
+labelled_cor_patterns <- cor_patterns %>%
+  mutate(pattern1 = ifelse(pcb146 > 0.02 & pcb28 > bpa, 1,
+                           ifelse(BDE17 > 0.02, 2,
+                                  ifelse(MECPP > 0.02, 3,
+                                         ifelse(tcs > 0.02, 4, 5))))) %>%
+  select(seed, pattern1, everything()) %>%
+  arrange(seed, pattern1) %>%
+  mutate(pattern1 = fct_inorder(as.factor(pattern1)),
+         pattern1 = as.integer(pattern1))
+
+labelled_cor_patterns %>%
+  gather(key = Chemicals, value = Loadings, -pattern1, -seed) %>%
+  mutate(Chemicals = fct_inorder(Chemicals)) %>%
+  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
+                        ifelse(str_detect(Chemicals, "^M"), "Phthalates",
+                               ifelse(str_detect(Chemicals, "pcb"), "PCBs",
+                                      "Phenols")))) %>%
+  ggplot(aes(x = Group, y = Loadings)) + geom_jitter(aes(color = Group), alpha = 0.5, size = 0.05, height = 0) +
+  geom_boxplot(aes(x = Group), alpha = 0.25, width = .4, outlier.shape = NA) +
+  facet_wrap(.~pattern1) + theme_bw() +
+  theme(legend.position = "none",
+        strip.background = element_blank()) + labs(title= "True Corr Patterns", x = "", y = "Normalized Loadings")
+```
+
+```{r, fig.width=6}
+cor_fa <- fa_sd_3 %>% 
+  mutate(sd_loading = map(sd_loading, function(x) as_tibble(t(x)))) %>% 
+  select(-sd_patterns) %>% 
+  unnest(cols = c(sd_loading))
+
+colnames(cor_fa)[2:51] <- labels
+
+labelled_cor_fa <- cor_fa %>%
+  mutate(pattern1 = ifelse(pcb146 > 0.01& pcb28 > bpa, 1,
+                           ifelse(BDE17 > 0.015, 2,
+                                  ifelse(MECPP > 0.015, 3,
+                                         ifelse(tcs > 0.015, 4, 5))))) %>%
+  select(seed, pattern1, everything()) %>%
+  arrange(seed, pattern1) %>%
+  mutate(pattern1 = fct_inorder(as.factor(pattern1)),
+         pattern1 = as.integer(pattern1))
+
+labelled_cor_fa %>%
+  gather(key = Chemicals, value = Loadings, -pattern1, -seed) %>%
+  mutate(Chemicals = fct_inorder(Chemicals)) %>%
+  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
+                        ifelse(str_detect(Chemicals, "^M"), "Phthalates",
+                               ifelse(str_detect(Chemicals, "pcb"), "PCBs",
+                                      "Phenols")))) %>%
+  ggplot(aes(x = Group, y = Loadings)) + geom_jitter(aes(color = Group), alpha = 0.5, size = 0.05, height = 0) +
+  geom_boxplot(aes(x = Group), alpha = 0.25, width = .4, outlier.shape = NA) +
+  facet_wrap(.~pattern1) + theme_bw() +
+  theme(legend.position = "none",
+        strip.background = element_blank()) + labs(title= "FA Loadings, Correlated Scores", x = "", y = "Normalized Loadings")
+```
+
+### NMF
+```{r, nmf120}
+nmf_sd_1 <- nmf_scores_ordered_dist %>% 
+  select(-coef, -basis, -pred, -sim, -noise, -nmf_out) %>% 
+  mutate(sd_patterns = map2(patterns, scores, function(x,y) standard(x,y)[[1]]),
+         sd_coef     = map2(coef_reordered, basis_reordered, function(x,y) standard(x,y)[[1]])) %>% 
+  select(-coef_reordered, -basis_reordered, -scores, -patterns)
+
+nmf_sd_2 <- nmf_scores_ordered_over %>% 
+    select(-coef, -basis, -pred, -sim, -noise, -nmf_out) %>% 
+  mutate(sd_patterns = map2(patterns, scores, function(x,y) standard(x,y)[[1]]),
+         sd_coef     = map2(coef_reordered, basis_reordered, function(x,y) standard(x,y)[[1]])) %>% 
+  select(-coef_reordered, -basis_reordered, -scores, -patterns)
+
+nmf_sd_3 <- nmf_scores_ordered_cor %>%
+    select(-coef, -basis, -pred, -sim, -noise, -nmf_out) %>% 
+  mutate(sd_patterns = map2(patterns, scores, function(x,y) standard(x,y)[[1]]),
+         sd_coef     = map2(coef_reordered, basis_reordered, function(x,y) standard(x,y)[[1]])) %>% 
+  select(-coef_reordered, -basis_reordered, -scores, -patterns)
+```
+
+```{r, fig.width=6}
+dist_patterns <- nmf_sd_1 %>% 
+  mutate(sd_patterns = map(sd_patterns, function(x) as_tibble(t(x)))) %>% 
+  select(-sd_coef) %>% 
+  unnest(cols = c(sd_patterns))
+
+colnames(dist_patterns)[2:51] <- labels
+
+labelled_dist_patterns <- dist_patterns %>%
+  mutate(pattern1 = ifelse(pcb146 > 0.03 & pcb28 > bpa, 1,
+                           ifelse(BDE17 > 0.03, 2,
+                                  ifelse(MECPP > 0.03, 3,
+                                         ifelse(tcs > 0.03, 4, 5))))) %>%
+  select(seed, pattern1, everything()) %>%
+  arrange(seed, pattern1) %>%
+  mutate(pattern1 = fct_inorder(as.factor(pattern1)),
+         pattern1 = as.integer(pattern1))
+
+labelled_dist_patterns %>%
+  gather(key = Chemicals, value = coefs, -pattern1, -seed) %>%
+  mutate(Chemicals = fct_inorder(Chemicals)) %>%
+  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
+                        ifelse(str_detect(Chemicals, "^M"), "Phthalates",
+                               ifelse(str_detect(Chemicals, "pcb"), "PCBs",
+                                      "Phenols")))) %>%
+  ggplot(aes(x = Group, y = coefs)) + geom_jitter(aes(color = Group), alpha = 0.5, size = 0.05, height = 0) +
+  geom_boxplot(aes(x = Group), alpha = 0.25, width = .4, outlier.shape = NA) +
+  facet_wrap(.~pattern1) + theme_bw() +
+  theme(legend.position = "none",
+        strip.background = element_blank()) + labs(title= "True Distinct Patterns", x = "", y = "Normalized Loadings")
+```
+
+```{r, fig.width=8}
+dist_nmf <- nmf_sd_1 %>% 
+  mutate(sd_coef = map(sd_coef, function(x) as_tibble(t(x)))) %>% 
+  select(-sd_patterns) %>% 
+  unnest(cols = c(sd_coef))
+
+colnames(dist_nmf)[2:51] <- labels
+
+labelled_dist_nmf <- dist_nmf %>%
+  mutate(pattern1 = ifelse(pcb146 > 0.03 & pcb28 > bpa, 1,
+                           ifelse(BDE17 > 0.03, 2,
+                                  ifelse(MECPP > 0.03, 3,
+                                         ifelse(tcs > 0.03, 4, 5))))) %>%
+  select(seed, pattern1, everything()) %>%
+  arrange(seed, pattern1) %>%
+  mutate(pattern1 = fct_inorder(as.factor(pattern1)),
+         pattern1 = as.integer(pattern1))
+
+labelled_dist_nmf %>%
+  gather(key = Chemicals, value = coefs, -pattern1, -seed) %>%
+  mutate(Chemicals = fct_inorder(Chemicals)) %>%
+  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
+                        ifelse(str_detect(Chemicals, "^M"), "Phthalates",
+                               ifelse(str_detect(Chemicals, "pcb"), "PCBs",
+                                      "Phenols")))) %>%
+  ggplot(aes(x = Group, y = coefs)) + geom_jitter(aes(color = Group), alpha = 0.5, size = 0.05, height = 0) +
+  geom_boxplot(aes(x = Group), alpha = 0.25, width = .4, outlier.shape = NA) +
+  facet_wrap(.~pattern1) + theme_bw() +
+  theme(legend.position = "none",
+        strip.background = element_blank()) + labs(title= "NMF loadings, Distinct Patterns", x = "", y = "Normalized Loadings")
+```
+
+```{r, fig.width=6}
+over_patterns <- nmf_sd_2 %>% 
+  mutate(sd_patterns = map(sd_patterns, function(x) as_tibble(t(x)))) %>% 
+  select(-sd_coef) %>% 
+  unnest(cols = c(sd_patterns))
+
+colnames(over_patterns)[2:51] <- labels
+
+labelled_over_patterns <- over_patterns %>%
+  mutate(pattern1 = ifelse(pcb146 > 0.02 & pcb28 > bpa, 1,
+                           ifelse(BDE17 > 0.02, 2,
+                                  ifelse(MECPP > 0.02, 3,
+                                         ifelse(tcs > 0.02, 4, 5))))) %>%
+  select(seed, pattern1, everything()) %>%
+  arrange(seed, pattern1) %>%
+  mutate(pattern1 = fct_inorder(as.factor(pattern1)),
+         pattern1 = as.integer(pattern1))
+
+labelled_over_patterns %>%
+  gather(key = Chemicals, value = coefs, -pattern1, -seed) %>%
+  mutate(Chemicals = fct_inorder(Chemicals)) %>%
+  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
+                        ifelse(str_detect(Chemicals, "^M"), "Phthalates",
+                               ifelse(str_detect(Chemicals, "pcb"), "PCBs",
+                                      "Phenols")))) %>%
+  ggplot(aes(x = Group, y = coefs)) + geom_jitter(aes(color = Group), alpha = 0.5, size = 0.05, height = 0) +
+  geom_boxplot(aes(x = Group), alpha = 0.25, width = .4, outlier.shape = NA) +
+  facet_wrap(.~pattern1) + theme_bw() +
+  theme(legend.position = "none",
+        strip.background = element_blank()) + labs(title= "True Overlapping Patterns", x = "", y = "Normalized Loadings")
+```
+
+```{r, fig.width=8}
+over_nmf <- nmf_sd_2 %>% 
+  mutate(sd_coef = map(sd_coef, function(x) as_tibble(t(x)))) %>% 
+  select(-sd_patterns) %>% 
+  unnest(cols = c(sd_coef))
+
+colnames(over_nmf)[2:51] <- labels
+
+labelled_over_nmf <- over_nmf %>%
+  mutate(pattern1 = ifelse(pcb146 > 0.01 & BDE17 > 0.01 & pcb28 > bpa, 1,
+                           ifelse(BDE17 > 0.01 & MECPP > 0.01, 2,
+                                  ifelse(MECPP > 0.01 & tcs > 0.01, 3,
+                                         ifelse(tcs > 0.01 & pcb146 > 0.01, 4, 5))))) %>%
+  select(seed, pattern1, everything()) %>%
+  arrange(seed, pattern1) %>%
+  mutate(pattern1 = fct_inorder(as.factor(pattern1)),
+         pattern1 = as.integer(pattern1))
+
+labelled_over_nmf %>%
+  gather(key = Chemicals, value = coefs, -pattern1, -seed) %>%
+  mutate(Chemicals = fct_inorder(Chemicals)) %>%
+  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
+                        ifelse(str_detect(Chemicals, "^M"), "Phthalates",
+                               ifelse(str_detect(Chemicals, "pcb"), "PCBs",
+                                      "Phenols")))) %>%
+  ggplot(aes(x = Group, y = coefs)) + geom_jitter(aes(color = Group), alpha = 0.5, size = 0.05, height = 0) +
+  geom_boxplot(aes(x = Group), alpha = 0.25, width = .4, outlier.shape = NA) +
+  facet_wrap(.~pattern1) + theme_bw() +
+  theme(legend.position = "none",
+        strip.background = element_blank()) + labs(title= "NMF Loadings, Overlapping Patterns", x = "", y = "Normalized Loadings")
+```
+
+```{r, fig.width=6}
+cor_patterns <- nmf_sd_3 %>% 
+  mutate(sd_patterns = map(sd_patterns, function(x) as_tibble(t(x)))) %>% 
+  select(-sd_coef) %>% 
+  unnest(cols = c(sd_patterns))
+
+colnames(cor_patterns)[2:51] <- labels
+
+labelled_cor_patterns <- cor_patterns %>%
+  mutate(pattern1 = ifelse(pcb146 > 0.02 & pcb28 > bpa, 1,
+                           ifelse(BDE17 > 0.02, 2,
+                                  ifelse(MECPP > 0.02, 3,
+                                         ifelse(tcs > 0.02, 4, 5))))) %>%
+  select(seed, pattern1, everything()) %>%
+  arrange(seed, pattern1) %>%
+  mutate(pattern1 = fct_inorder(as.factor(pattern1)),
+         pattern1 = as.integer(pattern1))
+
+labelled_cor_patterns %>%
+  gather(key = Chemicals, value = coefs, -pattern1, -seed) %>%
+  mutate(Chemicals = fct_inorder(Chemicals)) %>%
+  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
+                        ifelse(str_detect(Chemicals, "^M"), "Phthalates",
+                               ifelse(str_detect(Chemicals, "pcb"), "PCBs",
+                                      "Phenols")))) %>%
+  ggplot(aes(x = Group, y = coefs)) + geom_jitter(aes(color = Group), alpha = 0.5, size = 0.05, height = 0) +
+  geom_boxplot(aes(x = Group), alpha = 0.25, width = .4, outlier.shape = NA) +
+  facet_wrap(.~pattern1) + theme_bw() +
+  theme(legend.position = "none",
+        strip.background = element_blank()) + labs(title= "True Corr Patterns", x = "", y = "Normalized Loadings")
+```
+
+```{r, fig.width=8}
+cor_nmf <- nmf_sd_3 %>% 
+  mutate(sd_coef = map(sd_coef, function(x) as_tibble(t(x)))) %>% 
+  select(-sd_patterns) %>% 
+  unnest(cols = c(sd_coef))
+
+colnames(cor_nmf)[2:51] <- labels
+
+labelled_cor_nmf <- cor_nmf %>%
+  mutate(pattern1 = ifelse(pcb146 > 0.01 & BDE17 > 0.01 & pcb28 > bpa, 1,
+                           ifelse(BDE17 > 0.015 & MECPP > 0.015, 2,
+                                  ifelse(MECPP > 0.015 & tcs > 0.015, 3,
+                                         ifelse(tcs > 0.015 & pcb146 > 0.015, 4, 5))))) %>%
+  select(seed, pattern1, everything()) %>%
+  arrange(seed, pattern1) %>%
+  mutate(pattern1 = fct_inorder(as.factor(pattern1)),
+         pattern1 = as.integer(pattern1))
+
+labelled_cor_nmf %>%
+  gather(key = Chemicals, value = coefs, -pattern1, -seed) %>%
+  mutate(Chemicals = fct_inorder(Chemicals)) %>%
+  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
+                        ifelse(str_detect(Chemicals, "^M"), "Phthalates",
+                               ifelse(str_detect(Chemicals, "pcb"), "PCBs",
+                                      "Phenols")))) %>%
+  ggplot(aes(x = Group, y = coefs)) + geom_jitter(aes(color = Group), alpha = 0.5, size = 0.05, height = 0) +
+  geom_boxplot(aes(x = Group), alpha = 0.25, width = .4, outlier.shape = NA) +
+  facet_wrap(.~pattern1) + theme_bw() +
+  theme(legend.position = "none",
+        strip.background = element_blank()) + labs(title= "NMF Loadings, Correlated Scores", x = "", y = "Normalized Loadings")
+```
+
