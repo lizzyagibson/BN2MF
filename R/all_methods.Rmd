@@ -413,7 +413,9 @@ pca_rotations_dist %>%
   theme(axis.text.x = element_blank(),
         legend.position = "bottom",
         strip.background = element_blank())
+```
 
+```{r, fig.width=8}
 pca_scores_matched_dist %>%
   select(seed, rotations_re) %>% 
   unnest(rotations_re) %>% 
@@ -423,11 +425,11 @@ pca_scores_matched_dist %>%
                                                      ifelse(str_detect(Chemicals, "^M"), "Phthalates",
                                                             ifelse(str_detect(Chemicals, "pcb"), "PCBs",
                                                                    "Phenols")))) %>% 
-  ggplot(aes(x = Group, y = Loadings)) + geom_jitter(aes(color = Group), alpha = 0.5, size = 0.1, height = 0) +
-  geom_boxplot(aes(x = Group, color = Group), width = 0.4, outlier.shape = NA) +
+  ggplot(aes(x = Group, y = Loadings)) + geom_jitter(aes(color = Group), alpha = 0.5, size = 0.05, height = 0) +
+  geom_boxplot(aes(x = Group), alpha = 0.25, width = .4, outlier.shape = NA) +
   facet_wrap(.~PC) + theme_bw() +
   theme(legend.position = "none",
-        strip.background = element_blank())
+        strip.background = element_blank()) + labs(title= "PCA Loadings, Distinct Patterns", x = "", y = "Loadings")
 ```
 
 ### FA
@@ -447,7 +449,9 @@ fa_loadings_dist %>%
   theme(axis.text.x = element_blank(),
         legend.position = "bottom",
         strip.background = element_blank())
+```
 
+```{r, fig.width=6}
 fa_loadings_dist %>%  
   mutate(Chemicals = rep(labels, 100)) %>% 
   select(seed, Chemicals, V1:V4) %>% 
@@ -457,11 +461,11 @@ fa_loadings_dist %>%
                                                      ifelse(str_detect(Chemicals, "^M"), "Phthalates",
                                                             ifelse(str_detect(Chemicals, "pcb"), "PCBs",
                                                                    "Phenols")))) %>% 
-  ggplot(aes(x = Group, y = Loadings)) + geom_jitter(aes(color = Group), alpha = 0.5, size = 0.1, height = 0) +
-  geom_boxplot(aes(x = Group, color = Group), width = .45, outlier.shape = NA) +
+  ggplot(aes(x = Group, y = Loadings)) + geom_jitter(aes(color = Group), alpha = 0.5, size = 0.05, height = 0) +
+  geom_boxplot(aes(x = Group), alpha = 0.25, width = .4, outlier.shape = NA) +
   facet_wrap(.~Factor) + theme_bw() +
   theme(legend.position = "none",
-        strip.background = element_blank())
+        strip.background = element_blank()) + labs(title= "FA Loadings, Distinct Patterns", x = "", y = "Loadings")
 ```
 
 ### NMF
@@ -691,7 +695,9 @@ pca_rotations_over %>%
   theme(axis.text.x = element_blank(),
         legend.position = "bottom",
         strip.background = element_blank())
+```
 
+```{r, fig.width = 8}
 pca_scores_matched_over %>%
   select(seed, rotations_re) %>% 
   unnest(rotations_re) %>% 
@@ -701,11 +707,11 @@ pca_scores_matched_over %>%
                                                      ifelse(str_detect(Chemicals, "^M"), "Phthalates",
                                                             ifelse(str_detect(Chemicals, "pcb"), "PCBs",
                                                                    "Phenols")))) %>% 
-  ggplot(aes(x = Group, y = Loadings)) + geom_jitter(aes(color = Group), alpha = 0.5, size = 0.1, height = 0) +
-  geom_boxplot(aes(x = Group, color = Group), width = 0.4, outlier.shape = NA) +
+  ggplot(aes(x = Group, y = Loadings)) + geom_jitter(aes(color = Group), alpha = 0.5, size = 0.05, height = 0) +
+  geom_boxplot(aes(x = Group), alpha = 0.25, width = .4, outlier.shape = NA) +
   facet_wrap(.~PC) + theme_bw() +
   theme(legend.position = "none",
-        strip.background = element_blank())
+        strip.background = element_blank()) + labs(title= "PCA Loadings, Overlapping Patterns", x = "", y = "Loadings")
 ```
 
 ### FA
@@ -725,7 +731,9 @@ fa_loadings_over %>%
   theme(axis.text.x = element_blank(),
         legend.position = "bottom",
         strip.background = element_blank())
+```
 
+```{r, fig.width=6}
 fa_loadings_over %>%  
   mutate(Chemicals = rep(labels, 100)) %>% 
   select(seed, Chemicals, V1:V4) %>% 
@@ -735,11 +743,11 @@ fa_loadings_over %>%
                                                      ifelse(str_detect(Chemicals, "^M"), "Phthalates",
                                                             ifelse(str_detect(Chemicals, "pcb"), "PCBs",
                                                                    "Phenols")))) %>% 
-  ggplot(aes(x = Group, y = Loadings)) + geom_jitter(aes(color = Group), alpha = 0.5, size = 0.1, height = 0) +
-  geom_boxplot(aes(x = Group, color = Group), width = .45, outlier.shape = NA) +
+  ggplot(aes(x = Group, y = Loadings)) + geom_jitter(aes(color = Group), alpha = 0.5, size = 0.05, height = 0) +
+  geom_boxplot(aes(x = Group), alpha = 0.25, width = .4, outlier.shape = NA) +
   facet_wrap(.~Factor) + theme_bw() +
   theme(legend.position = "none",
-        strip.background = element_blank())
+        strip.background = element_blank()) + labs(title= "FA Loadings, Overlapping Patterns", x = "", y = "Loadings")
 ```
 
 ### NMF
@@ -973,7 +981,9 @@ pca_rotations_cor %>%
   theme(axis.text.x = element_blank(),
         legend.position = "bottom",
         strip.background = element_blank())
+```
 
+```{r, fig.width=8}
 pca_scores_matched_cor %>%
   select(seed, rotations_re) %>% 
   unnest(rotations_re) %>% 
@@ -983,11 +993,11 @@ pca_scores_matched_cor %>%
                                                      ifelse(str_detect(Chemicals, "^M"), "Phthalates",
                                                             ifelse(str_detect(Chemicals, "pcb"), "PCBs",
                                                                    "Phenols")))) %>% 
-  ggplot(aes(x = Group, y = Loadings)) + geom_jitter(aes(color = Group), alpha = 0.5, size = 0.1, height = 0) +
-  geom_boxplot(aes(x = Group, color = Group), width = 0.4, outlier.shape = NA) +
+  ggplot(aes(x = Group, y = Loadings)) + geom_jitter(aes(color = Group), alpha = 0.5, size = 0.05, height = 0) +
+  geom_boxplot(aes(x = Group), alpha = 0.25, width = .4, outlier.shape = NA) +
   facet_wrap(.~PC) + theme_bw() +
   theme(legend.position = "none",
-        strip.background = element_blank())
+        strip.background = element_blank()) + labs(title= "PCA Loadings, Correlated Scores", x = "", y = "Loadings")
 ```
 
 ### FA
@@ -1007,7 +1017,9 @@ fa_loadings_cor %>%
   theme(axis.text.x = element_blank(),
         legend.position = "bottom",
         strip.background = element_blank())
+```
 
+```{r, fig.width=6}
 fa_loadings_cor %>%  
   mutate(Chemicals = rep(labels, 100)) %>% 
   select(seed, Chemicals, V1:V4) %>% 
@@ -1017,11 +1029,11 @@ fa_loadings_cor %>%
                                                      ifelse(str_detect(Chemicals, "^M"), "Phthalates",
                                                             ifelse(str_detect(Chemicals, "pcb"), "PCBs",
                                                                    "Phenols")))) %>% 
-  ggplot(aes(x = Group, y = Loadings)) + geom_jitter(aes(color = Group), alpha = 0.5, size = 0.1, height = 0) +
-  geom_boxplot(aes(x = Group, color = Group), width = .45, outlier.shape = NA) +
+  ggplot(aes(x = Group, y = Loadings)) + geom_jitter(aes(color = Group), alpha = 0.5, size = 0.05, height = 0) +
+  geom_boxplot(aes(x = Group), alpha = 0.25, width = .4, outlier.shape = NA) +
   facet_wrap(.~Factor) + theme_bw() +
   theme(legend.position = "none",
-        strip.background = element_blank())
+        strip.background = element_blank()) + labs(title= "FA Loadings, Correlated Scores", x = "", y = "Loadings")
 ```
 
 ### NMF
@@ -2683,10 +2695,10 @@ dist_nmf <- nmf_sd_1 %>%
 colnames(dist_nmf)[2:51] <- labels
 
 labelled_dist_nmf <- dist_nmf %>%
-  mutate(pattern1 = ifelse(pcb146 > 0.03 & pcb28 > bpa, 1,
-                           ifelse(BDE17 > 0.03, 2,
-                                  ifelse(MECPP > 0.03, 3,
-                                         ifelse(tcs > 0.03, 4, 5))))) %>%
+  mutate(pattern1 = ifelse(pcb146 > 0.025 & pcb28 > bpa, 1,
+                           ifelse(BDE17 > 0.025, 2,
+                                  ifelse(MECPP > 0.025, 3,
+                                         ifelse(tcs > 0.025, 4, 5))))) %>%
   select(seed, pattern1, everything()) %>%
   arrange(seed, pattern1) %>%
   mutate(pattern1 = fct_inorder(as.factor(pattern1)),
@@ -2703,7 +2715,7 @@ labelled_dist_nmf %>%
   geom_boxplot(aes(x = Group), alpha = 0.25, width = .4, outlier.shape = NA) +
   facet_wrap(.~pattern1) + theme_bw() +
   theme(legend.position = "none",
-        strip.background = element_blank()) + labs(title= "NMF loadings, Distinct Patterns", x = "", y = "Normalized Loadings")
+        strip.background = element_blank()) + labs(title= "NMF Loadings, Distinct Patterns", x = "", y = "Normalized Loadings")
 ```
 
 ```{r, fig.width=6}
