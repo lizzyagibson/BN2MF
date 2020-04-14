@@ -84,22 +84,62 @@ ewa_dist_unnest <- ewa_dist %>%
   unnest(cols = c(ewa))
 ```
 
+
 ### Match & Arrange
+
+**Match loadings based on correlation with true patterns**
+
 ```{r, npb3}
 npb_full_dist <- full_join(eh_dist, ewa_dist, by = "seed") %>% 
     full_join(., sim_dist, by = "seed") %>% 
   select(-chem)
 
-match_patterns_npb <- function (eh_unnested) {
-  eh_reordered <- eh_unnested %>% 
-  mutate(pattern1 = ifelse(pcb146 > 0.5 & pcb28 > bpa, 1,
-                          ifelse(BDE17 > 0.5, 2,
-                                ifelse(MECPP > 0.5, 3,
-                                       ifelse(tcs > 0.5, 4, 5))))) %>% # Switch patterns later to compare EH to loadings
-  select(pattern1, everything())
-  eh_reordered
+# match_patterns_npb <- function (eh_unnested) {
+#   eh_reordered <- eh_unnested %>% 
+#   mutate(pattern1 = ifelse(pcb146 > 0.5 & pcb28 > bpa, 1,
+#                           ifelse(BDE17 > 0.5, 2,
+#                                 ifelse(MECPP > 0.5, 3,
+#                                        ifelse(tcs > 0.5, 4, 5))))) %>% # Switch patterns later to compare EH to loadings
+#   select(pattern1, everything())
+#   eh_reordered
+# }
+
+# loading <- npb_full_dist$eh[[1]]
+# #4 x 50
+# truth <- npb_full_dist$patterns[[1]]
+# #4x50
+# loading <- rbind(loading, runif(50, min = 0.1, max = 0.50))
+
+match_patterns_corr <- function (truth, loading) {
+  truth <- t(truth)
+  if (nrow(truth) != nrow(loading)) {loading <- t(as.matrix(loading))} else {loading <- as.matrix(loading)}
+  
+  corr <- cor(truth, loading)
+  
+  reordered <- matrix(nrow = ncol(truth) - 1, ncol = nrow(truth))
+  
+  reordered[1,] <- loading[,which(corr==max(corr[1,]), arr.ind = TRUE)[2]]
+  reordered[2,] <- loading[,which(corr==max(corr[2,]), arr.ind = TRUE)[2]]
+  reordered[3,] <- loading[,which(corr==max(corr[3,]), arr.ind = TRUE)[2]]
+  
+  if (ncol(loading) >= 4) {reordered <- rbind(reordered, loading[,which(corr==max(corr[4,]), arr.ind = TRUE)[2]])}
+  
+  if (ncol(loading) == 5) {
+  
+  no <- c(which(corr==max(corr[1,]), arr.ind = TRUE)[2],
+          which(corr==max(corr[2,]), arr.ind = TRUE)[2],
+          which(corr==max(corr[3,]), arr.ind = TRUE)[2],
+          which(corr==max(corr[4,]), arr.ind = TRUE)[2])
+  
+  reordered <- rbind(reordered, loading[,-no])
+  }
+  reordered
 }
 
+# match <- match_patterns_corr(truth, loading)
+# cor(t(truth), t(match))
+
+# Need to change some parts of above so that we can match scores to patterns
 match_scores_npb <- function (patterns, scores) {
   N <- nrow(scores)
   for (j in 1:nrow(patterns)) {
@@ -113,36 +153,36 @@ match_scores_npb <- function (patterns, scores) {
   scores
 }
 
+match_scores_npb(npb_full_dist$eh[1][[1]], npb_full_dist$ewa[1][[1]])
+
 npb_scores_matched_dist <- npb_full_dist %>% 
-    mutate(eh = map(eh, ~cbind(pattern = 1:nrow(.x), .x)),
-         ewa = map(ewa, ~rbind(pattern = 1:ncol(.x), .x)),
-         eh_reordered = map(eh, ~match_patterns_npb(eh_unnested = .x)),
+    mutate(eh_reordered = map2(patterns, eh, function(x,y) match_patterns_corr(truth = x, loading = y)),
          ewa_reordered = ewa,
          ewa_reordered = map2(eh_reordered, ewa_reordered, ~match_scores_npb(patterns = .x, scores = .y)))
 
-reorder_patterns_npb <- function (eh_unnested) {
-  eh_reordered <- eh_unnested %>% 
-  arrange(pattern1) %>%
-  mutate(pattern1 = fct_inorder(as.factor(pattern1)),
-         pattern1 = as.integer(pattern1)) %>% 
-    select(-pattern1, -pattern)
-  eh_reordered
-}
+# reorder_patterns_npb <- function (eh_unnested) {
+#   eh_reordered <- eh_unnested %>% 
+#   arrange(pattern1) %>%
+#   mutate(pattern1 = fct_inorder(as.factor(pattern1)),
+#          pattern1 = as.integer(pattern1)) %>% 
+#     select(-pattern1, -pattern)
+#   eh_reordered
+# }
 
-reorder_scores_npb <- function (ewa_unnested) {
-  ewa_reordered <- ewa_unnested %>% 
-    t(.) %>% as_tibble(.) %>% 
-  arrange(V2) %>%
-  mutate(V2 = fct_inorder(as.factor(V2)),
-         V2 = as.integer(V2)) %>% 
-    t(.) %>% as_tibble(.) %>% 
-    slice(3:nrow(.))
-  ewa_reordered
-}
+# reorder_scores_npb <- function (ewa_unnested) {
+#   ewa_reordered <- ewa_unnested %>% 
+#     t(.) %>% as_tibble(.) %>% 
+#   arrange(V2) %>%
+#   mutate(V2 = fct_inorder(as.factor(V2)),
+#          V2 = as.integer(V2)) %>% 
+#     t(.) %>% as_tibble(.) %>% 
+#     slice(3:nrow(.))
+#   ewa_reordered
+# }
 
-npb_scores_ordered_dist <- npb_scores_matched_dist %>% 
-  mutate(eh_reordered = map(eh_reordered, ~reorder_patterns_npb(.x)),
-         ewa_reordered = map(ewa_reordered, ~reorder_scores_npb(.x)))
+npb_scores_ordered_dist <- npb_scores_matched_dist # %>% 
+#   mutate(eh_reordered = map(eh_reordered, ~reorder_patterns_npb(.x)),
+#          ewa_reordered = map(ewa_reordered, ~reorder_scores_npb(.x)))
 ```
 
 ## PCA
@@ -191,40 +231,66 @@ pca_rotations_dist <- pca_out_dist %>% select(seed, rotations) %>% unnest(cols =
 
 ### Match Scores
 ```{r, pca2}
-match_eigenvectors <- function (eh_unnested) {
-    pca_reorder <- eh_unnested %>% 
-      mutate(Chemicals = labels,
-             Chemicals = fct_inorder(Chemicals)) %>% 
-      gather(key = PC, value = Loadings, -Chemicals) %>%
-      group_by(PC) %>%
-      mutate(Loadings = case_when(
-        any(PC == "PC1" & Chemicals == "pcb28" & Loadings < 0) ~ -Loadings,
-        any(PC == "PC2" & Chemicals == "BDE99" & Loadings < 0) ~ -Loadings,
-        any(PC == "PC3" & Chemicals == "bpa" & Loadings < 0) ~ -Loadings,
-        any(PC == "PC4" & Chemicals == "BDE99" & Loadings < 0) ~ -Loadings,
-        TRUE ~ Loadings
-      )) %>%
-      spread(PC, Loadings) %>% select(-Chemicals)
-    pca_reorder
+# match_eigenvectors <- function (eh_unnested) {
+#     pca_reorder <- eh_unnested %>% 
+#       mutate(Chemicals = labels,
+#              Chemicals = fct_inorder(Chemicals)) %>% 
+#       gather(key = PC, value = Loadings, -Chemicals) %>%
+#       group_by(PC) %>%
+#       mutate(Loadings = case_when(
+#         any(PC == "PC1" & Chemicals == "pcb28" & Loadings < 0) ~ -Loadings,
+#         any(PC == "PC2" & Chemicals == "BDE99" & Loadings < 0) ~ -Loadings,
+#         any(PC == "PC3" & Chemicals == "bpa" & Loadings < 0) ~ -Loadings,
+#         any(PC == "PC4" & Chemicals == "BDE99" & Loadings < 0) ~ -Loadings,
+#         TRUE ~ Loadings
+#       )) %>%
+#       spread(PC, Loadings) %>% select(-Chemicals)
+#     pca_reorder
+# }
+
+#matche the loading directions to the first solution
+#loading <- pca_out_dist$rotations[10][[1]]
+
+match_eigen_first <- function (loading) {
+  truth <- pca_out_dist$rotations[1][[1]]
+  loading <- as.matrix(loading)
+  corr <- diag(cor(truth, loading))
+  
+  reordered <- matrix(nrow = nrow(loading), ncol = ncol(loading))
+
+for (i in 1:nrow(loading)) {  
+  reordered[i,1] <- ifelse(corr[1] < 0, -loading[i,1], loading[i,1])
+  reordered[i,2] <- ifelse(corr[2] < 0, -loading[i,2], loading[i,2])
+  
+  if (ncol(loading) == 3) {reordered[i,3] <- ifelse(corr[3] < 0, -loading[i,3], loading[i,3])}
+}
+  reordered
 }
 
-match_pca_scores <- function (rotations, rotations_re, ex) {
-  ex_re <- as_tibble(matrix(nrow = nrow(ex), ncol = ncol(ex)))
-   for (k in 1:ncol(rotations)) {
-      for (chem in 1:nrow(rotations)) {
-        for (i in 1:nrow(ex)) {
-        if (rotations[chem, k] == rotations_re[chem, k]) {
-          ex_re[i, k] = ex[i, k]
-        } else {ex_re[i, k] = -(ex[i, k])}
-        }}}
-  ex_re
-}
+# cor(loading, truth)
+# head(match_eigen_first(loading))
+# head(loading)
+# cor(match_eigen_first(pca_out_dist$rotations[3][[1]]))
+# match_eigen_first(loading = loading)
+
+# match_pca_scores <- function (rotations, rotations_re, ex) {
+#   ex_re <- as_tibble(matrix(nrow = nrow(ex), ncol = ncol(ex)))
+#    for (k in 1:ncol(rotations)) {
+#       for (chem in 1:nrow(rotations)) {
+#         for (i in 1:nrow(ex)) {
+#         if (rotations[chem, k] == rotations_re[chem, k]) {
+#           ex_re[i, k] = ex[i, k]
+#         } else {ex_re[i, k] = -(ex[i, k])}
+#         }}}
+#   ex_re
+# }
 
 pca_scores_matched_dist <- pca_out_dist %>% 
-  mutate(rotations_re = map(rotations, match_eigenvectors),
-         ex_re = pmap(list(rotations, rotations_re, ex), function(x,y,z)
-           {match_pca_scores(as.matrix(x), as.matrix(y), as.matrix(z))} #match_pca_scores
-                       ))
+  mutate(rotations_re = map(rotations, match_eigen_first))
+# ,
+  #        ex_re = pmap(list(rotations, rotations_re, ex), function(x,y,z)
+  #          {match_pca_scores(as.matrix(x), as.matrix(y), as.matrix(z))} #match_pca_scores
+  #                      ))
 ```
 
 ## Factor Analysis (FA)
@@ -293,15 +359,15 @@ nmf_coef_dist <- nmf_out_dist %>% select(seed, coef) %>% unnest(cols = c(coef))
 ### Match & Arrange
 
 ```{r, nmf2}
-match_patterns_nmf <- function (coef_unnested) {
-  coef_reordered <- coef_unnested %>% 
-    mutate(pattern1 = ifelse(pcb146 > 0.01 & pcb118 > bpa, 1,
-                          ifelse(BDE17 > 0.02, 2,
-                                ifelse(MECPP > 0.02, 3,
-                                       ifelse(tcs > 0.02, 4, 5))))) %>%
-  select(pattern1, everything())
-  coef_reordered
-}
+# match_patterns_nmf <- function (coef_unnested) {
+#   coef_reordered <- coef_unnested %>% 
+#     mutate(pattern1 = ifelse(pcb146 > 0.01 & pcb118 > bpa, 1,
+#                           ifelse(BDE17 > 0.02, 2,
+#                                 ifelse(MECPP > 0.02, 3,
+#                                        ifelse(tcs > 0.02, 4, 5))))) %>%
+#   select(pattern1, everything())
+#   coef_reordered
+# }
 
 match_scores_nmf <- function (patterns, scores) {
   N <- nrow(scores)
@@ -317,77 +383,39 @@ match_scores_nmf <- function (patterns, scores) {
 }
 
 nmf_scores_matched_dist <- nmf_out_dist %>% 
-    mutate(coef = map(coef, function(x) cbind(pattern = 1:nrow(x), x)),
-         basis = map(basis, function(x) rbind(pattern = 1:ncol(x), x)),
-         coef_reordered = map(coef, match_patterns_nmf),
-         basis_reordered = map(basis, as_tibble),
-         basis_reordered = map2(coef_reordered, basis_reordered, ~match_scores_nmf(patterns = .x, scores = .y)))
+    mutate(coef_reordered = map2(patterns, coef, function(x,y) match_patterns_corr(truth = x, loading = y)))
+# ,
+#          basis_reordered = map(basis, as_tibble),
+#          basis_reordered = map2(coef_reordered, basis_reordered, ~match_scores_nmf(patterns = .x, scores = .y)))
+```
 
-reorder_patterns_nmf <- function (coef_unnested) {
-  coef_reordered <- coef_unnested %>% 
-  arrange(pattern1) %>%
-  mutate(pattern1 = fct_inorder(as.factor(pattern1)),
-         pattern1 = as.integer(pattern1)) %>% 
-    select(-pattern1, -pattern)
-  coef_reordered
-}
-
-reorder_scores_nmf <- function (basis_unnested) {
-  basis_reordered <- basis_unnested %>% 
-    t(.) %>% as_tibble(.) %>% 
-  arrange(V2) %>%
-  mutate(V2 = fct_inorder(as.factor(V2)),
-         V2 = as.integer(V2)) %>% 
-    t(.) %>% as_tibble(.) %>% 
-    slice(3:nrow(.))
-  basis_reordered
-}
-
-nmf_scores_ordered_dist <- nmf_scores_matched_dist %>% 
-  mutate(coef_reordered = map(coef_reordered, ~reorder_patterns_nmf(.x)),
-         basis_reordered = map(basis_reordered, ~reorder_scores_nmf(.x)))
+```{r, nmfmore}
+# reorder_patterns_nmf <- function (coef_unnested) {
+#   coef_reordered <- coef_unnested %>% 
+#   arrange(pattern1) %>%
+#   mutate(pattern1 = fct_inorder(as.factor(pattern1)),
+#          pattern1 = as.integer(pattern1)) %>% 
+#     select(-pattern1, -pattern)
+#   coef_reordered
+# }
+# 
+# reorder_scores_nmf <- function (basis_unnested) {
+#   basis_reordered <- basis_unnested %>% 
+#     t(.) %>% as_tibble(.) %>% 
+#   arrange(V2) %>%
+#   mutate(V2 = fct_inorder(as.factor(V2)),
+#          V2 = as.integer(V2)) %>% 
+#     t(.) %>% as_tibble(.) %>% 
+#     slice(3:nrow(.))
+#   basis_reordered
+# }
+# 
+nmf_scores_ordered_dist <- nmf_scores_matched_dist #%>% 
+#   mutate(coef_reordered = map(coef_reordered, ~reorder_patterns_nmf(.x)),
+#          basis_reordered = map(basis_reordered, ~reorder_scores_nmf(.x)))
 ```
 
 ## Viz
-
-### npBNMF
-```{r, npb4}
-eh_dist_reorder <- eh_dist_unnest %>%
-  mutate(pattern1 = ifelse(pcb146 > 0.5 & pcb28 > bpa, 1,
-                          ifelse(BDE17 > 0.5, 2,
-                                ifelse(MECPP > 0.5, 3,
-                                       ifelse(tcs > 0.5, 4, 5))))) %>%
-  select(seed, pattern1, everything()) %>%
-  arrange(seed, pattern1) %>%
-  mutate(pattern1 = fct_inorder(as.factor(pattern1)),
-         pattern1 = as.integer(pattern1))
-
-eh_dist_reorder %>%
-  gather(key = Chemicals, value = Loadings, -pattern1, -seed) %>%
-  mutate(Chemicals = fct_inorder(Chemicals)) %>% 
-  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
-                                                     ifelse(str_detect(Chemicals, "^M"), "Phthalates",
-                                                            ifelse(str_detect(Chemicals, "pcb"), "PCBs",
-                                                                   "Phenols")))) %>% 
-  ggplot(aes(x = Chemicals, y = Loadings)) + geom_col(aes(fill = Group)) +
-  facet_wrap(.~pattern1) + theme_bw() +
-  theme(axis.text.x = element_blank(),
-        legend.position = "bottom",
-        strip.background = element_blank())
-
-eh_dist_reorder %>% 
-  gather(key = Chemicals, value = Loadings, -pattern1, -seed) %>% 
-  mutate(Chemicals = fct_inorder(Chemicals)) %>% 
-  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
-                                                     ifelse(str_detect(Chemicals, "^M"), "Phthalates",
-                                                            ifelse(str_detect(Chemicals, "pcb"), "PCBs",
-                                                                   "Phenols")))) %>% 
-  ggplot(aes(x = Group, y = Loadings)) + geom_jitter(aes(color = Group), alpha = 0.5, size = 0.1, height = 0) +
-  geom_boxplot(aes(x = Group, color = Group), width = .45, outlier.shape = NA) +
-  facet_wrap(.~pattern1) + theme_bw() +
-  theme(legend.position = "none",
-        strip.background = element_blank())
-```
 
 ### PCA
 ```{r, pca3}
@@ -419,6 +447,7 @@ pca_rotations_dist %>%
 ```{r, fig.width=8}
 pca_scores_matched_dist %>%
   select(seed, rotations_re) %>% 
+  mutate(rotations_re = map(rotations_re, as_tibble)) %>% 
   unnest(rotations_re) %>% 
   mutate(Chemicals = rep(labels, 100)) %>% 
   gather(key = PC, value = Loadings, -Chemicals, -seed) %>%
@@ -469,46 +498,6 @@ fa_loadings_dist %>%
         strip.background = element_blank()) + labs(title= "FA Loadings, Distinct Patterns", x = "", y = "Loadings")
 ```
 
-### NMF
-```{r, nmf3}
-nmf_coef_dist %>%  
-  filter(seed == 3) %>%
-  mutate(pattern = 1:4) %>% 
-  select(seed, pattern, everything()) %>% 
-    mutate(pattern1 = ifelse(pcb146 > 0.01 & pcb118 > bpa, 1,
-                          ifelse(BDE17 > 0.02, 2,
-                                ifelse(MECPP > 0.02, 3,
-                                       ifelse(tcs > 0.02, 4, 5))))) %>%
-  gather(key = Chemicals, value = coefs, -pattern,-pattern1, -seed) %>%
-  mutate(Chemicals = fct_inorder(Chemicals)) %>% 
-  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
-                                                     ifelse(str_detect(Chemicals, "^M"), "Phthalates",
-                                                            ifelse(str_detect(Chemicals, "pcb"), "PCBs",
-                                                                   "Phenols")))) %>% 
-  ggplot(aes(x = Chemicals, y = coefs)) + geom_col(aes(fill = Group)) +
-  facet_wrap(.~pattern1) + theme_bw() +
-  theme(axis.text.x = element_blank(),
-        legend.position = "bottom",
-        strip.background = element_blank())
-
-nmf_coef_dist %>% 
-  mutate(pattern1 = ifelse(pcb146 > 0.01 & pcb118 > bpa, 1,
-                          ifelse(BDE17 > 0.02, 2,
-                                ifelse(MECPP > 0.02, 3,
-                                       ifelse(tcs > 0.02, 4, 5))))) %>%
-  gather(key = Chemicals, value = coefs, -pattern1, -seed) %>%
-  mutate(Chemicals = fct_inorder(Chemicals)) %>% 
-  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
-                                                     ifelse(str_detect(Chemicals, "^M"), "Phthalates",
-                                                            ifelse(str_detect(Chemicals, "pcb"), "PCBs",
-                                                                   "Phenols")))) %>% 
-  ggplot(aes(x = Group, y = coefs)) + geom_jitter(aes(color = Group), alpha = 0.5, size = 0.1, height = 0) +
-  geom_boxplot(aes(x = Group, color = Group), width = .45, outlier.shape = NA) +
-  facet_wrap(.~pattern1) + theme_bw() +
-  theme(legend.position = "none",
-        strip.background = element_blank())
-```
-
 # Overlapping Patterns
 
 ## npBNMF
@@ -552,15 +541,14 @@ npb_full_over <- full_join(eh_over, ewa_over, by = "seed") %>%
   select(-chem)
 
 npb_scores_matched_over <- npb_full_over %>% 
-  mutate(eh = map(eh, ~cbind(pattern = 1:nrow(.x), .x)),
-         ewa = map(ewa, ~rbind(pattern = 1:ncol(.x), .x)),
-         eh_reordered = map(eh, ~match_patterns_npb(eh_unnested = .x)),
-         ewa_reordered = ewa,
-         ewa_reordered = map2(eh_reordered, ewa_reordered, ~match_scores_npb(patterns = .x, scores = .y)))
+  mutate(eh_reordered = map2(patterns, eh, function(x,y) match_patterns_corr(truth = x, loading = y)))
+#,
+         # ewa_reordered = ewa,
+         # ewa_reordered = map2(eh_reordered, ewa_reordered, ~match_scores_npb(patterns = .x, scores = .y)))
 
-npb_scores_ordered_over <- npb_scores_matched_over %>% 
-  mutate(eh_reordered = map(eh_reordered, ~reorder_patterns_npb(.x)),
-         ewa_reordered = map(ewa_reordered, ~reorder_scores_npb(.x)))
+npb_scores_ordered_over <- npb_scores_matched_over # %>% 
+  # mutate(eh_reordered = map(eh_reordered, ~reorder_patterns_npb(.x)),
+  #        ewa_reordered = map(ewa_reordered, ~reorder_scores_npb(.x)))
 ```
 
 ## PCA
@@ -584,11 +572,28 @@ pca_rotations_over <- pca_out_over %>% select(seed, rotations) %>% unnest(cols =
 ### Match Scores
 
 ```{r, pca5}
+match_eigen_second <- function (loading) {
+  truth <- pca_out_over$rotations[1][[1]]
+  loading <- as.matrix(loading)
+  corr <- diag(cor(truth, loading))
+  
+  reordered <- matrix(nrow = nrow(loading), ncol = ncol(loading))
+
+for (i in 1:nrow(loading)) {  
+  reordered[i,1] <- ifelse(corr[1] < 0, -loading[i,1], loading[i,1])
+  reordered[i,2] <- ifelse(corr[2] < 0, -loading[i,2], loading[i,2])
+  
+  if (ncol(loading) == 3) {reordered[i,3] <- ifelse(corr[3] < 0, -loading[i,3], loading[i,3])}
+}
+  reordered
+}
+
 pca_scores_matched_over <- pca_out_over %>% 
-  mutate(rotations_re = map(rotations, match_eigenvectors),
-         ex_re = pmap(list(rotations, rotations_re, ex), function(x,y,z)
-           {match_pca_scores(as.matrix(x), as.matrix(y), as.matrix(z))} #match_pca_scores
-                       ))
+  mutate(rotations_re = map(rotations, match_eigen_second))
+# ,
+#          ex_re = pmap(list(rotations, rotations_re, ex), function(x,y,z)
+#            {match_pca_scores(as.matrix(x), as.matrix(y), as.matrix(z))} #match_pca_scores
+#                        ))
 ```
 
 ## FA
@@ -619,57 +624,18 @@ nmf_coef_over <- nmf_out_over %>% select(seed, coef) %>% unnest(cols = c(coef))
 ### Match & Arrange
 ```{r, nmf5}
 nmf_scores_matched_over <- nmf_out_over %>% 
-    mutate(coef = map(coef, ~cbind(pattern = 1:nrow(.x), .x)),
-         basis = map(basis, ~rbind(pattern = 1:ncol(.x), .x)),
-         coef_reordered = map(coef, ~match_patterns_nmf(coef_unnested = .x)),
-         basis_reordered = map(basis, ~as_tibble(.x)),
-         basis_reordered = map2(coef_reordered, basis_reordered, ~match_scores_nmf(patterns = .x, scores = .y)))
+    mutate(coef_reordered = map2(patterns, coef, function(x,y) match_patterns_corr(truth = x, loading = y)))
+# ,
+#          basis_reordered = map(basis, ~as_tibble(.x)),
+#          basis_reordered = map2(coef_reordered, basis_reordered, ~match_scores_nmf(patterns = .x, scores = .y)))
 
-nmf_scores_ordered_over <- nmf_scores_matched_over %>% 
-  mutate(coef_reordered = map(coef_reordered, ~reorder_patterns_nmf(.x)),
-         basis_reordered = map(basis_reordered, ~reorder_scores_nmf(.x)))
+nmf_scores_ordered_over <- nmf_scores_matched_over 
+# %>% 
+#   mutate(coef_reordered = map(coef_reordered, ~reorder_patterns_nmf(.x)),
+#          basis_reordered = map(basis_reordered, ~reorder_scores_nmf(.x)))
 ```
 
 ## Viz
-
-### npBNMF
-```{r, npb12}
-eh_over_reorder <- eh_over_unnest %>%
-  mutate(pattern1 = ifelse(pcb146 > 0.5 & pcb28 > bpa, 1,
-                          ifelse(BDE17 > 0.5, 2,
-                                ifelse(MECPP > 0.5, 3,
-                                       ifelse(tcs > 0.5, 4, 5))))) %>%
-  select(seed, pattern1, everything()) %>%
-  arrange(seed, pattern1) %>%
-  mutate(pattern1 = fct_inorder(as.factor(pattern1)),
-         pattern1 = as.integer(pattern1))
-
-eh_over_reorder %>% 
-  gather(key = Chemicals, value = Loadings, -pattern1, -seed) %>%
-  mutate(Chemicals = fct_inorder(Chemicals)) %>% 
-  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
-                                                     ifelse(str_detect(Chemicals, "^M"), "Phthalates",
-                                                            ifelse(str_detect(Chemicals, "pcb"), "PCBs",
-                                                                   "Phenols")))) %>% 
-  ggplot(aes(x = Chemicals, y = Loadings)) + geom_col(aes(fill = Group)) +
-  facet_wrap(.~pattern1) + theme_bw() +
-  theme(axis.text.x = element_blank(),
-        legend.position = "bottom",
-        strip.background = element_blank())
-
-eh_over_reorder %>% 
-  gather(key = Chemicals, value = Loadings, -pattern1, -seed) %>%
-  mutate(Chemicals = fct_inorder(Chemicals)) %>% 
-  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
-                                                     ifelse(str_detect(Chemicals, "^M"), "Phthalates",
-                                                            ifelse(str_detect(Chemicals, "pcb"), "PCBs",
-                                                                   "Phenols")))) %>% 
-  ggplot(aes(x = Group, y = Loadings)) + geom_jitter(aes(color = Group), alpha = 0.5, size = 0.1, height = 0) +
-  geom_boxplot(aes(x = Group, color = Group), width = .45, outlier.shape = NA) +
-  facet_wrap(.~pattern1) + theme_bw() +
-  theme(legend.position = "none",
-        strip.background = element_blank())
-```
 
 ### PCA
 ```{r, pca6}
@@ -751,42 +717,6 @@ fa_loadings_over %>%
         strip.background = element_blank()) + labs(title= "FA Loadings, Overlapping Patterns", x = "", y = "Loadings")
 ```
 
-### NMF
-```{r, nmf6}
-nmf_coef_over %>%  
-  filter(seed == 3) %>%
-  mutate(pattern = 1:4) %>% 
-  select(seed, pattern, everything()) %>% 
-  gather(key = Chemicals, value = coefs, -pattern, -seed) %>%
-  mutate(Chemicals = fct_inorder(Chemicals)) %>% 
-  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
-                                                     ifelse(str_detect(Chemicals, "^M"), "Phthalates",
-                                                            ifelse(str_detect(Chemicals, "pcb"), "PCBs",
-                                                                   "Phenols")))) %>% 
-  ggplot(aes(x = Chemicals, y = coefs)) + geom_col(aes(fill = Group)) +
-  facet_wrap(.~pattern) + theme_bw() +
-  theme(axis.text.x = element_blank(),
-        legend.position = "bottom",
-        strip.background = element_blank())
-
-nmf_coef_over %>%  
-  mutate(pattern1 = ifelse(pcb146 > 0.02 & pcb118 > bpa, 1,
-                          ifelse(BDE17 > 0.02, 2,
-                                ifelse(MECPP > 0.02, 3,
-                                       ifelse(tcs > 0.02, 4, 5))))) %>%
-  gather(key = Chemicals, value = coefs, -pattern1, -seed) %>%
-  mutate(Chemicals = fct_inorder(Chemicals)) %>% 
-  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
-                                                     ifelse(str_detect(Chemicals, "^M"), "Phthalates",
-                                                            ifelse(str_detect(Chemicals, "pcb"), "PCBs",
-                                                                   "Phenols")))) %>% 
-  ggplot(aes(x = Group, y = coefs)) + geom_jitter(aes(color = Group), alpha = 0.5, size = 0.1, height = 0) +
-  geom_boxplot(aes(x = Group, color = Group), width = .45, outlier.shape = NA) +
-  facet_wrap(.~pattern1) + theme_bw() +
-  theme(legend.position = "none",
-        strip.background = element_blank())
-```
-
 # Correlated Scores
 
 ## npBNMF
@@ -830,15 +760,15 @@ npb_full_cor <- full_join(eh_cor, ewa_cor, by = "seed") %>%
   select(-chem)
 
 npb_scores_matched_cor <- npb_full_cor %>% 
-  mutate(eh = map(eh, ~cbind(pattern = 1:nrow(.x), .x)),
-         ewa = map(ewa, ~rbind(pattern = 1:ncol(.x), .x)),
-         eh_reordered = map(eh, ~match_patterns_npb(eh_unnested = .x)),
-         ewa_reordered = ewa,
-         ewa_reordered = map2(eh_reordered, ewa_reordered, ~match_scores_npb(patterns = .x, scores = .y)))
+  mutate(eh_reordered = map2(patterns, eh, function(x,y) match_patterns_corr(truth = x, loading = y)))
+# ,
+#          ewa_reordered = ewa,
+#          ewa_reordered = map2(eh_reordered, ewa_reordered, ~match_scores_npb(patterns = .x, scores = .y)))
 
-npb_scores_ordered_cor <- npb_scores_matched_cor %>% 
-  mutate(eh_reordered = map(eh_reordered, ~reorder_patterns_npb(.x)),
-         ewa_reordered = map(ewa_reordered, ~reorder_scores_npb(.x)))
+npb_scores_ordered_cor <- npb_scores_matched_cor 
+# %>% 
+#   mutate(eh_reordered = map(eh_reordered, ~reorder_patterns_npb(.x)),
+#          ewa_reordered = map(ewa_reordered, ~reorder_scores_npb(.x)))
 ```
 
 ## PCA
@@ -861,11 +791,28 @@ pca_rotations_cor <- pca_out_cor %>% select(seed, rotations) %>% unnest(cols = c
 
 ### Match Scores
 ```{r, pca8}
+match_eigen_third <- function (loading) {
+  truth <- pca_out_cor$rotations[1][[1]]
+  loading <- as.matrix(loading)
+  corr <- diag(cor(truth, loading))
+  
+  reordered <- matrix(nrow = nrow(loading), ncol = ncol(loading))
+
+for (i in 1:nrow(loading)) {  
+  reordered[i,1] <- ifelse(corr[1] < 0, -loading[i,1], loading[i,1])
+  reordered[i,2] <- ifelse(corr[2] < 0, -loading[i,2], loading[i,2])
+  
+  if (ncol(loading) == 3) {reordered[i,3] <- ifelse(corr[3] < 0, -loading[i,3], loading[i,3])}
+}
+  reordered
+}
+
 pca_scores_matched_cor <- pca_out_cor %>% 
-  mutate(rotations_re = map(rotations, match_eigenvectors),
-         ex_re = pmap(list(rotations, rotations_re, ex), function(x,y,z)
-           {match_pca_scores(as.matrix(x), as.matrix(y), as.matrix(z))} #match_pca_scores
-                       ))
+  mutate(rotations_re = map(rotations, match_eigen_third))
+# ,
+#          ex_re = pmap(list(rotations, rotations_re, ex), function(x,y,z)
+#            {match_pca_scores(as.matrix(x), as.matrix(y), as.matrix(z))} #match_pca_scores
+#                        ))
 ```
 
 ## FA
@@ -895,67 +842,18 @@ nmf_coef_cor <- nmf_out_cor %>% select(seed, coef) %>% unnest(cols = c(coef))
 
 ### Match & Arrange
 ```{r, nmf8}
-nmf_scores_matched_cor <- nmf_out_cor %>% 
-    mutate(coef = map(coef, ~cbind(pattern = 1:nrow(.x), .x)),
-         basis = map(basis, ~rbind(pattern = 1:ncol(.x), .x)),
-         coef_reordered = map(coef, ~match_patterns_nmf(coef_unnested = .x)),
-         basis_reordered = map(basis, ~as_tibble(.x)),
-         basis_reordered = map2(coef_reordered, basis_reordered, ~match_scores_nmf(patterns = .x, scores = .y)))
+nmf_scores_matched_cor <- nmf_out_cor
+# %>% 
+    # mutate(coef_reordered = map2(truth, coef, function(x,y) match_patterns_corr(truth = x, loading = y)),
+    #      basis_reordered = map(basis, ~as_tibble(.x)),
+    #      basis_reordered = map2(coef_reordered, basis_reordered, ~match_scores_nmf(patterns = .x, scores = .y)))
 
-nmf_scores_ordered_cor <- nmf_scores_matched_cor %>% 
-  mutate(coef_reordered = map(coef_reordered, ~reorder_patterns_nmf(.x)),
-         basis_reordered = map(basis_reordered, ~reorder_scores_nmf(.x)))
+# nmf_scores_ordered_cor <- nmf_scores_matched_cor %>% 
+#   mutate(coef_reordered = map(coef_reordered, ~reorder_patterns_nmf(.x)),
+#          basis_reordered = map(basis_reordered, ~reorder_scores_nmf(.x)))
 ```
 
 ## Viz
-
-### npBNMF
-```{r, npb8}
-eh_cor_reorder <- eh_cor_unnest %>%
-  mutate(pattern1 = ifelse(pcb146 > 0.5 & pcb28 > bpa, 1,
-                          ifelse(BDE17 > 0.5, 2,
-                                ifelse(MECPP > 0.5, 3,
-                                       ifelse(tcs > 0.5, 4, 5))))) %>%
-  select(seed, pattern1, everything()) %>%
-  arrange(seed, pattern1) %>%
-  mutate(pattern1 = fct_inorder(as.factor(pattern1)),
-         pattern1 = as.integer(pattern1))
-
-eh_cor_unnest %>%  
-  mutate(pattern1 = ifelse(pcb146 > 0.5 & pcb28 > bpa, 1,
-                          ifelse(BDE17 > 0.5, 2,
-                                ifelse(MECPP > 0.5, 3,
-                                       ifelse(tcs > 0.5, 4, 5))))) %>% 
-  filter(seed == 3) %>% 
-  gather(key = Chemicals, value = Loadings, -pattern1, -seed) %>%
-  mutate(Chemicals = fct_inorder(Chemicals)) %>% 
-  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
-                                                     ifelse(str_detect(Chemicals, "^M"), "Phthalates",
-                                                            ifelse(str_detect(Chemicals, "pcb"), "PCBs",
-                                                                   "Phenols")))) %>% 
-  ggplot(aes(x = Chemicals, y = Loadings)) + geom_col(aes(fill = Group)) +
-  facet_wrap(.~pattern1) + theme_bw() +
-  theme(axis.text.x = element_blank(),
-        legend.position = "bottom",
-        strip.background = element_blank())
-
-eh_cor_unnest %>%  
-  mutate(pattern1 = ifelse(pcb146 > 0.5, 1,
-                          ifelse(BDE17 > 0.5, 2,
-                                ifelse(MECPP > 0.5, 3,
-                                       ifelse(tcs > 0.5, 4, 5))))) %>% 
-  gather(key = Chemicals, value = Loadings, -pattern1, -seed) %>%
-  mutate(Chemicals = fct_inorder(Chemicals)) %>% 
-  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
-                                                     ifelse(str_detect(Chemicals, "^M"), "Phthalates",
-                                                            ifelse(str_detect(Chemicals, "pcb"), "PCBs",
-                                                                   "Phenols")))) %>% 
-  ggplot(aes(x = Group, y = Loadings)) + geom_jitter(aes(color = Group), alpha = 0.5, size = 0.1, height = 0) +
-  geom_boxplot(aes(x = Group, color = Group), width = .4, outlier.shape = NA) +
-  facet_wrap(.~pattern1) + theme_bw() +
-  theme(legend.position = "none",
-        strip.background = element_blank())
-```
 
 ### PCA
 ```{r, pca9}
@@ -1035,42 +933,6 @@ fa_loadings_cor %>%
   facet_wrap(.~Factor) + theme_bw() +
   theme(legend.position = "none",
         strip.background = element_blank()) + labs(title= "FA Loadings, Correlated Scores", x = "", y = "Loadings")
-```
-
-### NMF
-```{r, nmf9}
-nmf_coef_cor %>%  
-  filter(seed == 3) %>%
-  mutate(pattern = 1:4) %>% 
-  select(seed, pattern, everything()) %>% 
-  gather(key = Chemicals, value = coefs, -pattern, -seed) %>%
-  mutate(Chemicals = fct_inorder(Chemicals)) %>% 
-  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
-                                                     ifelse(str_detect(Chemicals, "^M"), "Phthalates",
-                                                            ifelse(str_detect(Chemicals, "pcb"), "PCBs",
-                                                                   "Phenols")))) %>% 
-  ggplot(aes(x = Chemicals, y = coefs)) + geom_col(aes(fill = Group)) +
-  facet_wrap(.~pattern) + theme_bw() +
-  theme(axis.text.x = element_blank(),
-        legend.position = "bottom",
-        strip.background = element_blank())
-
-nmf_coef_cor %>%  
-  mutate(pattern1 = ifelse(pcb146 > 0.02 & pcb118 > bpa, 1,
-                          ifelse(BDE17 > 0.02, 2,
-                                ifelse(MECPP > 0.02, 3,
-                                       ifelse(tcs > 0.02, 4, 5))))) %>%
-  gather(key = Chemicals, value = coefs, -pattern1, -seed) %>%
-  mutate(Chemicals = fct_inorder(Chemicals)) %>% 
-  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
-                                                     ifelse(str_detect(Chemicals, "^M"), "Phthalates",
-                                                            ifelse(str_detect(Chemicals, "pcb"), "PCBs",
-                                                                   "Phenols")))) %>% 
-  ggplot(aes(x = Group, y = coefs)) + geom_jitter(aes(color = Group), alpha = 0.5, size = 0.1, height = 0) +
-  geom_boxplot(aes(x = Group, color = Group), width = .45, outlier.shape = NA) +
-  facet_wrap(.~pattern1) + theme_bw() +
-  theme(legend.position = "none",
-        strip.background = element_blank())
 ```
 
 # Summarize
@@ -2347,47 +2209,47 @@ rbind(nmf_sd_dist_load_s,
 
 ## Standardize Plots
 
+```{r}
+standard_plot <- function(row_matrix) {
+  sum_row <- apply(row_matrix, 2, function(x) sum(x))
+  row_out <-  as_tibble(apply(row_matrix, 2, function(x) x/sum(x))) # Divide patterns by CHEMICAL sum to normalize
+  row_out
+}
+```
+
 ### npBNMF
 ```{r, npb80}
 sd_npb_1 <- npb_scores_ordered_dist %>% 
   select(-eh, -ewa, -sim, -noise) %>% 
-  mutate(sd_patterns = map2(patterns, scores, function(x,y) standard(x,y)[[1]]),
-         sd_eh       = map2(eh_reordered, ewa_reordered,function(x,y) standard(x,y)[[1]])) %>% 
+  mutate(sd_patterns = map(patterns, standard_plot),
+         sd_eh       = map(eh_reordered,standard_plot)) %>% 
   select(-eh_reordered, -ewa_reordered, -scores, -patterns)
 
 sd_npb_2 <- npb_scores_ordered_over %>% 
   select(-eh, -ewa, -sim, -noise) %>% 
-  mutate(sd_patterns = map2(patterns, scores, function(x,y) standard(x,y)[[1]]),
-         sd_eh       = map2(eh_reordered, ewa_reordered,function(x,y) standard(x,y)[[1]])) %>% 
+  mutate(sd_patterns = map(patterns, standard_plot),
+         sd_eh       = map(eh_reordered, standard_plot)) %>% 
   select(-eh_reordered, -ewa_reordered, -scores, -patterns)
 
 sd_npb_3 <- npb_scores_ordered_cor %>% 
   select(-eh, -ewa, -sim, -noise) %>% 
-  mutate(sd_patterns = map2(patterns, scores, function(x,y) standard(x,y)[[1]]),
-         sd_eh       = map2(eh_reordered, ewa_reordered,function(x,y) standard(x,y)[[1]])) %>% 
+  mutate(sd_patterns = map(patterns, standard_plot),
+         sd_eh       = map(eh_reordered,standard_plot)) %>% 
   select(-eh_reordered, -ewa_reordered, -scores, -patterns)
 ```
 
 ```{r, fig.width=6}
+#need tibble to unnest
 dist_patterns <- sd_npb_1 %>% 
-  mutate(sd_patterns = map(sd_patterns, function(x) as_tibble(t(x)))) %>% 
+  mutate(sd_patterns = map(sd_patterns, function(x) as_tibble(x))) %>% 
   select(-sd_eh) %>% 
   unnest(cols = c(sd_patterns))
 
-colnames(dist_patterns)[2:51] <- labels
-
-labelled_dist_patterns <- dist_patterns %>%
-  mutate(pattern1 = ifelse(pcb146 > 0.03 & pcb28 > bpa, 1,
-                          ifelse(BDE17 > 0.03, 2,
-                                ifelse(MECPP > 0.03, 3,
-                                       ifelse(tcs > 0.03, 4, 5))))) %>%
-  select(seed, pattern1, everything()) %>%
-  arrange(seed, pattern1) %>%
-  mutate(pattern1 = fct_inorder(as.factor(pattern1)),
-         pattern1 = as.integer(pattern1))
-
-labelled_dist_patterns %>%
-  gather(key = Chemicals, value = Loadings, -pattern1, -seed) %>%
+dist_patterns %>%
+  group_by(seed) %>% 
+  mutate(pattern1=1:n()) %>% 
+  select(seed, pattern1, everything()) %>% 
+  gather(key = Chemicals, value = Loadings, -seed, -pattern1) %>%
   mutate(Chemicals = fct_inorder(Chemicals)) %>%
   mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
                                                      ifelse(str_detect(Chemicals, "^M"), "Phthalates",
@@ -2402,23 +2264,14 @@ labelled_dist_patterns %>%
 
 ```{r, fig.width=8}
 dist_nbp <- sd_npb_1 %>% 
-  mutate(sd_eh = map(sd_eh, function(x) as_tibble(t(x)))) %>% 
+  mutate(sd_eh = map(sd_eh, function(x) as_tibble(x))) %>% 
   select(-sd_patterns) %>% 
   unnest(cols = c(sd_eh))
 
-colnames(dist_nbp)[2:51] <- labels
-
-labelled_dist_nbp <- dist_nbp %>%
-  mutate(pattern1 = ifelse(pcb146 > 0.03 & pcb28 > bpa, 1,
-                          ifelse(BDE17 > 0.03, 2,
-                                ifelse(MECPP > 0.03, 3,
-                                       ifelse(tcs > 0.03, 4, 5))))) %>%
-  select(seed, pattern1, everything()) %>%
-  arrange(seed, pattern1) %>%
-  mutate(pattern1 = fct_inorder(as.factor(pattern1)),
-         pattern1 = as.integer(pattern1))
-
-labelled_dist_nbp %>%
+dist_nbp %>%
+group_by(seed) %>% 
+  mutate(pattern1=1:n()) %>% 
+  select(seed, pattern1, everything()) %>% 
   gather(key = Chemicals, value = Loadings, -pattern1, -seed) %>%
   mutate(Chemicals = fct_inorder(Chemicals)) %>%
   mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
@@ -2434,23 +2287,14 @@ labelled_dist_nbp %>%
 
 ```{r, fig.width=6}
 over_patterns <- sd_npb_2 %>% 
-  mutate(sd_patterns = map(sd_patterns, function(x) as_tibble(t(x)))) %>% 
+  mutate(sd_patterns = map(sd_patterns, function(x) as_tibble(x))) %>% 
   select(-sd_eh) %>% 
   unnest(cols = c(sd_patterns))
 
-colnames(over_patterns)[2:51] <- labels
-
-labelled_over_patterns <- over_patterns %>%
-  mutate(pattern1 = ifelse(pcb146 > 0.02 & pcb28 > bpa, 1,
-                           ifelse(BDE17 > 0.02, 2,
-                                  ifelse(MECPP > 0.02, 3,
-                                         ifelse(tcs > 0.02, 4, 5))))) %>%
-  select(seed, pattern1, everything()) %>%
-  arrange(seed, pattern1) %>%
-  mutate(pattern1 = fct_inorder(as.factor(pattern1)),
-         pattern1 = as.integer(pattern1))
-
-labelled_over_patterns %>%
+over_patterns %>%
+  group_by(seed) %>% 
+  mutate(pattern1=1:n()) %>% 
+  select(seed, pattern1, everything()) %>% 
   gather(key = Chemicals, value = Loadings, -pattern1, -seed) %>%
   mutate(Chemicals = fct_inorder(Chemicals)) %>%
   mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
@@ -2466,23 +2310,14 @@ labelled_over_patterns %>%
 
 ```{r, fig.width=8}
 over_nbp <- sd_npb_2 %>% 
-  mutate(sd_eh = map(sd_eh, function(x) as_tibble(t(x)))) %>% 
+  mutate(sd_eh = map(sd_eh, function(x) as_tibble(x))) %>% 
   select(-sd_patterns) %>% 
   unnest(cols = c(sd_eh))
 
-colnames(over_nbp)[2:51] <- labels
-
-labelled_over_nbp <- over_nbp %>%
-  mutate(pattern1 = ifelse(pcb146 > 0.03 & pcb28 > bpa, 1,
-                           ifelse(BDE17 > 0.03, 2,
-                                  ifelse(MECPP > 0.03, 3,
-                                         ifelse(tcs > 0.03, 4, 5))))) %>%
-  select(seed, pattern1, everything()) %>%
-  arrange(seed, pattern1) %>%
-  mutate(pattern1 = fct_inorder(as.factor(pattern1)),
-         pattern1 = as.integer(pattern1))
-
-labelled_over_nbp %>%
+over_nbp %>%
+  group_by(seed) %>% 
+  mutate(pattern1=1:n()) %>% 
+  select(seed, pattern1, everything()) %>% 
   gather(key = Chemicals, value = Loadings, -pattern1, -seed) %>%
   mutate(Chemicals = fct_inorder(Chemicals)) %>%
   mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
@@ -2498,23 +2333,14 @@ labelled_over_nbp %>%
 
 ```{r, fig.width=6}
 cor_patterns <- sd_npb_3 %>% 
-  mutate(sd_patterns = map(sd_patterns, function(x) as_tibble(t(x)))) %>% 
+  mutate(sd_patterns = map(sd_patterns, function(x) as_tibble(x))) %>% 
   select(-sd_eh) %>% 
   unnest(cols = c(sd_patterns))
 
-colnames(cor_patterns)[2:51] <- labels
-
-labelled_cor_patterns <- cor_patterns %>%
-  mutate(pattern1 = ifelse(pcb146 > 0.02 & pcb28 > bpa, 1,
-                           ifelse(BDE17 > 0.02, 2,
-                                  ifelse(MECPP > 0.02, 3,
-                                         ifelse(tcs > 0.02, 4, 5))))) %>%
-  select(seed, pattern1, everything()) %>%
-  arrange(seed, pattern1) %>%
-  mutate(pattern1 = fct_inorder(as.factor(pattern1)),
-         pattern1 = as.integer(pattern1))
-
-labelled_cor_patterns %>%
+cor_patterns %>%
+  group_by(seed) %>% 
+  mutate(pattern1=1:n()) %>% 
+  select(seed, pattern1, everything()) %>% 
   gather(key = Chemicals, value = Loadings, -pattern1, -seed) %>%
   mutate(Chemicals = fct_inorder(Chemicals)) %>%
   mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
@@ -2530,23 +2356,14 @@ labelled_cor_patterns %>%
 
 ```{r, fig.width=6}
 cor_nbp <- sd_npb_3 %>% 
-  mutate(sd_eh = map(sd_eh, function(x) as_tibble(t(x)))) %>% 
+  mutate(sd_eh = map(sd_eh, function(x) as_tibble(x))) %>% 
   select(-sd_patterns) %>% 
   unnest(cols = c(sd_eh))
 
-colnames(cor_nbp)[2:51] <- labels
-
-labelled_cor_nbp <- cor_nbp %>%
-  mutate(pattern1 = ifelse(pcb146 > 0.005 & pcb28 > bpa, 1,
-                           ifelse(BDE17 > 0.005 , 2,
-                                  ifelse(MECPP > 0.005 , 3,
-                                         ifelse(tcs > 0.005, 4, 5))))) %>%
-  select(seed, pattern1, everything()) %>%
-  arrange(seed, pattern1) %>%
-  mutate(pattern1 = fct_inorder(as.factor(pattern1)),
-         pattern1 = as.integer(pattern1))
-
-labelled_cor_nbp %>%
+cor_nbp %>%
+  group_by(seed) %>% 
+  mutate(pattern1=1:n()) %>% 
+  select(seed, pattern1, everything()) %>% 
   gather(key = Chemicals, value = Loadings, -pattern1, -seed) %>%
   mutate(Chemicals = fct_inorder(Chemicals)) %>%
   mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
@@ -2561,45 +2378,37 @@ labelled_cor_nbp %>%
 ```
 
 ### NMF
+
 ```{r, nmf120}
 nmf_sd_1 <- nmf_scores_ordered_dist %>% 
   select(-coef, -basis, -pred, -sim, -noise, -nmf_out) %>% 
-  mutate(sd_patterns = map2(patterns, scores, function(x,y) standard(x,y)[[1]]),
-         sd_coef     = map2(coef_reordered, basis_reordered, function(x,y) standard(x,y)[[1]])) %>% 
+  mutate(sd_patterns = map(patterns, standard_plot),
+         sd_coef     = map(coef_reordered, standard_plot)) %>% 
   select(-coef_reordered, -basis_reordered, -scores, -patterns)
 
 nmf_sd_2 <- nmf_scores_ordered_over %>% 
     select(-coef, -basis, -pred, -sim, -noise, -nmf_out) %>% 
-  mutate(sd_patterns = map2(patterns, scores, function(x,y) standard(x,y)[[1]]),
-         sd_coef     = map2(coef_reordered, basis_reordered, function(x,y) standard(x,y)[[1]])) %>% 
+  mutate(sd_patterns = map(patterns, standard_plot),
+         sd_coef     = map(coef_reordered, standard_plot)) %>% 
   select(-coef_reordered, -basis_reordered, -scores, -patterns)
 
 nmf_sd_3 <- nmf_scores_ordered_cor %>%
     select(-coef, -basis, -pred, -sim, -noise, -nmf_out) %>% 
-  mutate(sd_patterns = map2(patterns, scores, function(x,y) standard(x,y)[[1]]),
-         sd_coef     = map2(coef_reordered, basis_reordered, function(x,y) standard(x,y)[[1]])) %>% 
+  mutate(sd_patterns = map(patterns, standard_plot),
+         sd_coef     = map(coef_reordered, standard_plot)) %>% 
   select(-coef_reordered, -basis_reordered, -scores, -patterns)
 ```
 
 ```{r, fig.width=6}
 dist_patterns <- nmf_sd_1 %>% 
-  mutate(sd_patterns = map(sd_patterns, function(x) as_tibble(t(x)))) %>% 
+  mutate(sd_patterns = map(sd_patterns, function(x) as_tibble(x))) %>% 
   select(-sd_coef) %>% 
   unnest(cols = c(sd_patterns))
 
-colnames(dist_patterns)[2:51] <- labels
-
-labelled_dist_patterns <- dist_patterns %>%
-  mutate(pattern1 = ifelse(pcb146 > 0.03 & pcb28 > bpa, 1,
-                           ifelse(BDE17 > 0.03, 2,
-                                  ifelse(MECPP > 0.03, 3,
-                                         ifelse(tcs > 0.03, 4, 5))))) %>%
-  select(seed, pattern1, everything()) %>%
-  arrange(seed, pattern1) %>%
-  mutate(pattern1 = fct_inorder(as.factor(pattern1)),
-         pattern1 = as.integer(pattern1))
-
-labelled_dist_patterns %>%
+dist_patterns %>%
+  group_by(seed) %>% 
+  mutate(pattern1=1:n()) %>% 
+  select(seed, pattern1, everything()) %>% 
   gather(key = Chemicals, value = coefs, -pattern1, -seed) %>%
   mutate(Chemicals = fct_inorder(Chemicals)) %>%
   mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
@@ -2613,25 +2422,16 @@ labelled_dist_patterns %>%
         strip.background = element_blank()) + labs(title= "True Distinct Patterns", x = "", y = "Normalized Loadings")
 ```
 
-```{r, fig.width=8}
+```{r, fig.width=6}
 dist_nmf <- nmf_sd_1 %>% 
-  mutate(sd_coef = map(sd_coef, function(x) as_tibble(t(x)))) %>% 
+  mutate(sd_coef = map(sd_patterns, function(x) as_tibble(x))) %>% 
   select(-sd_patterns) %>% 
   unnest(cols = c(sd_coef))
 
-colnames(dist_nmf)[2:51] <- labels
-
-labelled_dist_nmf <- dist_nmf %>%
-  mutate(pattern1 = ifelse(pcb146 > 0.025 & pcb28 > bpa, 1,
-                           ifelse(BDE17 > 0.025, 2,
-                                  ifelse(MECPP > 0.025, 3,
-                                         ifelse(tcs > 0.025, 4, 5))))) %>%
-  select(seed, pattern1, everything()) %>%
-  arrange(seed, pattern1) %>%
-  mutate(pattern1 = fct_inorder(as.factor(pattern1)),
-         pattern1 = as.integer(pattern1))
-
-labelled_dist_nmf %>%
+dist_nmf %>%
+  group_by(seed) %>% 
+  mutate(pattern1=1:n()) %>% 
+  select(seed, pattern1, everything()) %>% 
   gather(key = Chemicals, value = coefs, -pattern1, -seed) %>%
   mutate(Chemicals = fct_inorder(Chemicals)) %>%
   mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
@@ -2647,23 +2447,14 @@ labelled_dist_nmf %>%
 
 ```{r, fig.width=6}
 over_patterns <- nmf_sd_2 %>% 
-  mutate(sd_patterns = map(sd_patterns, function(x) as_tibble(t(x)))) %>% 
+  mutate(sd_patterns = map(sd_patterns, function(x) as_tibble(x))) %>% 
   select(-sd_coef) %>% 
   unnest(cols = c(sd_patterns))
 
-colnames(over_patterns)[2:51] <- labels
-
-labelled_over_patterns <- over_patterns %>%
-  mutate(pattern1 = ifelse(pcb146 > 0.02 & pcb28 > bpa, 1,
-                           ifelse(BDE17 > 0.02, 2,
-                                  ifelse(MECPP > 0.02, 3,
-                                         ifelse(tcs > 0.02, 4, 5))))) %>%
-  select(seed, pattern1, everything()) %>%
-  arrange(seed, pattern1) %>%
-  mutate(pattern1 = fct_inorder(as.factor(pattern1)),
-         pattern1 = as.integer(pattern1))
-
-labelled_over_patterns %>%
+over_patterns %>%
+  group_by(seed) %>% 
+  mutate(pattern1=1:n()) %>% 
+  select(seed, pattern1, everything()) %>% 
   gather(key = Chemicals, value = coefs, -pattern1, -seed) %>%
   mutate(Chemicals = fct_inorder(Chemicals)) %>%
   mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
@@ -2679,23 +2470,14 @@ labelled_over_patterns %>%
 
 ```{r, fig.width=8}
 over_nmf <- nmf_sd_2 %>% 
-  mutate(sd_coef = map(sd_coef, function(x) as_tibble(t(x)))) %>% 
+  mutate(sd_coef = map(sd_coef, function(x) as_tibble(x))) %>% 
   select(-sd_patterns) %>% 
   unnest(cols = c(sd_coef))
 
-colnames(over_nmf)[2:51] <- labels
-
-labelled_over_nmf <- over_nmf %>%
-  mutate(pattern1 = ifelse(pcb146 > 0.01 & BDE17 > 0.01 & pcb28 > bpa, 1,
-                           ifelse(BDE17 > 0.01 & MECPP > 0.01, 2,
-                                  ifelse(MECPP > 0.01 & tcs > 0.01, 3,
-                                         ifelse(tcs > 0.01 & pcb146 > 0.01, 4, 5))))) %>%
-  select(seed, pattern1, everything()) %>%
-  arrange(seed, pattern1) %>%
-  mutate(pattern1 = fct_inorder(as.factor(pattern1)),
-         pattern1 = as.integer(pattern1))
-
-labelled_over_nmf %>%
+over_nmf %>%
+  group_by(seed) %>% 
+  mutate(pattern1=1:n()) %>% 
+  select(seed, pattern1, everything()) %>% 
   gather(key = Chemicals, value = coefs, -pattern1, -seed) %>%
   mutate(Chemicals = fct_inorder(Chemicals)) %>%
   mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
@@ -2711,23 +2493,14 @@ labelled_over_nmf %>%
 
 ```{r, fig.width=6}
 cor_patterns <- nmf_sd_3 %>% 
-  mutate(sd_patterns = map(sd_patterns, function(x) as_tibble(t(x)))) %>% 
+  mutate(sd_patterns = map(sd_patterns, function(x) as_tibble(x))) %>% 
   select(-sd_coef) %>% 
   unnest(cols = c(sd_patterns))
 
-colnames(cor_patterns)[2:51] <- labels
-
-labelled_cor_patterns <- cor_patterns %>%
-  mutate(pattern1 = ifelse(pcb146 > 0.02 & pcb28 > bpa, 1,
-                           ifelse(BDE17 > 0.02, 2,
-                                  ifelse(MECPP > 0.02, 3,
-                                         ifelse(tcs > 0.02, 4, 5))))) %>%
-  select(seed, pattern1, everything()) %>%
-  arrange(seed, pattern1) %>%
-  mutate(pattern1 = fct_inorder(as.factor(pattern1)),
-         pattern1 = as.integer(pattern1))
-
-labelled_cor_patterns %>%
+cor_patterns %>%
+  group_by(seed) %>% 
+  mutate(pattern1=1:n()) %>% 
+  select(seed, pattern1, everything()) %>% 
   gather(key = Chemicals, value = coefs, -pattern1, -seed) %>%
   mutate(Chemicals = fct_inorder(Chemicals)) %>%
   mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
@@ -2743,23 +2516,14 @@ labelled_cor_patterns %>%
 
 ```{r, fig.width=8}
 cor_nmf <- nmf_sd_3 %>% 
-  mutate(sd_coef = map(sd_coef, function(x) as_tibble(t(x)))) %>% 
+  mutate(sd_coef = map(sd_coef, function(x) as_tibble(x))) %>% 
   select(-sd_patterns) %>% 
   unnest(cols = c(sd_coef))
 
-colnames(cor_nmf)[2:51] <- labels
-
-labelled_cor_nmf <- cor_nmf %>%
-  mutate(pattern1 = ifelse(pcb146 > 0.01 & BDE17 > 0.01 & pcb28 > bpa, 1,
-                           ifelse(BDE17 > 0.015 & MECPP > 0.015, 2,
-                                  ifelse(MECPP > 0.015 & tcs > 0.015, 3,
-                                         ifelse(tcs > 0.015 & pcb146 > 0.015, 4, 5))))) %>%
-  select(seed, pattern1, everything()) %>%
-  arrange(seed, pattern1) %>%
-  mutate(pattern1 = fct_inorder(as.factor(pattern1)),
-         pattern1 = as.integer(pattern1))
-
-labelled_cor_nmf %>%
+cor_nmf %>%
+  group_by(seed) %>% 
+  mutate(pattern1=1:n()) %>% 
+  select(seed, pattern1, everything()) %>% 
   gather(key = Chemicals, value = coefs, -pattern1, -seed) %>%
   mutate(Chemicals = fct_inorder(Chemicals)) %>%
   mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
@@ -2772,4 +2536,6 @@ labelled_cor_nmf %>%
   theme(legend.position = "none",
         strip.background = element_blank()) + labs(title= "NMF Loadings, Correlated Scores", x = "", y = "Normalized Loadings")
 ```
+
+
 
