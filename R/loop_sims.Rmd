@@ -332,30 +332,30 @@ ggplot(data = labelled3, aes(x = Var1, y = Var2)) +
 #### Simulate Patterns
 
 ```{r}
-patterns_dist_iter <- tibble(seed = 101:200) %>% 
+patterns_dist_iter_test <- tibble(seed = 101:200) %>% 
  mutate(patterns = map(seed, ~create_patterns_dist(seed = .x)))
 ```
 
 #### Simulate Scores
 
 ```{r}
-scores_dist_iter <- tibble(seed = 101:200) %>% 
+scores_dist_iter_test <- tibble(seed = 101:200) %>% 
  mutate(scores = map(seed, ~create_scores_dist(seed = .x)))
 ```
 
 #### Simulate Chemical Exposures
 
 ```{r}
-sim_dist0 <- full_join(scores_dist_iter, patterns_dist_iter, by = "seed")
+sim_dist0_test <- full_join(scores_dist_iter_test, patterns_dist_iter_test, by = "seed")
 
-sim_dist0 <- sim_dist0 %>% 
+sim_dist0_test <- sim_dist0_test %>% 
   mutate(chem = map2(scores, patterns, `%*%`))
 ```
 
 ### Simulate Noise
 
 ```{r}
-sim_dist <- sim_dist0 %>% 
+sim_dist_test <- sim_dist0_test %>% 
  mutate(sim = map2(seed, chem, ~add_noise(seed = .x, chem = .y)[[1]]),
         noise = map2(seed, chem, function(x, y) {add_noise(x, y)[[2]]}))
 ```  
@@ -363,7 +363,8 @@ sim_dist <- sim_dist0 %>%
 ### Save
 
 ```{r}
-#save(sim_dist, file = "./Sims/Iterate/sim_dist.RDA")
+sim_dist_test <- sim_dist_test %>% select(-noise, -chem)
+#save(sim_dist_test, file = "./Sims/Iterate/sim_dist_test.RDA")
 ```
 
 ### 2: Correlated Patterns
@@ -371,37 +372,38 @@ sim_dist <- sim_dist0 %>%
 #### Simulate Patterns
 
 ```{r}
-patterns_cor_iter <- tibble(seed = 101:200) %>% 
+patterns_cor_iter_test <- tibble(seed = 101:200) %>% 
  mutate(patterns = map(seed, ~create_patterns_cor(seed = .x)))
 ```
 
 #### Simulate Scores
 
 ```{r}
-scores_cor_iter <- tibble(seed = 101:200) %>% 
+scores_cor_iter_test <- tibble(seed = 101:200) %>% 
  mutate(scores = map(seed, ~create_scores_cor(seed = .x)))
 ```
 
 #### Simulate Chemical Exposures
 
 ```{r}
-sim_cor0 <- full_join(scores_cor_iter, patterns_cor_iter, by = "seed")
+sim_cor0_test <- full_join(scores_cor_iter_test, patterns_cor_iter_test, by = "seed")
 
-sim_cor0 <- sim_cor0 %>% 
+sim_cor0_test <- sim_cor0_test %>% 
   mutate(chem = map2(scores, patterns, `%*%`))
 ```
 
 #### Simulate Noise
 
 ```{r}
-sim_cor <- sim_cor0 %>% 
+sim_cor_test <- sim_cor0_test %>% 
  mutate(sim = map2(seed, chem, ~add_noise(seed = .x, chem = .y)[[1]]),
         noise = map2(seed, chem, function(x, y) {add_noise(x, y)[[2]]})) 
 ```  
 #### Save
 
 ```{r}
-#save(sim_cor, file = "./Sims/Iterate/sim_cor.RDA")
+sim_cor_test <- sim_cor_test %>% select(-noise, -chem)
+#save(sim_cor_test, file = "./Sims/Iterate/sim_cor_test.RDA")
 ```
 
 ### 3: Overlapping Patterns
@@ -417,16 +419,16 @@ Use distinct scores.
 #### Simulate Chemical Exposures
 
 ```{r}
-sim_over0 <- full_join(scores_dist_iter, patterns_cor_iter, by = "seed")
+sim_over0_test <- full_join(scores_dist_iter_test, patterns_cor_iter_test, by = "seed")
 
-sim_over0 <- sim_over0 %>% 
+sim_over0_test <- sim_over0_test %>% 
   mutate(chem = map2(scores, patterns, `%*%`))
 ```
 
 #### Simulate Noise
 
 ```{r}
-sim_over <- sim_over0 %>% 
+sim_over_test <- sim_over0_test %>% 
  mutate(sim = map2(seed, chem, ~add_noise(seed = .x, chem = .y)[[1]]),
         noise = map2(seed, chem, function(x, y) {add_noise(x, y)[[2]]}))
 ```  
@@ -434,5 +436,6 @@ sim_over <- sim_over0 %>%
 ### Save
 
 ```{r}
-#save(sim_over, file = "./Sims/Iterate/sim_over.RDA")
+sim_over_test <- sim_over_test %>% select(-noise, -chem)
+#save(sim_over_test, file = "./Sims/Iterate/sim_over_test.RDA")
 ```
