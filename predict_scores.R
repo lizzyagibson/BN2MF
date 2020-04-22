@@ -14,10 +14,9 @@ dim(x)
 y = A %*% x
 dim(y)
 
-pred_x = Pinv(A) %*% y
-
 # MSE
-mean((x - pred_x)^2)
+mean((x - (Pinv(A) %*% y))^2)
+mean((x - (t(A) %*% y))^2)
 
 ####
 ####
@@ -26,32 +25,37 @@ mean((x - pred_x)^2)
 # NMF pred does not work on new data
 
 library(NMF)
-
+y <- rmatrix(20, 10)
 # fit an NMF model
-nn <- nmf(y, 5)
+n_out <- nmf(y, 5)
 
-dim(basis(nn))
+dim(basis(n_out))
 # basis are scores
-dim(coef(nn))
+dim(coef(n_out))
 #coef are loadings
 
-# predicted column and row clusters
-predict(nn)
-# this gives the column clusters
-predict(x, 'rows')
-# this gives the row clusters
+pred_basis_t <- y %*% t(coef(n_out))
+pred_basis_i <- y %*% Pinv(coef(n_out))
 
-pred_basis <- y %*% t(coef(nn))
-pred_basis <- y %*% Pinv(coef(nn))
-
-mean((basis(nn) - pred_basis)^2)
-cor(basis(nn), pred_basis)
+mean((basis(n_out) - pred_basis_t)^2)
+mean((basis(n_out) - pred_basis_i)^2)
 
 ####
 ####
 ####
 
+y <- rmatrix(20, 10)
+y_scaled <- scale(y)
+y_scaled_F <- scale(y, center = TRUE, scale = FALSE)
+dim(y)
 
+pca_y <- prcomp(y)
+
+# predict scores
+pred_sF <- y_scaled_F %*% pca_y$rotation
+
+# y centered
+mean((pca_y$x - pred_sF)^2)
 
 ####
 ####
@@ -60,22 +64,22 @@ cor(basis(nn), pred_basis)
 # FA predict works
 
 x <- sim.item(12,50)
-xx <- sim.item(12,50)
-dim(xx)
+dim(x)
 
-f <- fa(x,2,scores="regression")  # a two factor solution
-#find the predicted scores (The B set)
-# Standardize by old data
-p <- predict(f, old.data = x,  data = xx) 
-dim(p)
+f <- fa(x, 2, scores="regression")
+
+# #find the predicted scores
+# # Standardize by old data
+# p <- predict(f, old.data = x,  data = xx) 
+# dim(p)
 
 #test how well these predicted scores match the factor scores from the second set
-f2 <- fa(xx,2,scores="regression")
-round(cor(f2$scores,p),2)
+# f2 <- fa(xx,2,scores="regression")
+# round(cor(f2$scores,p),2)
 
-scores_xx <- xx %*% matrix(f2$loadings, ncol = 2)
-round(cor(f2$scores, scores_xx),2)
+scores_x <- x %*% matrix(f$loadings, ncol = 2)
+round(cor(f$scores, scores_x),2)
 
 mean((p - f2$scores)^2)
-mean((scores_xx - f2$scores)^2)
+mean((scores_x - f2$scores)^2)
 

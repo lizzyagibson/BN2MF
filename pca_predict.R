@@ -2,8 +2,7 @@
 
 myprcomp <- function (x, ...) UseMethod("myprcomp")
 
-myprcomp.default <- function(x, retx = TRUE, center = TRUE, scale. = FALSE, tol = NULL, ...)
-{
+myprcomp.default <- function(x, retx = TRUE, center = TRUE, scale. = TRUE, tol = NULL, ...) {
   chkDots(...)
   x <- as.matrix(x)
   x <- scale(x, center = center, scale = scale.)
@@ -11,7 +10,7 @@ myprcomp.default <- function(x, retx = TRUE, center = TRUE, scale. = FALSE, tol 
   sc <- attr(x, "scaled:scale")
   if(any(sc == 0))
     stop("cannot rescale a constant/zero column to unit variance")
-  s <- svd(x)
+  s <- svd(x) # INSTEAD OF NU = 0
   s$d <- s$d / sqrt(max(1, nrow(x) - 1))
   if (!is.null(tol)) {
     ## we get rank at least one even for a 0 matrix.
@@ -32,8 +31,7 @@ myprcomp.default <- function(x, retx = TRUE, center = TRUE, scale. = FALSE, tol 
 }
 
 
-myprcomp.formula <- function (formula, data = NULL, subset, na.action, ...)
-{
+myprcomp.formula <- function (formula, data = NULL, subset, na.action, ...){
   mt <- terms(formula, data = data)
   if (attr(mt, "response") > 0L)
     stop("response not allowed in formula")
@@ -78,8 +76,7 @@ print.myprcomp <- function(x, print.x = FALSE, ...) {
   invisible(x)
 }
 
-summary.myprcomp <- function(object, ...)
-{
+summary.myprcomp <- function(object, ...){
   chkDots(...)
   vars <- object$sdev^2
   vars <- vars/sum(vars)
@@ -92,16 +89,13 @@ summary.myprcomp <- function(object, ...)
   object
 }
 
-print.summary.myprcomp <-
-  function(x, digits = max(3L, getOption("digits") - 3L), ...)
-  {
+print.summary.myprcomp <- function(x, digits = max(3L, getOption("digits") - 3L), ...) {
     cat("Importance of components:\n")
     print(x$importance, digits = digits, ...)
     invisible(x)
   }
 
-predict.myprcomp <- function(object, newdata, ...)
-{
+predict.myprcomp <- function(object, newdata, ...) {
   chkDots(...)
   if (missing(newdata)) {
     if(!is.null(object$x)) return(object$x)
@@ -122,32 +116,47 @@ predict.myprcomp <- function(object, newdata, ...)
   scale(newdata, object$center, object$scale) %*% object$rotation
 }
 
-y <- scale(rmatrix(20, 10))
-#y <- scale(matrix(c(1,0,0,1),nrow = 2, ncol = 2))
-#y <- (matrix(c(1,0,0,1),nrow = 2, ncol = 2))
-
+y <- rmatrix(20, 10)
+y_scaled <- scale(y)
+y_scaled_F <- scale(y, center = TRUE, scale = FALSE)
 dim(y)
-pca_y <- myprcomp(y)
 
-# PCA scores
-pca_y$x
-dim(pca_y$x)
+pca_y <- prcomp(y)
+mypca_y <- myprcomp(y)
 
-# predicted scores
-predict(pca_y, y)
-mean((pca_y$x - predict(pca_y, y))^2)
-
-y_s <- scale(y, center = TRUE, scale = TRUE)
-
+# predict scores
+# y not scaled
 pred_x1 <- y %*% pca_y$rotation
-pred_x2 <- y %*% svd(y )$v  # need an extra step to deal with rank deficient / nonsquare matrices
+pred_x2 <- y %*% svd(y)$v  
 
-pca_y$x
-pred_x1
-pred_x2
+# y scaled
+pred_x1_s <- y_scaled %*% pca_y$rotation
+pred_x2_s <- y_scaled %*% svd(y_scaled)$v 
 
+# y centered
+pred_x1_sF <- y_scaled_F %*% pca_y$rotation
+pred_x2_sF <- y_scaled_F %*% svd(y_scaled_F)$v 
+
+# y not scaled
 mean((pca_y$x - pred_x1)^2)
-cor(pca_y$x, pred_x1)
-
 mean((pca_y$x - pred_x2)^2)
-cor(pca_y$x, pred_x2)
+mean((mypca_y$x - pred_x1)^2)
+mean((mypca_y$x - pred_x2)^2)
+# none work
+
+# y scaled
+mean((pca_y$x - pred_x1_s)^2)
+mean((pca_y$x - pred_x2_s)^2)
+mean((mypca_y$x - pred_x1_s)^2)
+# THIS ONE WORKS
+mean((mypca_y$x - pred_x2_s)^2)
+
+# y centered
+# FIRST TWO WORK
+mean((pca_y$x - pred_x1_sF)^2)
+mean((pca_y$x - pred_x2_sF)^2)
+mean((mypca_y$x - pred_x1_sF)^2)
+mean((mypca_y$x - pred_x2_sF)^2)
+
+# Sanity check
+mean((mypca_y$x - pca_y$x)^2)
