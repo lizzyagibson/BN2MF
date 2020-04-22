@@ -2206,7 +2206,6 @@ rbind(nmf_sd_dist_load_s,
   mutate_if(is.numeric, round, 2) %>% knitr::kable()
 ```
 
-
 ## Standardize Plots
 
 ```{r}
@@ -2536,6 +2535,7 @@ cor_nmf %>%
   theme(legend.position = "none",
         strip.background = element_blank()) + labs(title= "NMF Loadings, Correlated Scores", x = "", y = "Normalized Loadings")
 ```
+
 
 
 

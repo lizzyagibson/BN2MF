@@ -21,7 +21,7 @@ opts.ExtraColumnsRule = "ignore";
 opts.EmptyLineRule = "read";
 
 % Import the data
-edc_cc = readtable("/Users/lizzy/OneDrive/Columbia/Spring 2020/nmf/Data/edc_cc.csv", opts);
+edc_cc = readtable("../Data/edc_cc.csv", opts);
 
 %% Convert to output type
 edc_cc = table2array(edc_cc);
@@ -29,28 +29,28 @@ edc_cc = table2array(edc_cc);
 %% Clear temporary variables
 clear opts
 
-[ewa_cc,eh_cc] = NPBayesNMF(edc_cc, 51, 10000);
-
-labels = ["pcb28", "pcb66", "pcb74", "pcb99", "pcb105", "pcb114", "pcb118", "pcb138_158" "pcb146", "pcb153", ...
-    "pcb156", "pcb157", "pcb167", "pcb170", "pcb178", "pcb180", "pcb183", "pcb187", "pcb189", "pcb194", ...
-    "pcb196_203" "pcb199", "pcb206", "pcb209", "BDE28", "BDE47", "BDE66", "BDE85", "BDE99", "BDE100", "BDE153", ...
-    "BDE154", "BDE183", "BDE209", "MECPP", "MEHHP", "MEOHP", "MCPP", "MIBP", "MBP", "MBZP", "MEP", "MEHP", ...
-    "dcp_24", "dcp_25", "b_pb", "bp_3", "m_pb", "p_pb", "tcs", "bpa"];
-       
-%PLOT
-figure;
-subplot(3,1,1);
-stem(eh_cc(1,:));
-set(gca,'XTick',1:size(eh_cc,2));
-set(gca,'XTickLabels',labels);
-subplot(3,1,2);
-stem(eh_cc(2,:));
-set(gca,'XTick',1:size(eh_cc,2));
-set(gca,'XTickLabels',labels);
-subplot(3,1,3);
-stem(eh_cc(3,:));
-set(gca,'XTick',1:size(eh_cc,2));
-set(gca,'XTickLabels',labels);
-
-save("/Users/lizzy/OneDrive/Columbia/Spring 2020/nmf/Sims/Iterate_Out/ewa_edc_cc.mat", 'ewa_cc');
-save("/Users/lizzy/OneDrive/Columbia/Spring 2020/nmf/Sims/Iterate_Out/eh_edc_cc.mat", 'eh_cc');
+% [ewa_cc,eh_cc] = NPBayesNMF(edc_cc, 51, 10000);
+% 
+% labels = ["pcb28", "pcb66", "pcb74", "pcb99", "pcb105", "pcb114", "pcb118", "pcb138_158" "pcb146", "pcb153", ...
+%     "pcb156", "pcb157", "pcb167", "pcb170", "pcb178", "pcb180", "pcb183", "pcb187", "pcb189", "pcb194", ...
+%     "pcb196_203" "pcb199", "pcb206", "pcb209", "BDE28", "BDE47", "BDE66", "BDE85", "BDE99", "BDE100", "BDE153", ...
+%     "BDE154", "BDE183", "BDE209", "MECPP", "MEHHP", "MEOHP", "MCPP", "MIBP", "MBP", "MBZP", "MEP", "MEHP", ...
+%     "dcp_24", "dcp_25", "b_pb", "bp_3", "m_pb", "p_pb", "tcs", "bpa"];
+%        
+% %PLOT
+% figure;
+% subplot(3,1,1);
+% stem(eh_cc(1,:));
+% set(gca,'XTick',1:size(eh_cc,2));
+% set(gca,'XTickLabels',labels);
+% subplot(3,1,2);
+% stem(eh_cc(2,:));
+% set(gca,'XTick',1:size(eh_cc,2));
+% set(gca,'XTickLabels',labels);
+% subplot(3,1,3);
+% stem(eh_cc(3,:));
+% set(gca,'XTick',1:size(eh_cc,2));
+% set(gca,'XTickLabels',labels);
+% 
+% save("/Users/lizzy/OneDrive/Columbia/Spring 2020/nmf/Sims/Iterate_Out/ewa_edc_cc.mat", 'ewa_cc');
+% save("/Users/lizzy/OneDrive/Columbia/Spring 2020/nmf/Sims/Iterate_Out/eh_edc_cc.mat", 'eh_cc');
