@@ -1,0 +1,199 @@
+---
+title: "Check Sim Rank"
+author: "Lizzy Gibson"
+date: "4/22/2020"
+output: 
+  html_document:
+    toc: TRUE
+    toc_float: TRUE
+    toc_depth: 4
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+options(scipen = 999)
+library(reshape2) # melt
+library(gridExtra) # gridarrange
+library(bindata) # multivariate binomial dist
+library(NMF) # rmatrix
+library(MASS) # mvrnorm
+library(tidyverse)
+library(R.matlab)
+library(psych)
+library(RColorBrewer)
+
+knitr::opts_chunk$set(cache = TRUE)
+```
+
+# Load Sims
+
+```{r, load}
+load(here::here("./Sims/Iterate/sim_dist.RDA"))
+
+load(here::here("./Sims/Iterate/sim_cor.RDA"))
+
+load(here::here("./Sims/Iterate/sim_over.RDA"))
+
+labels <-  c("pcb28", "pcb66", "pcb74", "pcb99", "pcb105", "pcb118", "pcb138_158", "pcb146", "pcb153", "pcb156", "pcb167",
+          "pcb170", "pcb178", "pcb183", "pcb187", "pcb180", "pcb189", "pcb194", "pcb196_203", "pcb199", "pcb206", "pcb209",
+          "BDE17", "BDE28", "BDE47", "BDE66", "BDE85", "BDE99", "BDE100", "BDE153", "BDE154", "BDE183", "BDE209", "MECPP",
+          "MEHHP", "MEOHP", "MCPP", "MIBP", "MBP", "MBZP", "MEP", "MEHP", "dcp_24", "dcp_25", "b_pb", "bp_3", "m_pb",
+          "p_pb", "tcs", "bpa")
+```
+
+# Naive Rank
+
+```{r}
+get_d <- function(x) {
+  svd(x)$d
+}
+```
+
+## Pattern Rank
+```{r}
+sim_dist %>% 
+  mutate(diag = map(patterns, get_d)) %>% 
+  select(seed, diag) %>% 
+  unnest(cols = diag) %>% 
+  group_by(seed) %>% 
+  mutate(sv = rep(1:n())) %>% 
+  ggplot(aes(x = sv, y = diag, group = seed)) + geom_line(aes(color = as.factor(seed))) +
+  geom_vline(xintercept = 4, color = "red", linetype = "dashed") +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  labs(x = "Singular Value Number", y = "Value")
+
+sim_over %>% 
+  mutate(diag = map(patterns, get_d)) %>% 
+  select(seed, diag) %>% 
+  unnest(cols = diag) %>% 
+  group_by(seed) %>% 
+  mutate(sv = rep(1:n())) %>% 
+  ggplot(aes(x = sv, y = diag, group = seed)) + geom_line(aes(color = as.factor(seed))) +
+  geom_vline(xintercept = 4, color = "red", linetype = "dashed") +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  labs(x = "Singular Value Number", y = "Value")  
+
+sim_cor %>% 
+  mutate(diag = map(patterns, get_d)) %>% 
+  select(seed, diag) %>% 
+  unnest(cols = diag) %>% 
+  group_by(seed) %>% 
+  mutate(sv = rep(1:n())) %>% 
+  ggplot(aes(x = sv, y = diag, group = seed)) + geom_line(aes(color = as.factor(seed))) +
+  geom_vline(xintercept = 4, color = "red", linetype = "dashed") +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  labs(x = "Singular Value Number", y = "Value")
+```
+
+## Sim Rank
+
+```{r}
+sim_dist %>% 
+  mutate(diag = map(sim, get_d)) %>% 
+  select(seed, diag) %>% 
+  unnest(cols = diag) %>% 
+  group_by(seed) %>% 
+  mutate(sv = rep(1:n())) %>% 
+  filter(sv < 8) %>% 
+  mutate(sv = as.factor(sv)) %>% 
+  ggplot(aes(x = sv, y = diag, group = seed)) + geom_line(aes(color = as.factor(seed)), alpha = 0.25) +
+  geom_vline(xintercept = 4, color = "red", linetype = "dashed") +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  labs(x = "Singular Value Number", y = "Value")
+
+sim_over %>% 
+  mutate(diag = map(sim, get_d)) %>% 
+  select(seed, diag) %>% 
+  unnest(cols = diag) %>% 
+  group_by(seed) %>% 
+  mutate(sv = rep(1:n())) %>% 
+  filter(sv < 8) %>% 
+  mutate(sv = as.factor(sv)) %>% 
+  ggplot(aes(x = sv, y = diag, group = seed)) + geom_line(aes(color = as.factor(seed)), alpha = 0.25) +
+  geom_vline(xintercept = 4, color = "red", linetype = "dashed") +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  labs(x = "Singular Value Number", y = "Value")
+
+sim_cor %>% 
+  mutate(diag = map(sim, get_d)) %>% 
+  select(seed, diag) %>% 
+  unnest(cols = diag) %>% 
+  group_by(seed) %>% 
+  mutate(sv = rep(1:n())) %>% 
+  filter(sv < 8) %>% 
+  mutate(sv = as.factor(sv)) %>%   
+  ggplot(aes(x = sv, y = diag, group = seed)) + geom_line(aes(color = as.factor(seed)), alpha = 0.25) +
+  geom_vline(xintercept = 4, color = "red", linetype = "dashed") +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  labs(x = "Singular Value Number", y = "Value")
+```
+
+## Variance Explained
+```{r}
+sim_dist %>% 
+  mutate(diag = map(sim, get_d)) %>% 
+  select(seed, diag) %>% 
+  unnest(cols = diag) %>% 
+  group_by(seed) %>% 
+  mutate(sv = rep(1:n()),
+         prop = diag/sum(diag))
+```
+
+```{r}
+sim_dist %>% 
+  mutate(diag = map(sim, get_d)) %>% 
+  select(seed, diag) %>% 
+  unnest(cols = diag) %>% 
+  group_by(seed) %>% 
+  mutate(sv = rep(1:n()),
+         prop = (diag^2)/(sum(diag^2))) %>% 
+  filter(sv < 8) %>% 
+  mutate(sv = as.factor(sv)) %>% 
+  ggplot(aes(x = sv, y = prop, group = seed)) + geom_line(aes(color = as.factor(seed)), alpha = 0.25) +
+  geom_vline(xintercept = 4, color = "red", linetype = "dashed") +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  labs(x = "Singular Value Number", y = "Proportion Variance Explained",
+       title = "Simulations w/ Distinct Patterns")
+
+sim_over %>% 
+  mutate(diag = map(sim, get_d)) %>% 
+  select(seed, diag) %>% 
+  unnest(cols = diag) %>% 
+  group_by(seed) %>% 
+  mutate(sv = rep(1:n()),
+         prop = (diag^2)/(sum(diag^2))) %>% 
+  filter(sv < 8) %>% 
+  mutate(sv = as.factor(sv)) %>% 
+  ggplot(aes(x = sv, y = prop, group = seed)) + geom_line(aes(color = as.factor(seed)), alpha = 0.25) +
+  geom_vline(xintercept = 4, color = "red", linetype = "dashed") +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  labs(x = "Singular Value Number", y = "Proportion Variance Explained"
+       title = "Simulations w/ Overlapping Patterns")
+
+sim_cor %>% 
+  mutate(diag = map(sim, get_d)) %>% 
+  select(seed, diag) %>% 
+  unnest(cols = diag) %>% 
+  group_by(seed) %>% 
+  mutate(sv = rep(1:n()),
+         prop = (diag^2)/(sum(diag^2))) %>% 
+  filter(sv < 8) %>% 
+  mutate(sv = as.factor(sv)) %>% 
+  ggplot(aes(x = sv, y = prop, group = seed)) + geom_line(aes(color = as.factor(seed)), alpha = 0.25) +
+  geom_vline(xintercept = 4, color = "red", linetype = "dashed") +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  labs(x = "Singular Value Number", y = "Proportion Variance Explained",
+       title = "Simulations w/ Overlapping Patterns & Correlated Scores")
+```
+
+
+
