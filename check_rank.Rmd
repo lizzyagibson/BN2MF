@@ -153,7 +153,7 @@ sim_dist %>%
   group_by(seed) %>% 
   mutate(sv = rep(1:n()),
          prop = (diag^2)/(sum(diag^2))) %>% 
-  filter(sv < 8) %>% 
+  filter(sv < 7) %>% 
   mutate(sv = as.factor(sv)) %>% 
   ggplot(aes(x = sv, y = prop, group = seed)) + geom_line(aes(color = as.factor(seed)), alpha = 0.25) +
   geom_vline(xintercept = 4, color = "red", linetype = "dashed") +
@@ -169,13 +169,13 @@ sim_over %>%
   group_by(seed) %>% 
   mutate(sv = rep(1:n()),
          prop = (diag^2)/(sum(diag^2))) %>% 
-  filter(sv < 8) %>% 
+  filter(sv < 7) %>% 
   mutate(sv = as.factor(sv)) %>% 
   ggplot(aes(x = sv, y = prop, group = seed)) + geom_line(aes(color = as.factor(seed)), alpha = 0.25) +
   geom_vline(xintercept = 4, color = "red", linetype = "dashed") +
   theme_minimal() +
   theme(legend.position = "none") +
-  labs(x = "Singular Value Number", y = "Proportion Variance Explained"
+  labs(x = "Singular Value Number", y = "Proportion Variance Explained",
        title = "Simulations w/ Overlapping Patterns")
 
 sim_cor %>% 
@@ -185,13 +185,13 @@ sim_cor %>%
   group_by(seed) %>% 
   mutate(sv = rep(1:n()),
          prop = (diag^2)/(sum(diag^2))) %>% 
-  filter(sv < 8) %>% 
+  filter(sv < 7) %>% 
   mutate(sv = as.factor(sv)) %>% 
   ggplot(aes(x = sv, y = prop, group = seed)) + geom_line(aes(color = as.factor(seed)), alpha = 0.25) +
   geom_vline(xintercept = 4, color = "red", linetype = "dashed") +
   theme_minimal() +
   theme(legend.position = "none") +
-  labs(x = "Singular Value Number", y = "Proportion Variance Explained",
+  labs(x = "Singular Value Number (first 6 of 50 total)", y = "Proportion Variance Explained",
        title = "Simulations w/ Overlapping Patterns & Correlated Scores")
 ```
 
