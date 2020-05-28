@@ -159,7 +159,7 @@ sim_dist %>%
   geom_vline(xintercept = 4, color = "red", linetype = "dashed") +
   theme_minimal() +
   theme(legend.position = "none") +
-  labs(x = "Singular Value Number", y = "Proportion Variance Explained",
+  labs(x = "Singular Value Number (first 6 of 50 total)", y = "Proportion Variance Explained",
        title = "Simulations w/ Distinct Patterns")
 
 sim_over %>% 
@@ -175,7 +175,7 @@ sim_over %>%
   geom_vline(xintercept = 4, color = "red", linetype = "dashed") +
   theme_minimal() +
   theme(legend.position = "none") +
-  labs(x = "Singular Value Number", y = "Proportion Variance Explained",
+  labs(x = "Singular Value Number (first 6 of 50 total)", y = "Proportion Variance Explained",
        title = "Simulations w/ Overlapping Patterns")
 
 sim_cor %>% 
