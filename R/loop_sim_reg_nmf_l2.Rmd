@@ -1,0 +1,609 @@
+---
+title: "L2 NMF & Sim Data -- Iterate"
+author: "Lizzy Gibson"
+date: "2/27/2020"
+output: 
+  html_document:
+    toc: TRUE
+    toc_float: TRUE
+    toc_depth: 4
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+options(scipen = 999)
+library(MNdata) # my data
+library(reshape2) # melt
+library(gridExtra) # gridarrange
+library(bindata) # multivariate binomial dist
+library(NMF) # rmatrix
+library(MASS) # mvrnorm
+library(tidyverse)
+library(R.matlab)
+```
+
+## Load Sims
+
+```{r, load, cache = TRUE}
+load(here::here("./Sims/Iterate/sim_dist.RDA"))
+
+load(here::here("./Sims/Iterate/sim_cor.RDA"))
+
+load(here::here("./Sims/Iterate/sim_over.RDA"))
+```
+
+## Distinct Patterns
+
+```{r, long1, cache = TRUE}
+get_nmf_l2 <- function (sim) {
+  set.seed(1988)
+  nmf_3 <- nmf(sim, 3, nrun = 100, method = "lee")
+  nmf_4 <- nmf(sim, 4, nrun = 100, method = "lee")
+  nmf_5 <- nmf(sim, 5, nrun = 100, method = "lee")
+  
+  # aic_3 <- residuals(nmf_3) + (nrow(sim) + ncol(sim)) * 3
+  # aic_4 <- residuals(nmf_4) + (nrow(sim) + ncol(sim)) * 4
+  # aic_5 <- residuals(nmf_5) + (nrow(sim) + ncol(sim)) * 5
+  bic_3 <- residuals(nmf_3) + (1/2)*(nrow(sim) + ncol(sim)) * 3 * log(nrow(sim) * ncol(sim))
+  bic_4 <- residuals(nmf_4) + (1/2)*(nrow(sim) + ncol(sim)) * 4 * log(nrow(sim) * ncol(sim))
+  bic_5 <- residuals(nmf_5) + (1/2)*(nrow(sim) + ncol(sim)) * 5 * log(nrow(sim) * ncol(sim))
+  
+ if (bic_3 <= bic_4) {
+    nmf_out <- nmf_3
+  } else if (bic_4 < bic_3 &&
+             bic_4 <= bic_5) {
+    nmf_out <- nmf_4
+  } else {nmf_out <- nmf_5}
+  
+  basis <- as_tibble(basis(nmf_out))
+  coef <- as_tibble(coef(nmf_out))
+  pred <- basis(nmf_out) %*% coef(nmf_out)
+  list(basis = basis, coef = coef, pred = pred)
+  }
+
+nmf_out_dist <- sim_dist %>%
+  mutate(nmf_out = map(sim, get_nmf_l2),
+        coef = map(nmf_out, function(x) {x[[2]]}),
+         pred = map(nmf_out, function(x) {x[[3]]}),
+         basis = map(nmf_out, function(x) {x[[1]]})) %>% 
+  select(-chem)
+
+nmf_coef_dist <- nmf_out_dist %>% select(seed, coef) %>% unnest(cols = c(coef))
+```
+
+### Match & Arrange
+
+```{r, nmf2, cache=TRUE}
+match_patterns_corr <- function (truth, loading) {
+  truth <- t(truth)
+  if (nrow(truth) != nrow(loading)) {loading <- t(as.matrix(loading))} else {loading <- as.matrix(loading)}
+  
+  corr <- cor(truth, loading)
+  
+  reordered <- matrix(nrow = ncol(truth) - 1, ncol = nrow(truth))
+  
+  reordered[1,] <- loading[,which(corr==max(corr[1,]), arr.ind = TRUE)[2]]
+  reordered[2,] <- loading[,which(corr==max(corr[2,]), arr.ind = TRUE)[2]]
+  reordered[3,] <- loading[,which(corr==max(corr[3,]), arr.ind = TRUE)[2]]
+  
+  if (ncol(loading) >= 4) {reordered <- rbind(reordered, loading[,which(corr==max(corr[4,]), arr.ind = TRUE)[2]])}
+  
+  if (ncol(loading) == 5) {
+  
+  no <- c(which(corr==max(corr[1,]), arr.ind = TRUE)[2],
+          which(corr==max(corr[2,]), arr.ind = TRUE)[2],
+          which(corr==max(corr[3,]), arr.ind = TRUE)[2],
+          which(corr==max(corr[4,]), arr.ind = TRUE)[2])
+  
+  reordered <- rbind(reordered, loading[,-no])
+  }
+  reordered
+}
+
+match_scores_nmf <- function (patterns, scores) {
+  N <- nrow(scores)
+  for (j in 1:nrow(patterns)) {
+    for (i in 1:ncol(scores)) {
+      if (patterns[j, 2] == j && scores[1, i] == j) {
+        scores[(N+1), i] = patterns[j, 1]
+      }
+    }
+  } 
+  scores <- scores[c(1, nrow(scores), 2:(nrow(scores) - 1)),]
+  scores
+}
+
+nmf_scores_matched_dist <- nmf_out_dist %>% 
+    mutate(coef_reordered = map2(patterns, coef, function(x,y) match_patterns_corr(truth = x, loading = y)),
+         basis_reordered = map2(coef_reordered, basis, ~match_scores_nmf(patterns = .x, scores = .y)))
+```
+
+### Viz
+
+```{r, viz1, cache = TRUE}
+nmf_coef_dist %>%
+  filter(seed == 1) %>%
+  mutate(pattern = 1:n()) %>% 
+  select(seed, pattern, everything()) %>%
+  gather(key = Chemicals, value = coefs, -pattern, -seed) %>%
+  mutate(Chemicals = fct_inorder(Chemicals)) %>%
+  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
+                                                     ifelse(str_detect(Chemicals, "^M"), "Phthalates",
+                                                            ifelse(str_detect(Chemicals, "pcb"), "PCBs",
+                                                                   "Phenols")))) %>%
+  ggplot(aes(x = Chemicals, y = coefs)) + geom_col(aes(fill = Group)) +
+  facet_wrap(.~pattern) + theme_bw() +
+  theme(axis.text.x = element_blank(),
+        legend.position = "bottom",
+        strip.background = element_blank())
+
+nmf_scores_matched_dist %>% 
+  select(seed, coef_reordered) %>%
+  mutate(coef_reordered = map(coef_reordered, as.tibble)) %>% 
+  unnest(cols = coef_reordered) %>% 
+  group_by(seed) %>% 
+  mutate(pattern = 1:n()) %>%
+  gather(key = Chemicals, value = coefs, -pattern, -seed) %>%
+  mutate(Chemicals = fct_inorder(Chemicals)) %>% 
+  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
+                                                     ifelse(str_detect(Chemicals, "^M"), "Phthalates",
+                                                            ifelse(str_detect(Chemicals, "pcb"), "PCBs",
+                                                                   "Phenols")))) %>% 
+  ggplot(aes(x = Group, y = coefs)) + geom_jitter(aes(color = Group), alpha = 0.5, size = 0.1, height = 0) +
+  geom_boxplot(aes(x = Group, color = Group), width = .45, outlier.shape = NA) +
+  facet_wrap(.~pattern) + theme_bw() +
+  theme(legend.position = "none",
+        strip.background = element_blank())
+```
+
+## Overlapping Patterns
+
+```{r, over, cache = TRUE}
+nmf_out_over <- sim_over %>% 
+    mutate(nmf_out = map(sim, get_nmf_l2),
+        coef = map(nmf_out, function(x) {x[[2]]}),
+         pred = map(nmf_out, function(x) {x[[3]]}),
+         basis = map(nmf_out, function(x) {x[[1]]})) %>% 
+  select(-chem)
+
+nmf_coef_over <- nmf_out_over %>% select(seed, coef) %>% unnest(cols = c(coef))
+```
+
+### Match & Arrange
+
+```{r, nmf5, cache=TRUE}
+nmf_scores_matched_over <- nmf_out_over %>% 
+    mutate(coef_reordered = map2(patterns, coef, function(x,y) match_patterns_corr(truth = x, loading = y)),
+           basis_reordered = map2(coef_reordered, basis, function(x,y) match_scores_nmf(patterns = x, scores = y)))
+```
+
+### Viz
+
+```{r, viz2, cache = TRUE}
+nmf_coef_over %>%  
+  filter(seed == 1) %>%
+  mutate(pattern = 1:n()) %>% 
+  select(seed, pattern, everything()) %>% 
+  gather(key = Chemicals, value = coefs, -pattern, -seed) %>%
+  mutate(Chemicals = fct_inorder(Chemicals)) %>% 
+  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
+                                                     ifelse(str_detect(Chemicals, "^M"), "Phthalates",
+                                                            ifelse(str_detect(Chemicals, "pcb"), "PCBs",
+                                                                   "Phenols")))) %>% 
+  ggplot(aes(x = Chemicals, y = coefs)) + geom_col(aes(fill = Group)) +
+  facet_wrap(.~pattern) + theme_bw() +
+  theme(axis.text.x = element_blank(),
+        legend.position = "bottom",
+        strip.background = element_blank())
+
+nmf_scores_matched_over %>% 
+  select(seed, coef_reordered) %>%
+  mutate(coef_reordered = map(coef_reordered, as.tibble)) %>% 
+  unnest(cols = coef_reordered) %>% 
+  group_by(seed) %>% 
+  mutate(pattern = 1:n()) %>% 
+  gather(key = Chemicals, value = coefs, -pattern, -seed) %>%
+  mutate(Chemicals = fct_inorder(Chemicals)) %>% 
+  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
+                                                     ifelse(str_detect(Chemicals, "^M"), "Phthalates",
+                                                            ifelse(str_detect(Chemicals, "pcb"), "PCBs",
+                                                                   "Phenols")))) %>% 
+  ggplot(aes(x = Group, y = coefs)) + geom_jitter(aes(color = Group), alpha = 0.5, size = 0.1, height = 0) +
+  geom_boxplot(aes(x = Group, color = Group), width = .45, outlier.shape = NA) +
+  facet_wrap(.~pattern) + theme_bw() +
+  theme(legend.position = "none",
+        strip.background = element_blank())
+```
+
+## Correlated Scores
+
+```{r, corr, cache = TRUE}
+nmf_out_cor <- sim_cor %>% 
+    mutate(nmf_out = map(sim, get_nmf_l2),
+        coef = map(nmf_out, function(x) {x[[2]]}),
+         pred = map(nmf_out, function(x) {x[[3]]}),
+         basis = map(nmf_out, function(x) {x[[1]]})) %>% 
+  select(-chem)
+
+nmf_coef_cor <- nmf_out_cor %>% select(seed, coef) %>% unnest(cols = c(coef))
+```
+
+### Match & Arrange
+
+```{r, nmf8, cache = TRUE}
+nmf_scores_matched_cor <- nmf_out_cor %>% 
+    mutate(coef_reordered = map2(patterns, coef, function(x,y) match_patterns_corr(truth = x, loading = y)),
+         basis_reordered = map2(coef_reordered, basis, function(x,y) match_scores_nmf(patterns = x, scores = y)))
+```
+
+### Viz
+
+```{r, viz3, cache = TRUE}
+nmf_coef_cor %>%  
+  filter(seed == 1) %>%
+  mutate(pattern = 1:n()) %>% 
+  select(seed, pattern, everything()) %>% 
+  gather(key = Chemicals, value = coefs, -pattern, -seed) %>%
+  mutate(Chemicals = fct_inorder(Chemicals)) %>% 
+  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
+                                                     ifelse(str_detect(Chemicals, "^M"), "Phthalates",
+                                                            ifelse(str_detect(Chemicals, "pcb"), "PCBs",
+                                                                   "Phenols")))) %>% 
+  ggplot(aes(x = Chemicals, y = coefs)) + geom_col(aes(fill = Group)) +
+  facet_wrap(.~pattern) + theme_bw() +
+  theme(axis.text.x = element_blank(),
+        legend.position = "bottom",
+        strip.background = element_blank())
+
+nmf_scores_matched_cor %>%  
+  select(seed, coef_reordered) %>%
+  mutate(coef_reordered = map(coef_reordered, as.tibble)) %>% 
+  unnest(cols = coef_reordered) %>% 
+  group_by(seed) %>% 
+  mutate(pattern = 1:n()) %>% 
+  gather(key = Chemicals, value = coefs, -pattern, -seed) %>%
+  mutate(Chemicals = fct_inorder(Chemicals)) %>% 
+  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
+                                                     ifelse(str_detect(Chemicals, "^M"), "Phthalates",
+                                                            ifelse(str_detect(Chemicals, "pcb"), "PCBs",
+                                                                   "Phenols")))) %>% 
+  ggplot(aes(x = Group, y = coefs)) + geom_jitter(aes(color = Group), alpha = 0.5, size = 0.1, height = 0) +
+  geom_boxplot(aes(x = Group, color = Group), width = .45, outlier.shape = NA) +
+  facet_wrap(.~pattern) + theme_bw() +
+  theme(legend.position = "none",
+        strip.background = element_blank())
+```
+
+## Summarize
+
+### Rank
+
+```{r}
+rank_d <- nmf_out_dist %>% 
+  mutate(rank = map(coef, nrow)) %>% 
+  select(rank) %>%
+  unnest(rank) %>%
+  group_by(rank) %>%
+  summarise(n = n()) %>%
+  mutate(Simulation = "Distinct") %>%
+  mutate(Proportion = n/100) %>%
+  select(Simulation, Rank = rank, Proportion)
+
+rank_o <- nmf_out_over %>% 
+  mutate(rank = map(coef, nrow)) %>%
+  select(rank) %>%
+  unnest(rank) %>%
+  group_by(rank) %>%
+  summarise(n = n()) %>%
+  mutate(Simulation = "Overlapping") %>%
+  mutate(Proportion = n/100) %>%
+  select(Simulation, Rank = rank, Proportion)
+
+rank_c <- nmf_out_cor %>% 
+  mutate(rank = map(coef, nrow)) %>%
+  select(rank = rank) %>%
+  unnest(rank) %>%
+  group_by(rank) %>%
+  summarise(n = n()) %>%
+  mutate(Simulation = "Correlated") %>%
+  mutate(Proportion = n/100) %>%
+  select(Simulation, Rank = rank, Proportion)
+
+
+rbind(rank_d, rank_o, rank_c) %>% knitr::kable()
+```
+
+### Norms
+
+#### Unstandardized
+
+```{r}
+add_column <- function(score) {
+  
+  if (ncol(score) == 3) {
+  score <- cbind(score, four = rep(0, times = nrow(score))) %>% as_tibble(.)
+  } else if (ncol(score) == 2) {
+  score <- cbind(score, three = rep(0, times = nrow(score)), four = rep(0, times = nrow(score))) %>% as_tibble(.)
+  } else {}
+  score
+}
+
+add_row <- function(pattern) {
+  
+  if (nrow(pattern) == 3) {
+  pattern <- rbind(pattern, four = rep(0, times = ncol(pattern))) %>% as_tibble(.)
+  } else if (nrow(pattern) == 2) {
+  pattern <- rbind(pattern, three = rep(0, times = ncol(pattern)), four = rep(0, times = ncol(pattern))) %>% as_tibble(.)
+  } else {}
+  pattern
+}
+
+add_pattern <- function(pattern, true) {
+  
+  if (nrow(pattern) == 5) {
+  true <- rbind(true, four = rep(0, times = ncol(true))) %>% as_tibble(.)
+  } else if (nrow(pattern) == 6) {
+  true <- rbind(true, three = rep(0, times = ncol(true)), four = rep(0, times = ncol(true))) %>% as_tibble(.)
+  } else {}
+  true
+}
+
+standard <- function(row_matrix, column_matrix) {
+  sum_row <- apply(row_matrix, 1, function(x) sum(x))
+  row_out <-  as_tibble(apply(row_matrix, 1, function(x) x/sum(x))) # Divide patterns by pattern sum to normalize
+  col_out <- map2_dfr(as_tibble(column_matrix), sum_row, function(x,y) x*y) # multiply scores by pattern sum
+  list(row_out = row_out, col_out = col_out)
+}
+
+add_score <- function(score, true) {
+  
+  if (ncol(score) == 5) {
+  true <- cbind(true, four = rep(0, times = nrow(true))) %>% as_tibble(.)
+  } else if (ncol(score) == 6) {
+  true <- cbind(true, three = rep(0, times = nrow(true)), four = rep(0, times = nrow(true))) %>% as_tibble(.)
+  } else {}
+  true
+}
+
+dist_pred <- nmf_scores_matched_dist %>%
+  mutate(norm_all = map2(sim, pred, function(x, y) {norm(as.matrix(x) - as.matrix(y), "F")/norm(as.matrix(x), "F")})) %>% 
+  unnest(norm_all) %>% 
+  pull(norm_all) %>% summary() %>% as.matrix() %>% t() %>% 
+  as_tibble() %>% mutate(Norm = "Prediction",
+                         Simulation = "Distinct",
+                         Standardized = "No") %>% 
+  select(Simulation, Norm, Standardized, everything())
+
+dist_load <- nmf_scores_matched_dist %>% 
+  mutate(coef_reordered = map(coef_reordered, add_row)) %>% 
+  #mutate(patterns = map2(coef_reordered, patterns, function(x,y) add_pattern(x,y))) %>% 
+  mutate(norm_loadings = map2(patterns, coef_reordered, 
+                              ~norm(as.matrix(.x) - as.matrix(.y), "F") /
+                                norm(as.matrix(.x), "F"))) %>% 
+  unnest(norm_loadings) %>% 
+  pull(norm_loadings) %>% summary() %>% as.matrix() %>% t() %>% 
+  as_tibble() %>% mutate(Norm = "Patterns",
+                         Simulation = "Distinct",
+                         Standardized = "No") %>% 
+  select(Simulation, Norm, Standardized, everything())
+
+dist_score <- nmf_scores_matched_dist %>% 
+  mutate(basis_reordered = map(basis_reordered, add_column)) %>% 
+  mutate(norm_scores = map2(scores, basis_reordered, 
+                              ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>% 
+  unnest(norm_scores) %>% 
+  pull(norm_scores) %>% summary() %>% as.matrix() %>% t() %>% 
+  as_tibble() %>% mutate(Norm = "Scores",
+                         Simulation = "Distinct",
+                         Standardized = "No") %>% 
+  select(Simulation, Norm, Standardized, everything())
+
+over_pred <- nmf_scores_matched_over %>%
+  mutate(norm_all = map2(sim, pred, function(x, y) {norm(as.matrix(x) - as.matrix(y), "F")/norm(as.matrix(x), "F")})) %>% 
+  unnest(norm_all) %>% 
+  pull(norm_all) %>% summary() %>% as.matrix() %>% t() %>% 
+  as_tibble() %>% mutate(Norm = "Prediction",
+                         Simulation = "Overlapping",
+                         Standardized = "No") %>% 
+  select(Simulation, Norm, Standardized, everything())
+
+over_load <- nmf_scores_matched_over %>% 
+  mutate(coef_reordered = map(coef_reordered, add_row)) %>% 
+  mutate(patterns = map2(coef_reordered, patterns, function(x,y) add_pattern(x,y))) %>% 
+  mutate(norm_loadings = map2(patterns, coef_reordered, 
+                              ~norm(as.matrix(.x) - as.matrix(.y), "F") /
+                                norm(as.matrix(.x), "F"))) %>% 
+  unnest(norm_loadings) %>% 
+  pull(norm_loadings) %>% summary() %>% as.matrix() %>% t() %>% 
+  as_tibble() %>% mutate(Norm = "Patterns",
+                         Simulation = "Overlapping",
+                         Standardized = "No") %>% 
+  select(Simulation, Norm, Standardized, everything())
+
+over_score <- nmf_scores_matched_over %>% 
+  mutate(basis_reordered = map(basis_reordered, add_column)) %>% 
+  mutate(scores = map2(basis_reordered, scores, function(x,y) add_score(x,y))) %>% 
+  mutate(norm_scores = map2(scores, basis_reordered, 
+                              ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>% 
+  unnest(norm_scores) %>% 
+  pull(norm_scores) %>% summary() %>% as.matrix() %>% t() %>% 
+  as_tibble() %>% mutate(Norm = "Scores",
+                         Simulation = "Overlapping",
+                         Standardized = "No") %>% 
+  select(Simulation, Norm, Standardized, everything())
+
+cor_pred <- nmf_scores_matched_cor %>%
+  mutate(norm_all = map2(sim, pred, function(x, y) {norm(as.matrix(x) - as.matrix(y), "F")/norm(as.matrix(x), "F")})) %>% 
+  unnest(norm_all) %>% 
+  pull(norm_all) %>% summary() %>% as.matrix() %>% t() %>% 
+  as_tibble() %>% mutate(Norm = "Prediction",
+                         Simulation = "Correlated",
+                         Standardized = "No") %>% 
+  select(Simulation, Norm, Standardized, everything())
+
+cor_load <- nmf_scores_matched_cor %>% 
+  mutate(coef_reordered = map(coef_reordered, add_row)) %>% 
+  mutate(patterns = map2(coef_reordered, patterns, function(x,y) add_pattern(x,y))) %>% 
+  mutate(norm_loadings = map2(patterns, coef_reordered, 
+                              ~norm(as.matrix(.x) - as.matrix(.y), "F") /
+                                norm(as.matrix(.x), "F"))) %>% 
+  unnest(norm_loadings) %>% 
+  pull(norm_loadings) %>% summary() %>% as.matrix() %>% t() %>% 
+  as_tibble() %>% mutate(Norm = "Patterns",
+                         Simulation = "Correlated",
+                         Standardized = "No") %>% 
+  select(Simulation, Norm, Standardized, everything())
+
+cor_score <- nmf_scores_matched_cor %>% 
+  mutate(basis_reordered = map(basis_reordered, add_column)) %>% 
+  mutate(scores = map2(basis_reordered, scores, function(x,y) add_score(x,y))) %>% 
+  mutate(norm_scores = map2(scores, basis_reordered, 
+                              ~norm(as.matrix(.x) - as.matrix(.y), "F")/norm(as.matrix(.x), "F"))) %>% 
+  unnest(norm_scores) %>% 
+  pull(norm_scores) %>% summary() %>% as.matrix() %>% t() %>% 
+  as_tibble() %>% mutate(Norm = "Scores",
+                         Simulation = "Correlated",
+                         Standardized = "No") %>% 
+  select(Simulation, Norm, Standardized, everything())
+
+rbind(dist_pred,
+      over_pred,
+      cor_pred,
+      dist_load,
+      cor_load,
+      over_load,
+      dist_score,      
+      over_score,
+      cor_score) %>% mutate_if(is.numeric, round, 2) %>% knitr::kable()
+```
+
+#### Standardized
+
+Divide coefs by sum to normalize. Multiply scores by sum of associated coef.
+
+```{r, cache = TRUE}
+sd_dist_out <- nmf_scores_matched_dist %>% 
+  select(-coef, -basis, -pred, -sim, -noise, -nmf_out) %>% 
+  mutate(sd_patterns = map2(patterns, scores, function(x,y) standard(x,y)[[1]]),
+         sd_scores   = map2(patterns, scores, function(x,y) standard(x,y)[[2]]),
+         sd_basis       = map2(coef_reordered, basis_reordered,function(x,y) standard(x,y)[[2]]),
+         sd_coef     = map2(coef_reordered, basis_reordered, function(x,y) standard(x,y)[[1]])) %>% 
+  mutate(sd_patterns = map2(sd_coef, sd_patterns, add_pattern),
+         sd_scores   = map2(sd_basis, sd_scores, add_score),
+         sd_coef     = map(sd_coef, add_column),
+         sd_basis    = map(sd_basis, add_column)) %>%
+  select(-coef_reordered, -basis_reordered, -scores, -patterns)
+
+dist_norm <- sd_dist_out %>% 
+mutate(norm_coef = map2(sd_patterns, sd_coef, 
+                              ~norm(as.matrix(.x) - as.matrix(.y), "F") / 
+                                norm(as.matrix(.x), "F"))) %>% 
+  unnest(norm_coef) %>% 
+  pull(norm_coef)
+
+sd_over_out <- nmf_scores_matched_over %>% 
+  select(-coef, -basis, -pred, -sim, -noise, -nmf_out) %>% 
+  mutate(sd_patterns = map2(patterns, scores, function(x,y) standard(x,y)[[1]]),
+         sd_scores   = map2(patterns, scores, function(x,y) standard(x,y)[[2]]),
+         sd_basis    = map2(coef_reordered, basis_reordered,function(x,y) standard(x,y)[[2]]),
+         sd_coef     = map2(coef_reordered, basis_reordered, function(x,y) standard(x,y)[[1]])) %>% 
+  mutate(sd_patterns = map2(sd_coef, sd_patterns, add_score),
+         sd_scores   = map2(sd_basis, sd_scores, add_score),
+         sd_coef     = map(sd_coef, add_column),
+         sd_basis    = map(sd_basis, add_column)) %>% 
+  select(-coef_reordered, -basis_reordered, -scores, -patterns)
+
+over_norm <- sd_over_out %>%   
+mutate(norm_coef = map2(sd_patterns, sd_coef, 
+                              ~norm(as.matrix(.x) - as.matrix(.y), "F") / 
+                                norm(as.matrix(.x), "F"))) %>% 
+  unnest(norm_coef) %>% 
+  pull(norm_coef)
+
+sd_cor_out <- nmf_scores_matched_cor %>%
+  select(-coef, -basis, -pred, -sim, -noise, -nmf_out) %>% 
+  mutate(sd_patterns = map2(patterns, scores, function(x,y) standard(x,y)[[1]]),
+         sd_scores   = map2(patterns, scores, function(x,y) standard(x,y)[[2]]),
+         sd_basis    = map2(coef_reordered, basis_reordered,function(x,y) standard(x,y)[[2]]),
+         sd_coef     = map2(coef_reordered, basis_reordered, function(x,y) standard(x,y)[[1]])) %>% 
+  mutate(sd_patterns = map2(sd_coef, sd_patterns, add_score),
+         sd_scores   = map2(sd_basis, sd_scores, add_score),
+         sd_coef     = map(sd_coef, add_column),
+         sd_basis    = map(sd_basis, add_column)) %>%
+  select(-coef_reordered, -basis_reordered, -scores, -patterns)
+  
+cor_norm <- sd_cor_out %>%   
+mutate(norm_coef = map2(sd_patterns, sd_coef, 
+                              ~norm(as.matrix(.x) - as.matrix(.y), "F") / 
+                                norm(as.matrix(.x), "F"))) %>% 
+  unnest(norm_coef) %>% 
+  pull(norm_coef)
+```
+
+```{r, cache = TRUE}
+dist_norm_basis <- sd_dist_out %>% 
+mutate(norm_basis = map2(sd_scores, sd_basis, 
+                              ~norm(as.matrix(.x) - as.matrix(.y), "F") / 
+                                norm(as.matrix(.x), "F"))) %>% 
+  unnest(norm_basis) %>% 
+  pull(norm_basis)
+
+over_norm_basis <- sd_over_out %>%   
+mutate(norm_basis = map2(sd_scores, sd_basis, 
+                              ~norm(as.matrix(.x) - as.matrix(.y), "F") / 
+                                norm(as.matrix(.x), "F"))) %>% 
+  unnest(norm_basis) %>% 
+  pull(norm_basis)
+
+cor_norm_basis <- sd_cor_out %>%   
+mutate(norm_basis = map2(sd_scores, sd_basis, 
+                              ~norm(as.matrix(.x) - as.matrix(.y), "F") / 
+                                norm(as.matrix(.x), "F"))) %>% 
+  unnest(norm_basis) %>% 
+  pull(norm_basis)
+
+over_load_s <- summary(over_norm) %>% as.matrix() %>% t() %>% 
+  as_tibble() %>% mutate(Norm = "Patterns",
+                         Simulation = "Overlapping",
+                         Standardized = "Yes") %>% 
+  select(Simulation, Norm, Standardized, everything())
+
+cor_load_s <- summary(cor_norm) %>% as.matrix() %>% t() %>% 
+  as_tibble() %>% mutate(Norm = "Patterns",
+                         Simulation = "Correlated",
+                         Standardized = "Yes") %>% 
+  select(Simulation, Norm, Standardized, everything())
+
+dist_load_s <- summary(dist_norm) %>% as.matrix() %>% t() %>% 
+  as_tibble() %>% mutate(Norm = "Patterns",
+                         Simulation = "Distinct",
+                         Standardized = "Yes") %>% 
+  select(Simulation, Norm, Standardized, everything())
+
+over_score_s <- summary(over_norm_basis) %>% as.matrix() %>% t() %>% 
+  as_tibble() %>% mutate(Norm = "Scores",
+                         Simulation = "Overlapping",
+                         Standardized = "Yes") %>% 
+  select(Simulation, Norm, Standardized, everything())
+
+cor_score_s <- summary(cor_norm_basis) %>% as.matrix() %>% t() %>% 
+  as_tibble() %>% mutate(Norm = "Scores",
+                         Simulation = "Correlated",
+                         Standardized = "Yes") %>% 
+  select(Simulation, Norm, Standardized, everything())
+
+dist_score_s <- summary(dist_norm_basis) %>% as.matrix() %>% t() %>% 
+  as_tibble() %>% mutate(Norm = "Scores",
+                         Simulation = "Distinct",
+                         Standardized = "Yes") %>% 
+  select(Simulation, Norm, Standardized, everything())
+
+rbind(dist_load_s,
+      over_load_s,
+      cor_load_s,
+      dist_score_s, 
+      over_score_s,
+      cor_score_s) %>% 
+  mutate_if(is.numeric, round, 2) %>% knitr::kable()
+```
+
