@@ -35,17 +35,24 @@ load(here::here("./Sims/Iterate/sim_over.RDA"))
 ## Distinct Patterns
 
 ```{r, long1, cache = TRUE}
-get_nmf <- function (sim) {
+
+get_nmf_div <- function (sim) {
   set.seed(1988)
+  nmf_3 <- nmf(sim, 3, nrun = 100)
+  nmf_4 <- nmf(sim, 4, nrun = 100)
+  nmf_5 <- nmf(sim, 5, nrun = 100)
   
-  nmf_3 <- nmf(sim, 3, nrun = 50)
-  nmf_4 <- nmf(sim, 4, nrun = 50)
-  nmf_5 <- nmf(sim, 5, nrun = 50)
+  # aic_3 <- residuals(nmf_3) + (nrow(sim) + ncol(sim)) * 3
+  # aic_4 <- residuals(nmf_4) + (nrow(sim) + ncol(sim)) * 4
+  # aic_5 <- residuals(nmf_5) + (nrow(sim) + ncol(sim)) * 5
+  bic_3 <- residuals(nmf_3) + (1/2)*(nrow(sim) + ncol(sim)) * 3 * log(nrow(sim) * ncol(sim))
+  bic_4 <- residuals(nmf_4) + (1/2)*(nrow(sim) + ncol(sim)) * 4 * log(nrow(sim) * ncol(sim))
+  bic_5 <- residuals(nmf_5) + (1/2)*(nrow(sim) + ncol(sim)) * 5 * log(nrow(sim) * ncol(sim))
   
- if (cophcor(consensus(nmf_3)) >= cophcor(consensus(nmf_4))) {
+ if (bic_3 <= bic_4) {
     nmf_out <- nmf_3
-  } else if (cophcor(consensus(nmf_4)) > cophcor(consensus(nmf_3)) && 
-             cophcor(consensus(nmf_4)) >= cophcor(consensus(nmf_5))) {
+  } else if (bic_4 < bic_3 &&
+             bic_4 <= bic_5) {
     nmf_out <- nmf_4
   } else {nmf_out <- nmf_5}
   
@@ -56,7 +63,7 @@ get_nmf <- function (sim) {
   }
 
 nmf_out_dist <- sim_dist %>%
-  mutate(nmf_out = map(sim, get_nmf),
+  mutate(nmf_out = map(sim, get_nmf_div),
         coef = map(nmf_out, function(x) {x[[2]]}),
          pred = map(nmf_out, function(x) {x[[3]]}),
          basis = map(nmf_out, function(x) {x[[1]]})) %>% 
@@ -65,20 +72,36 @@ nmf_out_dist <- sim_dist %>%
 nmf_coef_dist <- nmf_out_dist %>% select(seed, coef) %>% unnest(cols = c(coef))
 ```
 
-### Match Scores
+### Match & Arrange
 
-```{r, cache = TRUE}
-match_patterns <- function (coef_unnested) {
-  coef_reordered <- coef_unnested %>% 
-    mutate(pattern1 = ifelse(pcb146 > 0.01 & pcb118 > bpa, 1,
-                          ifelse(BDE17 > 0.02, 2,
-                                ifelse(MECPP > 0.02, 3,
-                                       ifelse(tcs > 0.02, 4, 5))))) %>%
-  select(pattern1, everything())
-  coef_reordered
+```{r, nmf2}
+match_patterns_corr <- function (truth, loading) {
+  truth <- t(truth)
+  if (nrow(truth) != nrow(loading)) {loading <- t(as.matrix(loading))} else {loading <- as.matrix(loading)}
+  
+  corr <- cor(truth, loading)
+  
+  reordered <- matrix(nrow = ncol(truth) - 1, ncol = nrow(truth))
+  
+  reordered[1,] <- loading[,which(corr==max(corr[1,]), arr.ind = TRUE)[2]]
+  reordered[2,] <- loading[,which(corr==max(corr[2,]), arr.ind = TRUE)[2]]
+  reordered[3,] <- loading[,which(corr==max(corr[3,]), arr.ind = TRUE)[2]]
+  
+  if (ncol(loading) >= 4) {reordered <- rbind(reordered, loading[,which(corr==max(corr[4,]), arr.ind = TRUE)[2]])}
+  
+  if (ncol(loading) == 5) {
+  
+  no <- c(which(corr==max(corr[1,]), arr.ind = TRUE)[2],
+          which(corr==max(corr[2,]), arr.ind = TRUE)[2],
+          which(corr==max(corr[3,]), arr.ind = TRUE)[2],
+          which(corr==max(corr[4,]), arr.ind = TRUE)[2])
+  
+  reordered <- rbind(reordered, loading[,-no])
+  }
+  reordered
 }
 
-match_scores <- function (patterns, scores) {
+match_scores_nmf <- function (patterns, scores) {
   N <- nrow(scores)
   for (j in 1:nrow(patterns)) {
     for (i in 1:ncol(scores)) {
@@ -91,71 +114,37 @@ match_scores <- function (patterns, scores) {
   scores
 }
 
-scores_matched_dist <- nmf_out_dist %>% 
-    mutate(coef = map(coef, ~cbind(pattern = 1:nrow(.x), .x)),
-         basis = map(basis, ~rbind(pattern = 1:ncol(.x), .x)),
-         coef_reordered = map(coef, ~match_patterns(coef_unnested = .x)),
-         basis_reordered = map(basis, ~as_tibble(.x)),
-         basis_reordered = map2(coef_reordered, basis_reordered, ~match_scores(patterns = .x, scores = .y)))
-```
-
-### Arrange Scores
-
-```{r, cache = TRUE}
-reorder_patterns <- function (coef_unnested) {
-  coef_reordered <- coef_unnested %>% 
-  arrange(pattern1) %>%
-  mutate(pattern1 = fct_inorder(as.factor(pattern1)),
-         pattern1 = as.integer(pattern1)) %>% 
-    select(-pattern1, -pattern)
-  coef_reordered
-}
-
-reorder_scores <- function (basis_unnested) {
-  basis_reordered <- basis_unnested %>% 
-    t(.) %>% as_tibble(.) %>% 
-  arrange(V2) %>%
-  mutate(V2 = fct_inorder(as.factor(V2)),
-         V2 = as.integer(V2)) %>% 
-    t(.) %>% as_tibble(.) %>% 
-    slice(3:nrow(.))
-  basis_reordered
-}
-
-scores_ordered_dist <- scores_matched_dist %>% 
-  mutate(coef_reordered = map(coef_reordered, ~reorder_patterns(.x)),
-         basis_reordered = map(basis_reordered, ~reorder_scores(.x)))
+nmf_scores_matched_dist <- nmf_out_dist %>% 
+    mutate(coef_reordered = map2(patterns, coef, function(x,y) match_patterns_corr(truth = x, loading = y)),
+         basis_reordered = map2(coef_reordered, basis, ~match_scores_nmf(patterns = .x, scores = .y)))
 ```
 
 ### Viz
 
 ```{r, cache = TRUE}
 nmf_coef_dist %>%  
-  filter(seed == 3) %>%
+  filter(seed == 1) %>%
   mutate(pattern = 1:4) %>% 
   select(seed, pattern, everything()) %>% 
-    mutate(pattern1 = ifelse(pcb146 > 0.01 & pcb118 > bpa, 1,
-                          ifelse(BDE17 > 0.02, 2,
-                                ifelse(MECPP > 0.02, 3,
-                                       ifelse(tcs > 0.02, 4, 5))))) %>%
-  gather(key = Chemicals, value = coefs, -pattern,-pattern1, -seed) %>%
+  gather(key = Chemicals, value = coefs, -pattern, -seed) %>%
   mutate(Chemicals = fct_inorder(Chemicals)) %>% 
   mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
                                                      ifelse(str_detect(Chemicals, "^M"), "Phthalates",
                                                             ifelse(str_detect(Chemicals, "pcb"), "PCBs",
                                                                    "Phenols")))) %>% 
   ggplot(aes(x = Chemicals, y = coefs)) + geom_col(aes(fill = Group)) +
-  facet_wrap(.~pattern1) + theme_bw() +
+  facet_wrap(.~pattern) + theme_bw() +
   theme(axis.text.x = element_blank(),
         legend.position = "bottom",
         strip.background = element_blank())
 
-nmf_coef_dist %>% 
-  mutate(pattern1 = ifelse(pcb146 > 0.01 & pcb118 > bpa, 1,
-                          ifelse(BDE17 > 0.02, 2,
-                                ifelse(MECPP > 0.02, 3,
-                                       ifelse(tcs > 0.02, 4, 5))))) %>%
-  gather(key = Chemicals, value = coefs, -pattern1, -seed) %>%
+nmf_scores_matched_dist %>% 
+  select(seed, coef_reordered) %>%
+  mutate(coef_reordered = map(coef_reordered, as.tibble)) %>% 
+  unnest(cols = coef_reordered) %>% 
+  group_by(seed) %>% 
+  mutate(pattern = 1:nrow(.)) %>%
+  gather(key = Chemicals, value = coefs, -pattern, -seed) %>%
   mutate(Chemicals = fct_inorder(Chemicals)) %>% 
   mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
                                                      ifelse(str_detect(Chemicals, "^M"), "Phthalates",
@@ -163,7 +152,7 @@ nmf_coef_dist %>%
                                                                    "Phenols")))) %>% 
   ggplot(aes(x = Group, y = coefs)) + geom_jitter(aes(color = Group), alpha = 0.5, size = 0.1, height = 0) +
   geom_boxplot(aes(x = Group, color = Group), width = .45, outlier.shape = NA) +
-  facet_wrap(.~pattern1) + theme_bw() +
+  facet_wrap(.~pattern) + theme_bw() +
   theme(legend.position = "none",
         strip.background = element_blank())
 ```
@@ -172,7 +161,7 @@ nmf_coef_dist %>%
 
 ```{r, cache = TRUE}
 nmf_out_over <- sim_over %>% 
-    mutate(nmf_out = map(sim, get_nmf),
+    mutate(nmf_out = map(sim, get_nmf_div),
         coef = map(nmf_out, function(x) {x[[2]]}),
          pred = map(nmf_out, function(x) {x[[3]]}),
          basis = map(nmf_out, function(x) {x[[1]]})) %>% 
@@ -181,30 +170,18 @@ nmf_out_over <- sim_over %>%
 nmf_coef_over <- nmf_out_over %>% select(seed, coef) %>% unnest(cols = c(coef))
 ```
 
-### Match Scores
-
-```{r, cache = TRUE}
-scores_matched_over <- nmf_out_over %>% 
-    mutate(coef = map(coef, ~cbind(pattern = 1:nrow(.x), .x)),
-         basis = map(basis, ~rbind(pattern = 1:ncol(.x), .x)),
-         coef_reordered = map(coef, ~match_patterns(coef_unnested = .x)),
-         basis_reordered = map(basis, ~as_tibble(.x)),
-         basis_reordered = map2(coef_reordered, basis_reordered, ~match_scores(patterns = .x, scores = .y)))
-```
-
-### Arrange Scores
-
-```{r, cache = TRUE}
-scores_ordered_over <- scores_matched_over %>% 
-  mutate(coef_reordered = map(coef_reordered, ~reorder_patterns(.x)),
-         basis_reordered = map(basis_reordered, ~reorder_scores(.x)))
+### Match & Arrange
+```{r, nmf5}
+nmf_scores_matched_over <- nmf_out_over %>% 
+    mutate(coef_reordered = map2(patterns, coef, function(x,y) match_patterns_corr(truth = x, loading = y)),
+           basis_reordered = map2(coef_reordered, basis, function(x,y) match_scores_nmf(patterns = x, scores = y)))
 ```
 
 ### Viz
 
 ```{r, cache = TRUE}
 nmf_coef_over %>%  
-  filter(seed == 3) %>%
+  filter(seed == 1) %>%
   mutate(pattern = 1:4) %>% 
   select(seed, pattern, everything()) %>% 
   gather(key = Chemicals, value = coefs, -pattern, -seed) %>%
@@ -219,12 +196,13 @@ nmf_coef_over %>%
         legend.position = "bottom",
         strip.background = element_blank())
 
-nmf_coef_over %>%  
-  mutate(pattern1 = ifelse(pcb146 > 0.02 & pcb118 > bpa, 1,
-                          ifelse(BDE17 > 0.02, 2,
-                                ifelse(MECPP > 0.02, 3,
-                                       ifelse(tcs > 0.02, 4, 5))))) %>%
-  gather(key = Chemicals, value = coefs, -pattern1, -seed) %>%
+nmf_scores_matched_over %>% 
+  select(seed, coef_reordered) %>%
+  mutate(coef_reordered = map(coef_reordered, as.tibble)) %>% 
+  unnest(cols = coef_reordered) %>% 
+  group_by(seed) %>% 
+  mutate(pattern = 1:nrow(.)) %>% 
+  gather(key = Chemicals, value = coefs, -pattern, -seed) %>%
   mutate(Chemicals = fct_inorder(Chemicals)) %>% 
   mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
                                                      ifelse(str_detect(Chemicals, "^M"), "Phthalates",
@@ -232,7 +210,7 @@ nmf_coef_over %>%
                                                                    "Phenols")))) %>% 
   ggplot(aes(x = Group, y = coefs)) + geom_jitter(aes(color = Group), alpha = 0.5, size = 0.1, height = 0) +
   geom_boxplot(aes(x = Group, color = Group), width = .45, outlier.shape = NA) +
-  facet_wrap(.~pattern1) + theme_bw() +
+  facet_wrap(.~pattern) + theme_bw() +
   theme(legend.position = "none",
         strip.background = element_blank())
 ```
@@ -241,7 +219,7 @@ nmf_coef_over %>%
 
 ```{r, cache = TRUE}
 nmf_out_cor <- sim_cor %>% 
-    mutate(nmf_out = map(sim, get_nmf),
+    mutate(nmf_out = map(sim, get_nmf_div),
         coef = map(nmf_out, function(x) {x[[2]]}),
          pred = map(nmf_out, function(x) {x[[3]]}),
          basis = map(nmf_out, function(x) {x[[1]]})) %>% 
@@ -250,30 +228,18 @@ nmf_out_cor <- sim_cor %>%
 nmf_coef_cor <- nmf_out_cor %>% select(seed, coef) %>% unnest(cols = c(coef))
 ```
 
-### Match Scores
-
-```{r, cache = TRUE}
-scores_matched_cor <- nmf_out_cor %>% 
-    mutate(coef = map(coef, ~cbind(pattern = 1:nrow(.x), .x)),
-         basis = map(basis, ~rbind(pattern = 1:ncol(.x), .x)),
-         coef_reordered = map(coef, ~match_patterns(coef_unnested = .x)),
-         basis_reordered = map(basis, ~as_tibble(.x)),
-         basis_reordered = map2(coef_reordered, basis_reordered, ~match_scores(patterns = .x, scores = .y)))
-```
-
-### Arrange Scores
-
-```{r, cache = TRUE}
-scores_ordered_cor <- scores_matched_cor %>% 
-  mutate(coef_reordered = map(coef_reordered, ~reorder_patterns(.x)),
-         basis_reordered = map(basis_reordered, ~reorder_scores(.x)))
+### Match & Arrange
+```{r, nmf8}
+nmf_scores_matched_cor <- nmf_out_cor %>% 
+    mutate(coef_reordered = map2(patterns, coef, function(x,y) match_patterns_corr(truth = x, loading = y)),
+         basis_reordered = map2(coef_reordered, basis, function(x,y) match_scores_nmf(patterns = x, scores = y)))
 ```
 
 ### Viz
 
 ```{r, cache = TRUE}
 nmf_coef_cor %>%  
-  filter(seed == 3) %>%
+  filter(seed == 1) %>%
   mutate(pattern = 1:4) %>% 
   select(seed, pattern, everything()) %>% 
   gather(key = Chemicals, value = coefs, -pattern, -seed) %>%
@@ -288,13 +254,13 @@ nmf_coef_cor %>%
         legend.position = "bottom",
         strip.background = element_blank())
 
-nmf_coef_cor %>%  
-  #select(seed, pattern, everything()) %>% 
-  mutate(pattern1 = ifelse(pcb146 > 0.02 & pcb118 > bpa, 1,
-                          ifelse(BDE17 > 0.02, 2,
-                                ifelse(MECPP > 0.02, 3,
-                                       ifelse(tcs > 0.02, 4, 5))))) %>%
-  gather(key = Chemicals, value = coefs, -pattern1, -seed) %>%
+nmf_scores_matched_cor %>%  
+  select(seed, coef_reordered) %>%
+  mutate(coef_reordered = map(coef_reordered, as.tibble)) %>% 
+  unnest(cols = coef_reordered) %>% 
+  group_by(seed) %>% 
+  mutate(pattern = 1:nrow(.)) %>% 
+  gather(key = Chemicals, value = coefs, -pattern, -seed) %>%
   mutate(Chemicals = fct_inorder(Chemicals)) %>% 
   mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
                                                      ifelse(str_detect(Chemicals, "^M"), "Phthalates",
@@ -302,7 +268,7 @@ nmf_coef_cor %>%
                                                                    "Phenols")))) %>% 
   ggplot(aes(x = Group, y = coefs)) + geom_jitter(aes(color = Group), alpha = 0.5, size = 0.1, height = 0) +
   geom_boxplot(aes(x = Group, color = Group), width = .45, outlier.shape = NA) +
-  facet_wrap(.~pattern1) + theme_bw() +
+  facet_wrap(.~pattern) + theme_bw() +
   theme(legend.position = "none",
         strip.background = element_blank())
 ```

@@ -84,7 +84,6 @@ ewa_dist_unnest <- ewa_dist %>%
   unnest(cols = c(ewa))
 ```
 
-
 ### Match & Arrange
 
 **Match loadings based on correlation with true patterns**
@@ -359,16 +358,6 @@ nmf_coef_dist <- nmf_out_dist %>% select(seed, coef) %>% unnest(cols = c(coef))
 ### Match & Arrange
 
 ```{r, nmf2}
-# match_patterns_nmf <- function (coef_unnested) {
-#   coef_reordered <- coef_unnested %>% 
-#     mutate(pattern1 = ifelse(pcb146 > 0.01 & pcb118 > bpa, 1,
-#                           ifelse(BDE17 > 0.02, 2,
-#                                 ifelse(MECPP > 0.02, 3,
-#                                        ifelse(tcs > 0.02, 4, 5))))) %>%
-#   select(pattern1, everything())
-#   coef_reordered
-# }
-
 match_scores_nmf <- function (patterns, scores) {
   N <- nrow(scores)
   for (j in 1:nrow(patterns)) {
