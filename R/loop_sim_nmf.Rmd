@@ -186,6 +186,41 @@ eh_dist_reorder %>%
         strip.background = element_blank())
 ```
 
+## Symmetric Distance
+
+```{r}
+### Symmetric Subspace Distance
+symm_subspace_dist <- function(U, V) {
+  
+  if (nrow(U) != nrow(V)) stop("Matrices must have same number of participants (rows).")
+  
+  qrU <- qr.Q(qr(U))
+  qrV <- qr.Q(qr(V))
+  
+  m <- ncol(U)
+  n <- ncol(V)
+  
+  dUV <- sqrt( max(m,n) - sum((t(qrU) %*% qrV)^2) )
+  
+  ratio <- dUV/sqrt( max(m,n))
+  
+  list(symm_subspace_dist = dUV, Similarity = ratio)
+
+  }
+```
+
+```{r}
+npb_scores_ordered_dist %>% 
+  mutate(number_patterns = map(eh_reordered, nrow),
+         symm_dist = map2(scores, ewa_reordered, function(x,z) symm_subspace_dist(x,z)[[1]]),
+         symm_ratio = map2(scores, ewa_reordered, function(x,z) symm_subspace_dist(x,z)[[2]]),) %>% 
+  select(seed, number_patterns, symm_dist, symm_ratio) %>% 
+  unnest(cols = c(number_patterns, symm_dist, symm_ratio)) %>% select(symm_ratio) %>%
+  ggplot(aes(x = symm_ratio)) + geom_histogram(bins = 100) +
+  theme_minimal() +
+  labs(y = "Count", x = "Symmetric Subspace Distance Ratio")
+```
+
 # 2. Correlated Scores
 
 ```{r, npb5}
@@ -290,6 +325,20 @@ eh_cor_unnest %>%
         strip.background = element_blank())
 ```
 
+## Symmetric Distance
+
+```{r}
+npb_scores_ordered_cor %>% 
+  mutate(number_patterns = map(eh_reordered, nrow),
+         symm_dist = map2(scores, ewa_reordered, function(x,z) symm_subspace_dist(x,z)[[1]]),
+         symm_ratio = map2(scores, ewa_reordered, function(x,z) symm_subspace_dist(x,z)[[2]]),) %>% 
+  select(seed, number_patterns, symm_dist, symm_ratio) %>% 
+  unnest(cols = c(number_patterns, symm_dist, symm_ratio)) %>% select(symm_ratio) %>%
+  ggplot(aes(x = symm_ratio)) + geom_histogram(bins = 100) +
+  theme_minimal() +
+  labs(y = "Count", x = "Symmetric Subspace Distance Ratio")
+```
+
 # 3. Overlapping Patterns
 
 ```{r, npb9}
@@ -383,6 +432,20 @@ eh_over_reorder %>%
   facet_wrap(.~pattern1) + theme_bw() +
   theme(legend.position = "none",
         strip.background = element_blank())
+```
+
+## Symmetric Distance
+
+```{r}
+npb_scores_ordered_over %>% 
+  mutate(number_patterns = map(eh_reordered, nrow),
+         symm_dist = map2(scores, ewa_reordered, function(x,z) symm_subspace_dist(x,z)[[1]]),
+         symm_ratio = map2(scores, ewa_reordered, function(x,z) symm_subspace_dist(x,z)[[2]]),) %>% 
+  select(seed, number_patterns, symm_dist, symm_ratio) %>% 
+  unnest(cols = c(number_patterns, symm_dist, symm_ratio)) %>% select(symm_ratio) %>%
+  ggplot(aes(x = symm_ratio)) + geom_histogram(bins = 100) +
+  theme_minimal() +
+  labs(y = "Count", x = "Symmetric Subspace Distance Ratio")
 ```
 
 # Summarize

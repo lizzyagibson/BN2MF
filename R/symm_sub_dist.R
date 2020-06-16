@@ -1,12 +1,10 @@
-install.packages("matlib")
+#library(pracma)
+#library(far)
+#library(matlib)
 
-library(pracma)
-library(far)
-library(matlib)
-
-U <- matrix(rnorm(1:50), ncol = 5)
-V <- matrix(rnorm(1:60), ncol = 6)
-S <- U + 0.1
+#U <- matrix(rnorm(1:50), ncol = 5)
+#V <- matrix(rnorm(1:60), ncol = 6)
+#S <- U + 0.1
 
 ## pracma
 # gramSchmidt(U, tol = .Machine$double.eps^0.5)
@@ -41,7 +39,6 @@ symm_subspace_dist <- function(U, V) {
   
   if (nrow(U) != nrow(V)) stop("Matrices must have same number of participants (rows).")
   
-
   qrU <- qr.Q(qr(U))
   qrV <- qr.Q(qr(V))
   
@@ -50,9 +47,7 @@ symm_subspace_dist <- function(U, V) {
   
   dUV <- sqrt( max(m,n) - sum((t(qrU) %*% qrV)^2) )
   
-  ratio <- if (dUV/sqrt( max(m,n)) <= 1/2) {
-    paste("dist/sqrt(max(m,n)) =", round(dUV/sqrt( max(m,n)),2), "<= 1/2, subspaces are similar")} else {
-      paste("dist/sqrt(max(m,n)) =", round(dUV/sqrt( max(m,n)),2), "> 1/2, subspaces are NOT similar")}
+  ratio <- dUV/sqrt( max(m,n))
   
   list(symm_subspace_dist = dUV, Similarity = ratio)
 
