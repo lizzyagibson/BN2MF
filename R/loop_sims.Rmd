@@ -143,6 +143,7 @@ ggplot(data = labelled, aes(x = Var1, y = Var2)) +
 ### Save
 
 ```{r}
+sim_dist <- sim_dist %>% rename(true_patterns = patterns, true_scores = scores) %>% select(-chem, -noise)
 #save(sim_dist, file = "./Sims/Iterate/sim_dist.RDA")
 ```
 
@@ -254,6 +255,7 @@ ggplot(data = labelled2, aes(x = Var1, y = Var2)) +
 ### Save
 
 ```{r}
+sim_cor  <- sim_cor %>% rename(true_patterns = patterns, true_scores = scores) %>% select(-chem, -noise)
 #save(sim_cor, file = "./Sims/Iterate/sim_cor.RDA")
 ```
 
@@ -321,7 +323,8 @@ ggplot(data = labelled3, aes(x = Var1, y = Var2)) +
 
 ### Save
 
-```{r}
+```{r} 
+sim_over <- sim_over %>% rename(true_patterns = patterns, true_scores = scores) %>% select(-chem, -noise)
 #save(sim_over, file = "./Sims/Iterate/sim_over.RDA")
 ```
 
