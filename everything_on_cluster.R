@@ -14,9 +14,9 @@ load(here::here("./R/Sims/Iterate/sim_dist.RDA"))
 load(here::here("./R/Sims/Iterate/sim_cor.RDA"))
 load(here::here("./R/Sims/Iterate/sim_over.RDA"))
 
-sim_dist <- sim_dist %>% rename(true_patterns = patterns, true_scores = scores) %>% select(-chem, -noise) %>% slice(1:2)
-sim_over <- sim_over %>% rename(true_patterns = patterns, true_scores = scores) %>% select(-chem, -noise) %>% slice(1:2)
-sim_cor  <- sim_cor %>% rename(true_patterns = patterns, true_scores = scores) %>% select(-chem, -noise) %>% slice(1:2)
+# sim_dist <- sim_dist %>% rename(true_patterns = patterns, true_scores = scores) %>% select(-chem, -noise) %>% slice(1:2)
+# sim_over <- sim_over %>% rename(true_patterns = patterns, true_scores = scores) %>% select(-chem, -noise) %>% slice(1:2)
+# sim_cor  <- sim_cor %>% rename(true_patterns = patterns, true_scores = scores) %>% select(-chem, -noise) %>% slice(1:2)
 
 # Run everything
 
@@ -464,7 +464,9 @@ out_cor <- out_cor %>%
          nmf_p_loading_sssimilarity = map(nmf_p_loading_ssd, function(x)
            x[[2]]))
 
-
+save(out_dist, file = paste0("out_", job_num, "_dist.RDA"))
+save(out_over, file = paste0("out_", job_num, "_over.RDA"))
+save(out_cor, file = paste0("out_", job_num, "_cor.RDA"))
 
 
 

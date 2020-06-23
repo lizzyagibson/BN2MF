@@ -52,7 +52,8 @@ patterns_dist_iter <- tibble(seed = 1:100) %>%
 
 ```{r, fig.height=5, fig.width=5}
 patterns_dist_iter[1,2][[1]][[1]] %>% as_tibble() %>% 
-  mutate(Pattern = 1:4) %>% select(Pattern, everything()) %>% 
+  mutate(Pattern = 1:4) %>% 
+  dplyr::select(Pattern, everything()) %>% 
   gather(key = Chemicals, value = Loadings, -Pattern) %>% 
   mutate(Chemicals = fct_inorder(Chemicals)) %>% 
     mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
@@ -143,8 +144,8 @@ ggplot(data = labelled, aes(x = Var1, y = Var2)) +
 ### Save
 
 ```{r}
-sim_dist <- sim_dist %>% rename(true_patterns = patterns, true_scores = scores) %>% select(-chem, -noise)
-#save(sim_dist, file = "./Sims/Iterate/sim_dist.RDA")
+sim_dist <- sim_dist %>% rename(true_patterns = patterns, true_scores = scores) %>% dplyr::select(-chem, -noise)
+#save(sim_dist, file = "./R/Sims/Iterate/sim_dist.RDA")
 ```
 
 ## 2: Correlated Patterns
@@ -170,7 +171,7 @@ patterns_cor_iter <- tibble(seed = 1:100) %>%
 
 ```{r, fig.width=5, fig.height=5}
 patterns_cor_iter[1,2][[1]][[1]] %>% as_tibble() %>% 
-  mutate(Pattern = 1:4) %>% select(Pattern, everything()) %>% 
+  mutate(Pattern = 1:4) %>% dplyr::select(Pattern, everything()) %>% 
   gather(key = Chemicals, value = Loadings, -Pattern) %>% 
   mutate(Chemicals = fct_inorder(Chemicals)) %>% 
     mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
@@ -255,8 +256,8 @@ ggplot(data = labelled2, aes(x = Var1, y = Var2)) +
 ### Save
 
 ```{r}
-sim_cor  <- sim_cor %>% rename(true_patterns = patterns, true_scores = scores) %>% select(-chem, -noise)
-#save(sim_cor, file = "./Sims/Iterate/sim_cor.RDA")
+sim_cor  <- sim_cor %>% rename(true_patterns = patterns, true_scores = scores) %>% dplyr::select(-chem, -noise)
+#save(sim_cor, file = "./R/Sims/Iterate/sim_cor.RDA")
 ```
 
 ## 3: Overlapping Patterns
@@ -324,8 +325,8 @@ ggplot(data = labelled3, aes(x = Var1, y = Var2)) +
 ### Save
 
 ```{r} 
-sim_over <- sim_over %>% rename(true_patterns = patterns, true_scores = scores) %>% select(-chem, -noise)
-#save(sim_over, file = "./Sims/Iterate/sim_over.RDA")
+sim_over <- sim_over %>% rename(true_patterns = patterns, true_scores = scores) %>% dplyr::select(-chem, -noise)
+#save(sim_over, file = "./R/Sims/Iterate/sim_over.RDA")
 ```
 
 ## Test Set
@@ -366,7 +367,7 @@ sim_dist_test <- sim_dist0_test %>%
 ### Save
 
 ```{r}
-sim_dist_test <- sim_dist_test %>% select(-noise, -chem)
+sim_dist_test <- sim_dist_test %>% dplyr::select(-noise, -chem)
 #save(sim_dist_test, file = "./Sims/Iterate/sim_dist_test.RDA")
 ```
 
@@ -402,10 +403,11 @@ sim_cor_test <- sim_cor0_test %>%
  mutate(sim = map2(seed, chem, ~add_noise(seed = .x, chem = .y)[[1]]),
         noise = map2(seed, chem, function(x, y) {add_noise(x, y)[[2]]})) 
 ```  
+
 #### Save
 
 ```{r}
-sim_cor_test <- sim_cor_test %>% select(-noise, -chem)
+sim_cor_test <- sim_cor_test %>% dplyr::select(-noise, -chem)
 #save(sim_cor_test, file = "./Sims/Iterate/sim_cor_test.RDA")
 ```
 
@@ -439,6 +441,6 @@ sim_over_test <- sim_over0_test %>%
 ### Save
 
 ```{r}
-sim_over_test <- sim_over_test %>% select(-noise, -chem)
+sim_over_test <- sim_over_test %>% dplyr::select(-noise, -chem)
 #save(sim_over_test, file = "./Sims/Iterate/sim_over_test.RDA")
 ```
