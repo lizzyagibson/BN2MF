@@ -107,7 +107,8 @@ add_noise <- function (seed, chem) {
 
 sim_dist <- sim_dist0 %>% 
  mutate(sim = map2(seed, chem, ~add_noise(seed = .x, chem = .y)[[1]]),
-        noise = map2(seed, chem, function(x, y) {add_noise(x, y)[[2]]}))
+        noise = map2(seed, chem, function(x, y) {add_noise(x, y)[[2]]}),
+        sim = map(sim, function(x) scale(x, center = FALSE, scale = apply(x, 2, sd))))
 ```  
 
 ```{r}
@@ -145,6 +146,7 @@ ggplot(data = labelled, aes(x = Var1, y = Var2)) +
 
 ```{r}
 sim_dist <- sim_dist %>% rename(true_patterns = patterns, true_scores = scores) %>% dplyr::select(-chem, -noise)
+         
 #save(sim_dist, file = "./R/Sims/Iterate/sim_dist.RDA")
 ```
 
@@ -220,7 +222,8 @@ sim_cor0 <- sim_cor0 %>%
 ```{r}
 sim_cor <- sim_cor0 %>% 
  mutate(sim = map2(seed, chem, ~add_noise(seed = .x, chem = .y)[[1]]),
-        noise = map2(seed, chem, function(x, y) {add_noise(x, y)[[2]]})) 
+        noise = map2(seed, chem, function(x, y) {add_noise(x, y)[[2]]}),
+        sim = map(sim, function(x) scale(x, center = FALSE, scale = apply(x, 2, sd))))
 ```  
 
 ```{r}
@@ -286,7 +289,8 @@ sim_over0 <- sim_over0 %>%
 ```{r}
 sim_over <- sim_over0 %>% 
  mutate(sim = map2(seed, chem, ~add_noise(seed = .x, chem = .y)[[1]]),
-        noise = map2(seed, chem, function(x, y) {add_noise(x, y)[[2]]}))
+        noise = map2(seed, chem, function(x, y) {add_noise(x, y)[[2]]}),
+        sim = map(sim, function(x) scale(x, center = FALSE, scale = apply(x, 2, sd))))
 ```  
 
 ```{r}
