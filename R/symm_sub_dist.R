@@ -6,16 +6,6 @@
 #V <- matrix(rnorm(1:60), ncol = 6)
 #S <- U + 0.1
 
-## pracma
-# gramSchmidt(U, tol = .Machine$double.eps^0.5)
-
-## far
-# orthonormalization(U, basis=TRUE, norm=TRUE)
-
-## matlib
-# GramSchmidt(U, normalize = TRUE, verbose = FALSE,
-#            tol = sqrt(.Machine$double.eps))
-
 ## base
 qr(U) # upper triangle is R, lower triangle is info on Q...
 ## qy.qr(): return the results of the matrix multiplications: Q %*% y, 
@@ -37,7 +27,8 @@ t(svd(U)$u) %*% (svd(U)$u)
 ### Symmetric Subspace Distance
 symm_subspace_dist <- function(U, V) {
   
-  if (nrow(U) != nrow(V)) stop("Matrices must have same number of participants (rows).")
+  if (nrow(U) != max(nrow(U), ncol(U))) {U <- t(U)}
+  if (nrow(V) != max(nrow(V), ncol(V))) {V <- t(V)}
   
   qrU <- qr.Q(qr(U))
   qrV <- qr.Q(qr(V))
@@ -49,9 +40,9 @@ symm_subspace_dist <- function(U, V) {
   
   ratio <- dUV/sqrt( max(m,n))
   
-  list(symm_subspace_dist = dUV, Similarity = ratio)
-
-  }
+  ratio
+  
+}
 
 symm_subspace_dist(U,V)
 symm_subspace_dist(V,U)
