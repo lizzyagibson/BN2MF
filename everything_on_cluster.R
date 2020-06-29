@@ -482,11 +482,11 @@ out_cor <- out_cor %>%
          nmf_p_loading_ssdist  = map2(true_patterns, pca_rotations, symm_subspace_dist),
          nmf_p_scores_ssdist   = map2(true_scores, pca_scores, symm_subspace_dist))
 
-##
-
-out_dist <- out_dist %>% dplyr::select(-grep("_un", colnames(.)), -grep("_out", colnames(.)))
-out_over <- out_over %>% dplyr::select(-grep("_un", colnames(.)), -grep("_out", colnames(.)))
-out_cor <- out_cor %>% dplyr::select(-grep("_un", colnames(.)), -grep("_out", colnames(.)))
+###
+                           
+out_dist <- out_dist %>% dplyr::select(-grep("_un|_out", colnames(.)))
+out_over <- out_over %>% dplyr::select(-grep("_un|_out", colnames(.)))
+out_cor <- out_cor %>% dplyr::select(-grep("_un|_out", colnames(.)))
 
 save(out_dist, file = paste0("out_", job_num, "_dist.RDA"))
 save(out_over, file = paste0("out_", job_num, "_over.RDA"))
