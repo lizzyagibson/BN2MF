@@ -28,11 +28,11 @@ knitr::opts_chunk$set(cache = TRUE)
 # Load Sims
 
 ```{r, load}
-load(here::here("./Sims/Iterate/sim_dist.RDA"))
+load(here::here("./R/Sims/Iterate/sim_dist.RDA"))
 
-load(here::here("./Sims/Iterate/sim_cor.RDA"))
+load(here::here("./R/Sims/Iterate/sim_cor.RDA"))
 
-load(here::here("./Sims/Iterate/sim_over.RDA"))
+load(here::here("./R/Sims/Iterate/sim_over.RDA"))
 
 labels <-  c("pcb28", "pcb66", "pcb74", "pcb99", "pcb105", "pcb118", "pcb138_158", "pcb146", "pcb153", "pcb156", "pcb167",
           "pcb170", "pcb178", "pcb183", "pcb187", "pcb180", "pcb189", "pcb194", "pcb196_203", "pcb199", "pcb206", "pcb209",
@@ -230,23 +230,6 @@ pca_rotations_dist <- pca_out_dist %>% select(seed, rotations) %>% unnest(cols =
 
 ### Match Scores
 ```{r, pca2}
-# match_eigenvectors <- function (eh_unnested) {
-#     pca_reorder <- eh_unnested %>% 
-#       mutate(Chemicals = labels,
-#              Chemicals = fct_inorder(Chemicals)) %>% 
-#       gather(key = PC, value = Loadings, -Chemicals) %>%
-#       group_by(PC) %>%
-#       mutate(Loadings = case_when(
-#         any(PC == "PC1" & Chemicals == "pcb28" & Loadings < 0) ~ -Loadings,
-#         any(PC == "PC2" & Chemicals == "BDE99" & Loadings < 0) ~ -Loadings,
-#         any(PC == "PC3" & Chemicals == "bpa" & Loadings < 0) ~ -Loadings,
-#         any(PC == "PC4" & Chemicals == "BDE99" & Loadings < 0) ~ -Loadings,
-#         TRUE ~ Loadings
-#       )) %>%
-#       spread(PC, Loadings) %>% select(-Chemicals)
-#     pca_reorder
-# }
-
 #matche the loading directions to the first solution
 #loading <- pca_out_dist$rotations[10][[1]]
 
