@@ -45,7 +45,7 @@ get_pca <- function (sim) {
     }}
   
   # Cut scores and patterns to rank
-  rotations <- rot[, 1:rank]
+  rotations <- as_tibble(rot[, 1:rank])
   scores <- ex[, 1:rank]
   
   # Predicted values
@@ -91,40 +91,8 @@ out_cor <- sim_cor[job_num,] %>%
 
 ## Match Functions
 
-match_eigen_dist <- function (loading) {
-  truth <- as.matrix(out_dist$pca_rotations_un[1][[1]])
-  loading <- as.matrix(loading)
-  corr <- diag(cor(truth, loading))
-  
-  reordered <- matrix(nrow = nrow(loading), ncol = ncol(loading))
-  
-  for (i in 1:nrow(loading)) {  
-    reordered[i,1] <- ifelse(corr[1] < 0, -loading[i,1], loading[i,1])
-    reordered[i,2] <- ifelse(corr[2] < 0, -loading[i,2], loading[i,2])
-    
-    if (ncol(loading) == 3) {reordered[i,3] <- ifelse(corr[3] < 0, -loading[i,3], loading[i,3])}
-  }
-  reordered
-}
-
-match_eigen_over <- function (loading) {
-  truth <- as.matrix(out_over$pca_rotations_un[1][[1]])
-  loading <- as.matrix(loading)
-  corr <- diag(cor(truth, loading))
-  
-  reordered <- matrix(nrow = nrow(loading), ncol = ncol(loading))
-  
-  for (i in 1:nrow(loading)) {  
-    reordered[i,1] <- ifelse(corr[1] < 0, -loading[i,1], loading[i,1])
-    reordered[i,2] <- ifelse(corr[2] < 0, -loading[i,2], loading[i,2])
-    
-    if (ncol(loading) == 3) {reordered[i,3] <- ifelse(corr[3] < 0, -loading[i,3], loading[i,3])}
-  }
-  reordered
-}
-
-match_eigen_cor <- function (loading) {
-  truth <- as.matrix(out_cor$pca_rotations_un[2][[1]]) # second one bc it is 3 components
+match_eigen <- function (truth, loading) {
+  truth <- t(truth)
   loading <- as.matrix(loading)
   corr <- diag(cor(truth, loading))
   
@@ -140,35 +108,28 @@ match_eigen_cor <- function (loading) {
 }
 
 match_pca_scores <- function (rotations_un, rotations, scores_un) {
-  
   scores <- as_tibble(matrix(nrow = nrow(scores_un), ncol = ncol(scores_un)))
-  
-  for (k in 1:ncol(rotations_un)) {
-    for (chem in 1:nrow(rotations_un)) {
-      for (i in 1:nrow(scores_un)) {
-        if (rotations_un[chem, k] == rotations[chem, k]) {
-          scores[i, k] = scores_un[i, k]
-        } else {scores[i, k] = -(scores_un[i, k])}
-      }}}
+      for (k in 1:ncol(rotations_un)) {
+            if (all(rotations_un[, k] == rotations[, k])) {
+              scores[, k] = scores_un[, k]
+            } else {scores[, k] = -(scores_un[, k])}
+          }
   scores
 }
 
 ## Run
 
 out_dist <- out_dist %>% 
-  mutate(pca_rotations = map(pca_rotations_un, match_eigen_dist),
-         pca_scores = pmap(list(pca_rotations_un, pca_rotations, pca_scores_un), match_pca_scores)) %>% 
-  dplyr::select(-pca_rotations_un, -pca_scores_un)
+  mutate(pca_rotations = map2(true_patterns, pca_rotations_un, match_eigen),
+         pca_scores = pmap(list(pca_rotations_un, pca_rotations, pca_scores_un), match_pca_scores))
   
 out_over <- out_over %>% 
-  mutate(pca_rotations = map(pca_rotations_un, match_eigen_over),
-         pca_scores = pmap(list(pca_rotations_un, pca_rotations, pca_scores_un), match_pca_scores)) %>% 
-  dplyr::select(-pca_rotations_un, -pca_scores_un)
+  mutate(pca_rotations = map2(true_patterns, pca_rotations_un, match_eigen),
+         pca_scores = pmap(list(pca_rotations_un, pca_rotations, pca_scores_un), match_pca_scores))
 
 out_cor <- out_cor %>% 
-  mutate(pca_rotations = map(pca_rotations_un, match_eigen_cor),
-         pca_scores = pmap(list(pca_rotations_un, pca_rotations, pca_scores_un), match_pca_scores)) %>% 
-  dplyr::select(-pca_rotations_un, -pca_scores_un)
+  mutate(pca_rotations = map2(true_patterns, pca_rotations_un, match_eigen),
+         pca_scores = pmap(list(pca_rotations_un, pca_rotations, pca_scores_un), match_pca_scores))
 
 # Factor Analysis
 
@@ -305,9 +266,6 @@ out_cor <- out_cor %>%
            x[[4]]))
 
 ## Match Functions
-
-# truth <- out_dist[1, 3][[1]][[1]]
-# loading <- out_dist[1,11][[1]][[1]]
 
 match_nmf_patterns <- function (truth, loading) {
   truth <- t(truth)
@@ -456,9 +414,79 @@ out_cor <- out_cor %>%
 # Code for Matching #
 #####################
 
-out_dist <- out_dist %>% dplyr::select(-pca_out, -fa_out, -nmf_l2_out, -nmf_p_out)
-out_over <- out_over %>% dplyr::select(-pca_out, -fa_out, -nmf_l2_out, -nmf_p_out)
-out_cor <- out_cor %>% dplyr::select(-pca_out, -fa_out, -nmf_l2_out, -nmf_p_out)
+###############################
+# Symmetric Subspace Distance #
+###############################
+
+# U = matrix(rnorm(15), nrow = 5)
+# V = t(matrix(rnorm(15), nrow = 5))
+
+symm_subspace_dist <- function(U, V) {
+  
+  if (nrow(U) != max(nrow(U), ncol(U))) {U <- t(U)}
+  if (nrow(V) != max(nrow(V), ncol(V))) {V <- t(V)}
+  
+  qrU <- qr.Q(qr(U))
+  qrV <- qr.Q(qr(V))
+  
+  m <- ncol(U)
+  n <- ncol(V)
+  
+  dUV <- sqrt( max(m,n) - sum((t(qrU) %*% qrV)^2) )
+  
+  ratio <- dUV/sqrt( max(m,n))
+  
+  ratio
+  
+}
+
+out_dist <- out_dist %>% 
+  mutate(pca_norm = map2(sim, pca_pred, function(x,y) norm(x-y, "F")/norm(x, "F")),
+         fa_norm = map2(sim, fa_pred, function(x,y) norm(x-y, "F")/norm(x, "F")),
+         nmf_l2_norm = map2(sim, nmf_l2_pred, function(x,y) norm(x-y, "F")/norm(x, "F")),
+         nmf_P_norm = map2(sim, nmf_p_pred, function(x,y) norm(x-y, "F")/norm(x, "F"))) %>% 
+  mutate(pca_rotation_ssdist   = map2(true_patterns, pca_rotations, symm_subspace_dist),
+         pca_scores_ssdist     = map2(true_scores, pca_scores, symm_subspace_dist),
+         fa_rotations_ssdist   = map2(true_patterns, fa_rotations, symm_subspace_dist),
+         fa_scores_ssdist      = map2(true_scores, fa_scores, symm_subspace_dist),
+         nmf_l2_loading_ssdist = map2(true_patterns, nmf_l2_loadings, symm_subspace_dist),
+         nmf_l2_scores_ssdist  = map2(true_scores, nmf_l2_scores, symm_subspace_dist),
+         nmf_p_loading_ssdist  = map2(true_patterns, pca_rotations, symm_subspace_dist),
+         nmf_p_scores_ssdist   = map2(true_scores, pca_scores, symm_subspace_dist))
+
+out_over <- out_over %>% 
+  mutate(pca_norm = map2(sim, pca_pred, function(x,y) norm(x-y, "F")/norm(x, "F")),
+         fa_norm = map2(sim, fa_pred, function(x,y) norm(x-y, "F")/norm(x, "F")),
+         nmf_l2_norm = map2(sim, nmf_l2_pred, function(x,y) norm(x-y, "F")/norm(x, "F")),
+         nmf_P_norm = map2(sim, nmf_p_pred, function(x,y) norm(x-y, "F")/norm(x, "F"))) %>% 
+  mutate(pca_rotation_ssdist   = map2(true_patterns, pca_rotations, symm_subspace_dist),
+         pca_scores_ssdist     = map2(true_scores, pca_scores, symm_subspace_dist),
+         fa_rotations_ssdist   = map2(true_patterns, fa_rotations, symm_subspace_dist),
+         fa_scores_ssdist      = map2(true_scores, fa_scores, symm_subspace_dist),
+         nmf_l2_loading_ssdist = map2(true_patterns, nmf_l2_loadings, symm_subspace_dist),
+         nmf_l2_scores_ssdist  = map2(true_scores, nmf_l2_scores, symm_subspace_dist),
+         nmf_p_loading_ssdist  = map2(true_patterns, pca_rotations, symm_subspace_dist),
+         nmf_p_scores_ssdist   = map2(true_scores, pca_scores, symm_subspace_dist))
+
+out_cor <- out_cor %>% 
+  mutate(pca_norm = map2(sim, pca_pred, function(x,y) norm(x-y, "F")/norm(x, "F")),
+         fa_norm = map2(sim, fa_pred, function(x,y) norm(x-y, "F")/norm(x, "F")),
+         nmf_l2_norm = map2(sim, nmf_l2_pred, function(x,y) norm(x-y, "F")/norm(x, "F")),
+         nmf_P_norm = map2(sim, nmf_p_pred, function(x,y) norm(x-y, "F")/norm(x, "F"))) %>% 
+  mutate(pca_rotation_ssdist   = map2(true_patterns, pca_rotations, symm_subspace_dist),
+         pca_scores_ssdist     = map2(true_scores, pca_scores, symm_subspace_dist),
+         fa_rotations_ssdist   = map2(true_patterns, fa_rotations, symm_subspace_dist),
+         fa_scores_ssdist      = map2(true_scores, fa_scores, symm_subspace_dist),
+         nmf_l2_loading_ssdist = map2(true_patterns, nmf_l2_loadings, symm_subspace_dist),
+         nmf_l2_scores_ssdist  = map2(true_scores, nmf_l2_scores, symm_subspace_dist),
+         nmf_p_loading_ssdist  = map2(true_patterns, pca_rotations, symm_subspace_dist),
+         nmf_p_scores_ssdist   = map2(true_scores, pca_scores, symm_subspace_dist))
+
+##
+
+out_dist <- out_dist %>% dplyr::select(-grep("_un", colnames(.)), -grep("_out", colnames(.)))
+out_over <- out_over %>% dplyr::select(-grep("_un", colnames(.)), -grep("_out", colnames(.)))
+out_cor <- out_cor %>% dplyr::select(-grep("_un", colnames(.)), -grep("_out", colnames(.)))
 
 save(out_dist, file = paste0("out_", job_num, "_dist.RDA"))
 save(out_over, file = paste0("out_", job_num, "_over.RDA"))
