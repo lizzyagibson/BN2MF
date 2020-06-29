@@ -16,13 +16,10 @@ for (i in 1:ncol(A)) {
 }
 
 Bl2 <- matrix(NA, nrow = nrow(A), ncol = ncol(A))
-Bl2[,1] <- Al2[,2]
-Bl2[,2] <- Al2[,3]
-Bl2[,3] <- Al2[,4]
-Bl2[,4] <- Al2[,5]
-Bl2[,5] <- Al2[,1]
+Bl2[,1:5] <- Al2[,sample(1:5)]
 
 ###
+
 factor_correspondence <- function (A,B,nn = TRUE) {
 
     G <- t(B) %*% A
