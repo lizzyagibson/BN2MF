@@ -10,6 +10,7 @@ library(registry, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
 library(pkgmaker, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
 library(rngtools, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
 library(NMF, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
+library(GPArotation, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
 library(psych, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
 
 # Read in Sims
@@ -20,7 +21,7 @@ load("Data/sim_over.RDA")
 ## read job number from system environment
 ## This only works if run on cluster!!
 job_num = as.integer(Sys.getenv("SGE_TASK_ID"))
-job_num 
+job_num
 
 # Run everything
 
@@ -57,9 +58,9 @@ get_pca <- function (sim) {
 
 out_dist <- sim_dist[job_num,] %>% 
   mutate(pca_out = map(sim, get_pca),
-         pca_rotations = map(pca_out, function(x)
+         pca_rotations_un = map(pca_out, function(x)
                           x[[1]]),
-         pca_scores    = map(pca_out, function(x)
+         pca_scores_un    = map(pca_out, function(x)
                           x[[2]]),
          pca_pred      = map (pca_out, function(x)
                           x[[3]]),
@@ -68,9 +69,9 @@ out_dist <- sim_dist[job_num,] %>%
 
 out_over <- sim_over[job_num,] %>% 
   mutate(pca_out = map(sim, get_pca),
-         pca_rotations = map(pca_out, function(x)
+         pca_rotations_un = map(pca_out, function(x)
            x[[1]]),
-         pca_scores    = map(pca_out, function(x)
+         pca_scores_un    = map(pca_out, function(x)
            x[[2]]),
          pca_pred      = map (pca_out, function(x)
            x[[3]]),
@@ -79,23 +80,100 @@ out_over <- sim_over[job_num,] %>%
 
 out_cor <- sim_cor[job_num,] %>% 
   mutate(pca_out = map(sim, get_pca),
-         pca_rotations = map(pca_out, function(x)
+         pca_rotations_un = map(pca_out, function(x)
            x[[1]]),
-         pca_scores    = map(pca_out, function(x)
+         pca_scores_un    = map(pca_out, function(x)
            x[[2]]),
          pca_pred      = map (pca_out, function(x)
            x[[3]]),
          pca_rank      = map(pca_out, function(x)
            x[[4]]))
 
+## Match Functions
+
+match_eigen_dist <- function (loading) {
+  truth <- as.matrix(out_dist$pca_rotations_un[1][[1]])
+  loading <- as.matrix(loading)
+  corr <- diag(cor(truth, loading))
+  
+  reordered <- matrix(nrow = nrow(loading), ncol = ncol(loading))
+  
+  for (i in 1:nrow(loading)) {  
+    reordered[i,1] <- ifelse(corr[1] < 0, -loading[i,1], loading[i,1])
+    reordered[i,2] <- ifelse(corr[2] < 0, -loading[i,2], loading[i,2])
+    
+    if (ncol(loading) == 3) {reordered[i,3] <- ifelse(corr[3] < 0, -loading[i,3], loading[i,3])}
+  }
+  reordered
+}
+
+match_eigen_over <- function (loading) {
+  truth <- as.matrix(out_over$pca_rotations_un[1][[1]])
+  loading <- as.matrix(loading)
+  corr <- diag(cor(truth, loading))
+  
+  reordered <- matrix(nrow = nrow(loading), ncol = ncol(loading))
+  
+  for (i in 1:nrow(loading)) {  
+    reordered[i,1] <- ifelse(corr[1] < 0, -loading[i,1], loading[i,1])
+    reordered[i,2] <- ifelse(corr[2] < 0, -loading[i,2], loading[i,2])
+    
+    if (ncol(loading) == 3) {reordered[i,3] <- ifelse(corr[3] < 0, -loading[i,3], loading[i,3])}
+  }
+  reordered
+}
+
+match_eigen_cor <- function (loading) {
+  truth <- as.matrix(out_cor$pca_rotations_un[2][[1]]) # second one bc it is 3 components
+  loading <- as.matrix(loading)
+  corr <- diag(cor(truth, loading))
+  
+  reordered <- matrix(nrow = nrow(loading), ncol = ncol(loading))
+  
+  for (i in 1:nrow(loading)) {  
+    reordered[i,1] <- ifelse(corr[1] < 0, -loading[i,1], loading[i,1])
+    reordered[i,2] <- ifelse(corr[2] < 0, -loading[i,2], loading[i,2])
+    
+    if (ncol(loading) == 3) {reordered[i,3] <- ifelse(corr[3] < 0, -loading[i,3], loading[i,3])}
+  }
+  reordered
+}
+
+match_pca_scores <- function (rotations_un, rotations, scores_un) {
+  
+  scores <- as_tibble(matrix(nrow = nrow(scores_un), ncol = ncol(scores_un)))
+  
+  for (k in 1:ncol(rotations_un)) {
+    for (chem in 1:nrow(rotations_un)) {
+      for (i in 1:nrow(scores_un)) {
+        if (rotations_un[chem, k] == rotations[chem, k]) {
+          scores[i, k] = scores_un[i, k]
+        } else {scores[i, k] = -(scores_un[i, k])}
+      }}}
+  scores
+}
+
+## Run
+
+out_dist <- out_dist %>% 
+  mutate(pca_rotations = map(pca_rotations_un, match_eigen_dist),
+         pca_scores = pmap(list(pca_rotations_un, pca_rotations, pca_scores_un), match_pca_scores)) %>% 
+  dplyr::select(-pca_rotations_un, -pca_scores_un)
+  
+out_over <- out_over %>% 
+  mutate(pca_rotations = map(pca_rotations_un, match_eigen_over),
+         pca_scores = pmap(list(pca_rotations_un, pca_rotations, pca_scores_un), match_pca_scores)) %>% 
+  dplyr::select(-pca_rotations_un, -pca_scores_un)
+
+out_cor <- out_cor %>% 
+  mutate(pca_rotations = map(pca_rotations_un, match_eigen_cor),
+         pca_scores = pmap(list(pca_rotations_un, pca_rotations, pca_scores_un), match_pca_scores)) %>% 
+  dplyr::select(-pca_rotations_un, -pca_scores_un)
+
 # Factor Analysis
 
 ## Function
-
-# Factor Analysis
-
-## Function
-
+  
 get_fa <- function (sim) {
   set.seed(1988)
   fa_3 <- fa(sim, 3, scores = "regression", rotate = "promax")
@@ -158,12 +236,14 @@ out_cor <- out_cor %>%
 
 # L2 NMF
 
+## Function
+
 get_nmf_l2 <- function (sim) {
   set.seed(1988)
   nmf_3 <- nmf(sim, 3, nrun = 100, method = "lee")
-  set.seed(1988)
+#  set.seed(1988)
   nmf_4 <- nmf(sim, 4, nrun = 100, method = "lee")
-  set.seed(1988)
+#  set.seed(1988)
   nmf_5 <- nmf(sim, 5, nrun = 100, method = "lee")
   
   bic_3 <- -log(residuals(nmf_3)) + (1/2)*(nrow(sim) + ncol(sim)) * 3 * log(nrow(sim) * ncol(sim))
@@ -189,11 +269,13 @@ get_nmf_l2 <- function (sim) {
   list(coef = coef, basis = basis, pred = pred, rank = rank)
 }
 
+## Run
+
 out_dist <- out_dist %>%
   mutate(nmf_l2_out = map(sim, get_nmf_l2),
-         nmf_l2_loadings = map(nmf_l2_out, function(x) 
+         nmf_l2_loadings_un = map(nmf_l2_out, function(x) 
            x[[1]]),
-         nmf_l2_scores = map(nmf_l2_out, function(x) 
+         nmf_l2_scores_un = map(nmf_l2_out, function(x) 
            x[[2]]),
          nmf_l2_pred = map(nmf_l2_out, function(x) 
            x[[3]]),
@@ -202,9 +284,9 @@ out_dist <- out_dist %>%
 
 out_over <- out_over %>%
   mutate(nmf_l2_out = map(sim, get_nmf_l2),
-         nmf_l2_loadings = map(nmf_l2_out, function(x) 
+         nmf_l2_loadings_un = map(nmf_l2_out, function(x) 
            x[[1]]),
-         nmf_l2_scores = map(nmf_l2_out, function(x) 
+         nmf_l2_scores_un = map(nmf_l2_out, function(x) 
            x[[2]]),
          nmf_l2_pred = map(nmf_l2_out, function(x) 
            x[[3]]),
@@ -213,15 +295,82 @@ out_over <- out_over %>%
 
 out_cor <- out_cor %>%
   mutate(nmf_l2_out = map(sim, get_nmf_l2),
-         nmf_l2_loadings = map(nmf_l2_out, function(x) 
+         nmf_l2_loadings_un = map(nmf_l2_out, function(x) 
            x[[1]]),
-         nmf_l2_scores = map(nmf_l2_out, function(x) 
+         nmf_l2_scores_un = map(nmf_l2_out, function(x) 
            x[[2]]),
          nmf_l2_pred = map(nmf_l2_out, function(x) 
            x[[3]]),
          nmf_l2_rank = map(nmf_l2_out, function(x) 
            x[[4]]))
 
+## Match Functions
+
+# truth <- out_dist[1, 3][[1]][[1]]
+# loading <- out_dist[1,11][[1]][[1]]
+
+match_nmf_patterns <- function (truth, loading) {
+  truth <- t(truth)
+  
+  if (nrow(truth) != nrow(loading)) {loading <- t(as.matrix(loading))} else {loading <- as.matrix(loading)}
+  
+  corr <- cor(truth, loading)
+  
+  reordered <- matrix(nrow = ncol(loading), ncol = nrow(loading))
+  
+  reordered[1,] <- loading[,which(corr==max(corr[1,]), arr.ind = TRUE)[2]]
+  reordered[2,] <- loading[,which(corr==max(corr[2,]), arr.ind = TRUE)[2]]
+  reordered[3,] <- loading[,which(corr==max(corr[3,]), arr.ind = TRUE)[2]]
+  
+  if (ncol(loading) >= 4) {reordered <- rbind(reordered, loading[,which(corr==max(corr[4,]), arr.ind = TRUE)[2]])}
+  
+  if (ncol(loading) == 5) {
+    
+    no <- c(which(corr==max(corr[1,]), arr.ind = TRUE)[2],
+            which(corr==max(corr[2,]), arr.ind = TRUE)[2],
+            which(corr==max(corr[3,]), arr.ind = TRUE)[2],
+            which(corr==max(corr[4,]), arr.ind = TRUE)[2])
+    
+    reordered <- rbind(reordered, loading[,-no])
+  }
+  reordered
+}
+
+# rotations <- match_nmf_patterns(truth, loading)
+# rotations_un <- loading
+
+match_nmf_scores <- function (rotations_un, rotations, scores_un) {
+  
+  scores <- as_tibble(matrix(nrow = nrow(scores_un), ncol = ncol(scores_un)))
+  
+  for (k in 1:nrow(rotations_un)) {
+    for (j in 1:nrow(rotations)) {
+        if (all(rotations_un[k, ] == rotations[j, ])) {
+          scores[, j] = scores_un[, k]
+        }}
+      }
+  scores
+}
+
+# scores_un <- out_dist[1,12][[1]][[1]]
+# match_nmf_scores(rotations_un, rotations, scores_un)
+
+## Run
+
+out_dist <- out_dist %>%
+  mutate(nmf_l2_loadings = map2(true_patterns, nmf_l2_loadings_un, match_nmf_patterns),
+         nmf_l2_scores = pmap(list(nmf_l2_loadings_un, nmf_l2_loadings, nmf_l2_scores_un), 
+                              match_nmf_scores))
+
+out_over <- out_over %>%
+  mutate(nmf_l2_loadings = map2(true_patterns, nmf_l2_loadings_un, match_nmf_patterns),
+         nmf_l2_scores = pmap(list(nmf_l2_loadings_un, nmf_l2_loadings, nmf_l2_scores_un), 
+                              match_nmf_scores))
+
+out_cor <- out_cor %>%
+  mutate(nmf_l2_loadings = map2(true_patterns, nmf_l2_loadings_un, match_nmf_patterns),
+         nmf_l2_scores = pmap(list(nmf_l2_loadings_un, nmf_l2_loadings, nmf_l2_scores_un), 
+                              match_nmf_scores))
 # Poisson NMF
 
 get_nmf_p <- function (sim) {
@@ -257,9 +406,9 @@ get_nmf_p <- function (sim) {
 
 out_dist <- out_dist %>%
   mutate(nmf_p_out = map(sim, get_nmf_p),
-         nmf_p_loadings = map(nmf_p_out, function(x) 
+         nmf_p_loadings_un = map(nmf_p_out, function(x) 
            x[[1]]),
-         nmf_p_scores = map(nmf_p_out, function(x) 
+         nmf_p_scores_un = map(nmf_p_out, function(x) 
            x[[2]]),
          nmf_p_pred = map(nmf_p_out, function(x) 
            x[[3]]),
@@ -268,9 +417,9 @@ out_dist <- out_dist %>%
 
 out_over <- out_over %>%
   mutate(nmf_p_out = map(sim, get_nmf_p),
-         nmf_p_loadings = map(nmf_p_out, function(x) 
+         nmf_p_loadings_un = map(nmf_p_out, function(x) 
            x[[1]]),
-         nmf_p_scores = map(nmf_p_out, function(x) 
+         nmf_p_scores_un = map(nmf_p_out, function(x) 
            x[[2]]),
          nmf_p_pred = map(nmf_p_out, function(x) 
            x[[3]]),
@@ -279,14 +428,29 @@ out_over <- out_over %>%
 
 out_cor <- out_cor %>%
   mutate(nmf_p_out = map(sim, get_nmf_p),
-         nmf_p_loadings = map(nmf_p_out, function(x) 
+         nmf_p_loadings_un = map(nmf_p_out, function(x) 
            x[[1]]),
-         nmf_p_scores = map(nmf_p_out, function(x) 
+         nmf_p_scores_un = map(nmf_p_out, function(x) 
            x[[2]]),
          nmf_p_pred = map(nmf_p_out, function(x) 
            x[[3]]),
          nmf_p_rank = map(nmf_p_out, function(x) 
            x[[4]]))
+
+out_dist <- out_dist %>%
+  mutate(nmf_p_loadings = map2(true_patterns, nmf_p_loadings_un, match_nmf_patterns),
+         nmf_p_scores = pmap(list(nmf_p_loadings_un, nmf_p_loadings, nmf_p_scores_un), 
+                              match_nmf_scores))
+
+out_over <- out_over %>%
+  mutate(nmf_p_loadings = map2(true_patterns, nmf_p_loadings_un, match_nmf_patterns),
+         nmf_p_scores = pmap(list(nmf_p_loadings_un, nmf_p_loadings, nmf_p_scores_un), 
+                              match_nmf_scores))
+
+out_cor <- out_cor %>%
+  mutate(nmf_p_loadings = map2(true_patterns, nmf_p_loadings_un, match_nmf_patterns),
+         nmf_p_scores = pmap(list(nmf_p_loadings_un, nmf_p_loadings, nmf_p_scores_un), 
+                              match_nmf_scores))
 
 #####################
 # Code for Matching #
