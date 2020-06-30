@@ -126,11 +126,11 @@ rank_c <- nmf_out_cor %>%
   select(Simulation, Rank = rank, Proportion)
 
 
-rbind(rank_d) %>% knitr::kable()
+rbind(rank_d, rank_o, rank_c) %>% knitr::kable()
 ```
 
 ```{r}
-nmf_out_dist %>% dplyr::select(rank) %>% table(.)
-nmf_out_over %>% dplyr::select(rank) %>% table(.)
-nmf_out_cor %>% dplyr::select(rank) %>% table(.)
+nmf_out_dist %>% dplyr::select(rank) %>% unnest() %>% table(.)
+nmf_out_over %>% dplyr::select(rank) %>% unnest() %>% table(.)
+nmf_out_cor %>% dplyr::select(rank) %>% unnest() %>% table(.)
 ```
