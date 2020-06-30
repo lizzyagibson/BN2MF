@@ -207,9 +207,12 @@ get_nmf_l2 <- function (sim) {
 #  set.seed(1988)
   nmf_5 <- nmf(sim, 5, nrun = 100, method = "lee")
   
-  bic_3 <- -log(residuals(nmf_3)) + (1/2)*(nrow(sim) + ncol(sim)) * 3 * log(nrow(sim) * ncol(sim))
-  bic_4 <- -log(residuals(nmf_4)) + (1/2)*(nrow(sim) + ncol(sim)) * 4 * log(nrow(sim) * ncol(sim))
-  bic_5 <- -log(residuals(nmf_5)) + (1/2)*(nrow(sim) + ncol(sim)) * 5 * log(nrow(sim) * ncol(sim))
+  bic_3 <- sum((sim - (basis(nmf_3)%*%coef(nmf_3)))^2) + 
+    (1/2)*(nrow(sim) + ncol(sim)) * 3 * log(nrow(sim) * ncol(sim))
+  bic_4 <- sum((sim - (basis(nmf_4)%*%coef(nmf_4)))^2) + 
+    (1/2)*(nrow(sim) + ncol(sim)) * 4 * log(nrow(sim) * ncol(sim))
+  bic_5 <- sum((sim - (basis(nmf_5)%*%coef(nmf_5)))^2) +  
+    (1/2)*(nrow(sim) + ncol(sim)) * 5 * log(nrow(sim) * ncol(sim))
   
   if (bic_3 <= bic_4) {
     nmf_out <- nmf_3
@@ -334,14 +337,17 @@ out_cor <- out_cor %>%
 get_nmf_p <- function (sim) {
   set.seed(1988)
   nmf_3 <- nmf(sim, 3, nrun = 100, method = "brunet")
-  set.seed(1988)
+  # set.seed(1988)
   nmf_4 <- nmf(sim, 4, nrun = 100, method = "brunet")
-  set.seed(1988)
+  # set.seed(1988)
   nmf_5 <- nmf(sim, 5, nrun = 100, method = "brunet")
   
-  bic_3 <- -log(residuals(nmf_3)) + (1/2)*(nrow(sim) + ncol(sim)) * 3 * log(nrow(sim) * ncol(sim))
-  bic_4 <- -log(residuals(nmf_4)) + (1/2)*(nrow(sim) + ncol(sim)) * 4 * log(nrow(sim) * ncol(sim))
-  bic_5 <- -log(residuals(nmf_5)) + (1/2)*(nrow(sim) + ncol(sim)) * 5 * log(nrow(sim) * ncol(sim))
+  bic_3 <- -sum((sim * log(basis(nmf_3) %*% coef(nmf_3))) - (basis(nmf_3) %*% coef(nmf_3))) + 
+    (1/2)*(nrow(sim) + ncol(sim)) * 3 * log(nrow(sim) * ncol(sim))
+  bic_4 <- -sum((sim * log(basis(nmf_4) %*% coef(nmf_4))) - (basis(nmf_4) %*% coef(nmf_4))) + 
+    (1/2)*(nrow(sim) + ncol(sim)) * 4 * log(nrow(sim) * ncol(sim))
+  bic_5 <- -sum((sim * log(basis(nmf_5) %*% coef(nmf_5))) - (basis(nmf_5) %*% coef(nmf_5))) + 
+    (1/2)*(nrow(sim) + ncol(sim)) * 5 * log(nrow(sim) * ncol(sim))
   
   if (bic_3 <= bic_4) {
     nmf_out <- nmf_3
@@ -451,8 +457,8 @@ out_dist <- out_dist %>%
          fa_scores_ssdist      = map2(true_scores, fa_scores, symm_subspace_dist),
          nmf_l2_loading_ssdist = map2(true_patterns, nmf_l2_loadings, symm_subspace_dist),
          nmf_l2_scores_ssdist  = map2(true_scores, nmf_l2_scores, symm_subspace_dist),
-         nmf_p_loading_ssdist  = map2(true_patterns, pca_rotations, symm_subspace_dist),
-         nmf_p_scores_ssdist   = map2(true_scores, pca_scores, symm_subspace_dist))
+         nmf_p_loading_ssdist  = map2(true_patterns, nmf_p_rotations, symm_subspace_dist),
+         nmf_p_scores_ssdist   = map2(true_scores, nmf_p_scores, symm_subspace_dist))
 
 out_over <- out_over %>% 
   mutate(pca_norm = map2(sim, pca_pred, function(x,y) norm(x-y, "F")/norm(x, "F")),
@@ -465,8 +471,8 @@ out_over <- out_over %>%
          fa_scores_ssdist      = map2(true_scores, fa_scores, symm_subspace_dist),
          nmf_l2_loading_ssdist = map2(true_patterns, nmf_l2_loadings, symm_subspace_dist),
          nmf_l2_scores_ssdist  = map2(true_scores, nmf_l2_scores, symm_subspace_dist),
-         nmf_p_loading_ssdist  = map2(true_patterns, pca_rotations, symm_subspace_dist),
-         nmf_p_scores_ssdist   = map2(true_scores, pca_scores, symm_subspace_dist))
+         nmf_p_loading_ssdist  = map2(true_patterns, nmf_p_rotations, symm_subspace_dist),
+         nmf_p_scores_ssdist   = map2(true_scores, nmf_p_scores, symm_subspace_dist))
 
 out_cor <- out_cor %>% 
   mutate(pca_norm = map2(sim, pca_pred, function(x,y) norm(x-y, "F")/norm(x, "F")),
@@ -479,8 +485,8 @@ out_cor <- out_cor %>%
          fa_scores_ssdist      = map2(true_scores, fa_scores, symm_subspace_dist),
          nmf_l2_loading_ssdist = map2(true_patterns, nmf_l2_loadings, symm_subspace_dist),
          nmf_l2_scores_ssdist  = map2(true_scores, nmf_l2_scores, symm_subspace_dist),
-         nmf_p_loading_ssdist  = map2(true_patterns, pca_rotations, symm_subspace_dist),
-         nmf_p_scores_ssdist   = map2(true_scores, pca_scores, symm_subspace_dist))
+         nmf_p_loading_ssdist  = map2(true_patterns, nmf_p_rotations, symm_subspace_dist),
+         nmf_p_scores_ssdist   = map2(true_scores, nmf_p_scores, symm_subspace_dist))
 
 ###
                            
