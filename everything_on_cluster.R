@@ -283,7 +283,7 @@ match_nmf_patterns <- function (truth, loading) {
   reordered[2,] <- loading[,which(corr==max(corr[2,]), arr.ind = TRUE)[2]]
   reordered[3,] <- loading[,which(corr==max(corr[3,]), arr.ind = TRUE)[2]]
   
-  if (ncol(loading) >= 4) {reordered <- rbind(reordered, loading[,which(corr==max(corr[4,]), arr.ind = TRUE)[2]])}
+  if (ncol(loading) >= 4) {reordered[4,] <- loading[,which(corr==max(corr[4,]), arr.ind = TRUE)[2]]}
   
   if (ncol(loading) == 5) {
     
@@ -292,7 +292,7 @@ match_nmf_patterns <- function (truth, loading) {
             which(corr==max(corr[3,]), arr.ind = TRUE)[2],
             which(corr==max(corr[4,]), arr.ind = TRUE)[2])
     
-    reordered <- rbind(reordered, loading[,-no])
+    reordered[5,] <- loading[,-no]
   }
   reordered
 }
