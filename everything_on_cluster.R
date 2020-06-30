@@ -297,9 +297,6 @@ match_nmf_patterns <- function (truth, loading) {
   reordered
 }
 
-# rotations <- match_nmf_patterns(truth, loading)
-# rotations_un <- loading
-
 match_nmf_scores <- function (rotations_un, rotations, scores_un) {
   
   scores <- as_tibble(matrix(nrow = nrow(scores_un), ncol = ncol(scores_un)))
@@ -312,9 +309,6 @@ match_nmf_scores <- function (rotations_un, rotations, scores_un) {
       }
   scores
 }
-
-# scores_un <- out_dist[1,12][[1]][[1]]
-# match_nmf_scores(rotations_un, rotations, scores_un)
 
 ## Run
 
@@ -423,9 +417,6 @@ out_cor <- out_cor %>%
 ###############################
 # Symmetric Subspace Distance #
 ###############################
-
-# U = matrix(rnorm(15), nrow = 5)
-# V = t(matrix(rnorm(15), nrow = 5))
 
 symm_subspace_dist <- function(U, V) {
   
