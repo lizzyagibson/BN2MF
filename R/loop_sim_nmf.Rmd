@@ -25,13 +25,13 @@ knitr::opts_chunk$set(cache = TRUE)
 # Load Sims
 
 ```{r, load}
-load(here::here("./R/Sims/Iterate/sim_dist.RDA"))
+load(here::here("./R/Sims/Iterate/sim_dist_old.RDA"))
 sim_dist
 
-load(here::here("./R/Sims/Iterate/sim_cor.RDA"))
+load(here::here("./R/Sims/Iterate/sim_cor_old.RDA"))
 sim_cor
 
-load(here::here("./R/Sims/Iterate/sim_over.RDA"))
+load(here::here("./R/Sims/Iterate/sim_over_old.RDA"))
 sim_over
 
 labels <-  c("pcb28", "pcb66", "pcb74", "pcb99", "pcb105", "pcb118", "pcb138_158", "pcb146", "pcb153", "pcb156", "pcb167",
@@ -39,6 +39,12 @@ labels <-  c("pcb28", "pcb66", "pcb74", "pcb99", "pcb105", "pcb118", "pcb138_158
           "BDE17", "BDE28", "BDE47", "BDE66", "BDE85", "BDE99", "BDE100", "BDE153", "BDE154", "BDE183", "BDE209", "MECPP",
           "MEHHP", "MEOHP", "MCPP", "MIBP", "MBP", "MBZP", "MEP", "MEHP", "dcp_24", "dcp_25", "b_pb", "bp_3", "m_pb",
           "p_pb", "tcs", "bpa")
+```
+
+```{r}
+apply(sim_dist[1,4][[1]][[1]], 2, summary)
+apply(sim_over[1,4][[1]][[1]], 2, summary)
+apply(sim_cor[1,4][[1]][[1]], 2, summary)
 ```
 
 # 1. Distinct Patterns
@@ -160,8 +166,16 @@ symm_subspace_dist <- function(U, V) {
 ```{r}
 npb_scores_matched_dist %>% 
   mutate(symm_ratio = map2(true_scores, npbnmf_scores, symm_subspace_dist)) %>% 
-  dplyr::select(seed, number_patterns, symm_ratio) %>% 
-  unnest(cols = c(number_patterns, symm_ratio)) %>% dplyr::select(symm_ratio) %>%
+  dplyr::select(seed, symm_ratio) %>% 
+  unnest(cols = c(symm_ratio)) %>% dplyr::select(symm_ratio) %>%
+  ggplot(aes(x = symm_ratio)) + geom_histogram(bins = 100) +
+  theme_minimal() +
+  labs(y = "Count", x = "Symmetric Subspace Distance Ratio")
+
+npb_scores_matched_dist %>% 
+  mutate(symm_ratio = map2(true_patterns, npbnmf_loadings, symm_subspace_dist)) %>% 
+  dplyr::select(seed, symm_ratio) %>% 
+  unnest(cols = c(symm_ratio)) %>% dplyr::select(symm_ratio) %>%
   ggplot(aes(x = symm_ratio)) + geom_histogram(bins = 100) +
   theme_minimal() +
   labs(y = "Count", x = "Symmetric Subspace Distance Ratio")
@@ -225,6 +239,14 @@ npb_scores_matched_cor %>%
   ggplot(aes(x = symm_ratio)) + geom_histogram(bins = 100) +
   theme_minimal() +
   labs(y = "Count", x = "Symmetric Subspace Distance Ratio")
+
+npb_scores_matched_cor %>% 
+  mutate(symm_ratio = map2(true_patterns, npbnmf_loadings, symm_subspace_dist)) %>% 
+  dplyr::select(seed, symm_ratio) %>% 
+  unnest(cols = c(symm_ratio)) %>%
+  ggplot(aes(x = symm_ratio)) + geom_histogram(bins = 100) +
+  theme_minimal() +
+  labs(y = "Count", x = "Symmetric Subspace Distance Ratio")
 ```
 
 # 3. Overlapping Patterns
@@ -280,6 +302,14 @@ npb_scores_matched_over <- npb_full_over %>%
 ```{r}
 npb_scores_matched_over %>% 
   mutate(symm_ratio = map2(true_scores, npbnmf_scores, symm_subspace_dist)) %>% 
+  dplyr::select(seed, symm_ratio) %>% 
+  unnest(cols = c(symm_ratio)) %>%
+  ggplot(aes(x = symm_ratio)) + geom_histogram(bins = 100) +
+  theme_minimal() +
+  labs(y = "Count", x = "Symmetric Subspace Distance Ratio")
+
+npb_scores_matched_over %>% 
+  mutate(symm_ratio = map2(true_patterns, npbnmf_loadings, symm_subspace_dist)) %>% 
   dplyr::select(seed, symm_ratio) %>% 
   unnest(cols = c(symm_ratio)) %>%
   ggplot(aes(x = symm_ratio)) + geom_histogram(bins = 100) +
