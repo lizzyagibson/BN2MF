@@ -23,13 +23,13 @@ library(R.matlab)
 ## Load Sims
 
 ```{r, load}
-load(here::here("./Sims/Iterate/sim_dist.RDA"))
+load(here::here("./R/Sims/Iterate/sim_dist.RDA"))
 sim_dist
 
-load(here::here("./Sims/Iterate/sim_cor.RDA"))
+load(here::here("./R/Sims/Iterate/sim_cor.RDA"))
 sim_cor
 
-load(here::here("./Sims/Iterate/sim_over.RDA"))
+load(here::here("./R/Sims/Iterate/sim_over.RDA"))
 sim_over
 ```
 
@@ -318,31 +318,31 @@ pca_scores_matched_cor %>%
 
 ```{r, pca10}
 pca_rank_d <- pca_out_dist %>% 
-  select(rank) %>% 
+  dplyr::select(rank) %>% 
   unnest(rank) %>%
   group_by(rank) %>% 
   summarise(n = n()) %>% 
   mutate(Simulation = "Distinct") %>% 
   mutate(Proportion = n/100) %>% 
-  select(Simulation, Rank = rank, Proportion)
+  dplyr::select(Simulation, Rank = rank, Proportion)
 
 pca_rank_o <- pca_out_over %>% 
-  select(rank) %>% 
+  dplyr::select(rank) %>% 
   unnest(rank) %>%
   group_by(rank) %>% 
   summarise(n = n()) %>% 
   mutate(Simulation = "Overlapping") %>% 
   mutate(Proportion = n/100) %>% 
-  select(Simulation, Rank = rank, Proportion)
+  dplyr::select(Simulation, Rank = rank, Proportion)
 
 pca_rank_c <- pca_out_cor %>% 
-  select(rank = rank) %>% 
+  dplyr::select(rank = rank) %>% 
   unnest(rank) %>%
   group_by(rank) %>% 
   summarise(n = n()) %>% 
   mutate(Simulation = "Correlated") %>% 
   mutate(Proportion = n/100) %>% 
-  select(Simulation, Rank = rank, Proportion)
+  dplyr::select(Simulation, Rank = rank, Proportion)
 
 
 rbind(pca_rank_d, pca_rank_o, pca_rank_c) %>% knitr::kable()
