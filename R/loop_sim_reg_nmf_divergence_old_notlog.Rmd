@@ -1,5 +1,5 @@
 ---
-title: "Poisson NMF -- -LL & Standardized"
+title: "Poisson NMF -- Not Stand & Wrong L"
 author: "Lizzy Gibson"
 date: "2/27/2020"
 output: 
@@ -25,11 +25,11 @@ library(R.matlab)
 ## Load Sims
 
 ```{r, load, cache = TRUE}
-load(here::here("./R/Sims/Iterate/sim_dist.RDA"))
+load(here::here("./R/Sims/Iterate/sim_dist_old.RDA"))
 
-load(here::here("./R/Sims/Iterate/sim_cor.RDA"))
+load(here::here("./R/Sims/Iterate/sim_cor_old.RDA"))
 
-load(here::here("./R/Sims/Iterate/sim_over.RDA"))
+load(here::here("./R/Sims/Iterate/sim_over_old.RDA"))
 ```
 
 ## Distinct Patterns
@@ -41,9 +41,9 @@ get_nmf_div <- function (sim) {
   nmf_4 <- nmf(sim, 4, nrun = 100, method = "brunet")
   nmf_5 <- nmf(sim, 5, nrun = 100, method = "brunet")
   
-  bic_3 <- -log(residuals(nmf_3)) + (1/2) * (nrow(sim) + ncol(sim)) * 3 * log(nrow(sim) * ncol(sim))
-  bic_4 <- -log(residuals(nmf_4)) + (1/2) * (nrow(sim) + ncol(sim)) * 4 * log(nrow(sim) * ncol(sim))
-  bic_5 <- -log(residuals(nmf_5)) + (1/2) * (nrow(sim) + ncol(sim)) * 5 * log(nrow(sim) * ncol(sim))
+  bic_3 <- (residuals(nmf_3)) + (1/2)*(nrow(sim) + ncol(sim)) * 3 * log(nrow(sim) * ncol(sim))
+  bic_4 <- (residuals(nmf_4)) + (1/2)*(nrow(sim) + ncol(sim)) * 4 * log(nrow(sim) * ncol(sim))
+  bic_5 <- (residuals(nmf_5)) + (1/2)*(nrow(sim) + ncol(sim)) * 5 * log(nrow(sim) * ncol(sim))
   
  if (bic_3 <= bic_4) {
     nmf_out <- nmf_3
@@ -73,7 +73,7 @@ nmf_out_dist <- sim_dist %>%
 ## Overlapping Patterns
 
 ```{r, over, cache = TRUE}
-nmf_out_over <- sim_over %>% 
+nmf_out_over <- sim_over %>%
     mutate(nmf_out = map(sim, get_nmf_div),
         coef = map(nmf_out, function(x) {x[[2]]}),
          pred = map(nmf_out, function(x) {x[[3]]}),
@@ -84,7 +84,7 @@ nmf_out_over <- sim_over %>%
 ## Correlated Scores
 
 ```{r, corr, cache = TRUE}
-nmf_out_cor <- sim_cor %>% 
+nmf_out_cor <- sim_cor %>%
     mutate(nmf_out = map(sim, get_nmf_div),
         coef = map(nmf_out, function(x) {x[[2]]}),
          pred = map(nmf_out, function(x) {x[[3]]}),
@@ -97,15 +97,15 @@ nmf_out_cor <- sim_cor %>%
 ```{r}
 rank_d <- nmf_out_dist %>% 
   mutate(rank = map(coef, nrow)) %>% 
-  dplyr::select(rank) %>%
+  select(rank) %>%
   unnest(rank) %>%
   group_by(rank) %>%
   summarise(n = n()) %>%
   mutate(Simulation = "Distinct") %>%
   mutate(Proportion = n/100) %>%
-  dplyr::select(Simulation, Rank = rank, Proportion)
+  select(Simulation, Rank = rank, Proportion)
 
-rank_o <- nmf_out_over %>% 
+rank_o <- nmf_out_over %>%
   mutate(rank = map(coef, nrow)) %>%
   select(rank) %>%
   unnest(rank) %>%
@@ -115,7 +115,7 @@ rank_o <- nmf_out_over %>%
   mutate(Proportion = n/100) %>%
   select(Simulation, Rank = rank, Proportion)
 
-rank_c <- nmf_out_cor %>% 
+rank_c <- nmf_out_cor %>%
   mutate(rank = map(coef, nrow)) %>%
   select(rank = rank) %>%
   unnest(rank) %>%
@@ -126,7 +126,7 @@ rank_c <- nmf_out_cor %>%
   select(Simulation, Rank = rank, Proportion)
 
 
-rbind(rank_d, rank_o, rank_c) %>% knitr::kable()
+rbind(rank_d) %>% knitr::kable()
 ```
 
 ```{r}
@@ -134,4 +134,3 @@ nmf_out_dist %>% dplyr::select(rank) %>% table(.)
 nmf_out_over %>% dplyr::select(rank) %>% table(.)
 nmf_out_cor %>% dplyr::select(rank) %>% table(.)
 ```
-
