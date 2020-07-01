@@ -99,7 +99,7 @@ for iter = 1:num_iter
     
     disp(['Run Number: ' num2str(i) '. Iter Number: ' num2str(iter) '. Iter Score: ' num2str(sum(sum(abs(X-(W1./W2)*diag(A1./A2)*(H1./H2)))))]); 
  
- if iter > 1 && abs(score(iter-1)-score(iter)) < 1e-7  
+ if iter > 1 && abs(score(iter-1)-score(iter)) < 1e-5  
      break
  end
   
