@@ -198,7 +198,7 @@ out_cor <- out_cor %>%
 # L2 NMF
 
 ## Function
-
+#sim <- sim_over[50,4][[1]][[1]]
 get_nmf_l2 <- function (sim) {
   set.seed(1988)
   nmf_3 <- nmf(sim, 3, nrun = 100, method = "lee")

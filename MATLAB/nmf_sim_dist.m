@@ -1,6 +1,6 @@
 %% Make this whole thing loop
 
-for i = 28:100
+for i = 1:100
 
 %% Setup the Import Options and import the data
 opts = delimitedTextImportOptions("NumVariables", 50);
