@@ -476,7 +476,7 @@ out_cor_un <- out_cor_un %>%
          fa_scores_ssdist      = map2(scores, fa_scores, symm_subspace_dist),
          nmf_l2_loading_ssdist = map2(patterns, nmf_l2_loadings, symm_subspace_dist),
          nmf_l2_scores_ssdist  = map2(scores, nmf_l2_scores, symm_subspace_dist),
-         nmf_p_loading_ssdist  = map2(patterns, nmf_p_rotations, symm_subspace_dist),
+         nmf_p_loading_ssdist  = map2(patterns, nmf_p_loadings, symm_subspace_dist),
          nmf_p_scores_ssdist   = map2(scores, nmf_p_scores, symm_subspace_dist))
 
 ###
@@ -485,7 +485,7 @@ out_dist_un <- out_dist_un %>% dplyr::select(-grep("_un|_out", colnames(.)))
 out_over_un <- out_over_un %>% dplyr::select(-grep("_un|_out", colnames(.)))
 out_cor_un <- out_cor_un %>% dplyr::select(-grep("_un|_out", colnames(.)))
 
-save(out_dist_un, file = paste0("out_", job_num, "_dist.RDA"))
-save(out_over_un, file = paste0("out_", job_num, "_over.RDA"))
-save(out_cor_un, file = paste0("out_", job_num, "_cor.RDA"))
+save(out_dist_un, file = paste0("out_", job_num, "_dist_un.RDA"))
+save(out_over_un, file = paste0("out_", job_num, "_over_un.RDA"))
+save(out_cor_un, file = paste0("out_", job_num, "_cor_un.RDA"))
 
