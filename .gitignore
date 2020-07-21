@@ -4,7 +4,7 @@
 .Ruserdata
 *.html
 Stan/*.rData
-Sims/*.csv
+*/*.csv
 Sims/*.mat
 Sims/**
 Sims/Iterate_Out/**
@@ -16,5 +16,8 @@ R/*.html
 R/NMF_*/
 R/*files/**
 NMF*/**
-R/Sims
-HPC/
+R/Sims/Iterate
+R/Sims/Iterate_Out
+R/Sims/*.mat
+HPC/MATLABout
+HPC/Rout
