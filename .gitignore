@@ -3,12 +3,10 @@
 .RData
 .Ruserdata
 *.html
-Stan/*.rData
-*/*.csv
+*.rData
+*.csv
 Sims/*.mat
 Sims/**
-Sims/Iterate_Out/**
-Sims/Iterate/**
 Resources/*.pdf
 R/*cache/**
 R/*cache-bkp/**
