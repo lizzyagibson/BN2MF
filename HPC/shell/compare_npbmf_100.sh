@@ -9,6 +9,6 @@ module load R/3.6.0
 
 clear
 
-R CMD BATCH everything_on_cluster_un.R
+R CMD BATCH everything_on_cluster_100.R
 
 
