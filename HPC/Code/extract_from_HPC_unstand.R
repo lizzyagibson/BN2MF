@@ -155,9 +155,9 @@ all_unstand
 ####################################################################################################
 # Relative Error
 
-all_unstand %>% dplyr::select(seed, sim_type, sim, grep("pred", colnames(.))) %>% 
+all_unstand %>% dplyr::select(seed, sim_type, chem, grep("pred", colnames(.))) %>% 
   pivot_longer(pca_pred:bnmf_pred) %>% 
-  mutate(l2 = map2(sim, value, function (x,y) norm(x-y, "F")/norm(x, "F"))) %>% 
+  mutate(l2 = map2(chem, value, function (x,y) norm(x-y, "F")/norm(x, "F"))) %>% # CHEM is SIM PRE-NOISE
   dplyr::select(seed, sim_type, name, l2) %>% 
   unnest(l2) %>% 
   group_by(sim_type, name) %>% 
@@ -165,9 +165,9 @@ all_unstand %>% dplyr::select(seed, sim_type, sim, grep("pred", colnames(.))) %>
             mean = mean(l2),
             max = max(l2))
 
-all_error <- all_unstand %>% dplyr::select(seed, sim_type, sim, grep("pred", colnames(.))) %>% 
+all_error <- all_unstand %>% dplyr::select(seed, sim_type, chem, grep("pred", colnames(.))) %>% 
   pivot_longer(pca_pred:bnmf_pred) %>% 
-  mutate(l2 = map2(sim, value, function (x,y) norm(x-y, "F")/norm(x, "F"))) %>% 
+  mutate(l2 = map2(chem, value, function (x,y) norm(x-y, "F")/norm(x, "F"))) %>% 
   dplyr::select(seed, sim_type, name, l2) %>% 
   unnest(l2)
 
@@ -176,16 +176,8 @@ all_error %>%
   geom_boxplot() +
   facet_grid(~sim_type, scales = "free") + 
   geom_vline(xintercept = 0, color = "pink", linetype = "dashed", size = 0.5) +
-  theme_bw() +
+  theme_bw() + scale_y_log10() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
-  labs(title = "Relative Predictive Error")
-
-all_error %>% 
-  ggplot(aes(x = l2)) +
-  geom_histogram(bins = 100, alpha = 0.75) +
-  facet_grid(name~sim_type, scales = "free") + 
-  geom_vline(xintercept = 0, color = "pink", linetype = "dashed", size = 0.5) +
-  theme_bw() +
   labs(title = "Relative Predictive Error")
 
 ####################################################################################################
@@ -207,20 +199,12 @@ all_ssdist <- all_unstand %>% dplyr::select(seed, sim_type, grep("_ssdist", coln
                names_to = "type",
                values_to = "value") %>%
   mutate(model = str_sub(type, 1, 6),
-         model = ifelse(str_detect(model, 'pca'), 'pca', model),
-         model = ifelse(str_detect(model, 'l2'), 'nmf_l2', model),
-         model = ifelse(str_detect(model, 'fa'), 'fa', model),
-         model = ifelse(str_detect(model, '_p_'), 'nmf_p', model),
-         model = ifelse(str_detect(model, 'bnmf'), 'bnmf', model),
-         type = ifelse(str_detect(type, 'scores'), 'scores', "loadings")) 
-
-all_ssdist %>% 
-  ggplot(aes(x = value)) +
-  geom_histogram(aes(fill = sim_type), bins = 100, alpha = 0.75) +
-  facet_grid(type ~ model) + 
-  geom_vline(xintercept = 0.5, color = "pink", linetype = "dashed", size = 0.5) +
-  theme_bw() +
-  labs(title = "Symmetric Subspace Distance")
+         model = ifelse(str_detect(model, 'pca'), 'PCA', model),
+         model = ifelse(str_detect(model, 'l2'), 'NMF_l2', model),
+         model = ifelse(str_detect(model, 'fa'), 'FA', model),
+         model = ifelse(str_detect(model, '_p_'), 'NMF_p', model),
+         model = ifelse(str_detect(model, 'bnmf'), 'npBNMF', model),
+         type = ifelse(str_detect(type, 'scores'), 'Scores', "Loadings")) 
 
 all_ssdist %>% 
   ggplot(aes(x = model, y = value, color = model)) +
@@ -229,7 +213,102 @@ all_ssdist %>%
   geom_hline(yintercept = 0.5, color = "pink", linetype = "dashed", size = 0.5) +
   theme_bw() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1),
-        legend.position = "none") + 
+        legend.position = "none") + scale_y_log10() +
   labs(title = "Symmetric Subspace Distance")
 
+
+######################################################
+######################################################
+# Plots for ISEE
+######################################################
+
+plot_l2 <- all_error %>% 
+  filter(name != "nmf_p_pred") %>% 
+  mutate(sim_type = paste0(str_to_title(sim_type), " Sims")) %>% 
+  mutate(name = case_when(name == "pca_pred" ~ "PCA",
+                          name == "fa_pred" ~ "Factor Analysis",
+                          name == "nmf_l2_pred" ~ "NMF",
+                          name == "bnmf_pred" ~ "npBNMF")) %>% 
+  mutate(sim_type = fct_relevel(sim_type, "Distinct Sims",
+                                          "Overlapping Sims",
+                                          "Correlated Sims")) %>% 
+  mutate(name = fct_relevel(name, "npBNMF",
+                             "PCA",
+                             "Factor Analysis",
+                             "NMF"))
+
+pdf("Figures/isee_2020_l2.pdf", width = 10)
+plot_l2 %>% 
+  ggplot(aes(x = name, y = l2, color = name, fill = name)) +
+  geom_boxplot(outlier.size = 0.25, alpha = 0.5) +
+  facet_wrap(~sim_type) + 
+  theme_bw(base_size = 30) + 
+  scale_y_log10() +
+  theme(strip.text = element_text(size = 20),
+        axis.text.x = element_blank(),
+        strip.background = element_rect(fill="white"),
+        legend.direction = "horizontal",
+        legend.position = c(0.5, -0.1), # c(0,0) bottom left, c(1,1) top-right.
+        axis.title.y = element_text(size = 25)) + 
+  labs(title = "Distance from True Observations",
+       y = "Relative Prediction Error", x = "",
+       color = "", fill = "") + scale_color_nejm() + scale_fill_nejm()
+dev.off()
+
+###
+plot_ss <- all_ssdist %>% 
+  filter(model != "NMF_p") %>% 
+  mutate(sim_type = paste0(str_to_title(sim_type), " Sims")) %>% 
+  mutate(model = case_when(model == "NMF_l2" ~ "NMF",
+                          model == "FA" ~ "Factor Analysis",
+                          TRUE ~ model)) %>% 
+  mutate(sim_type = fct_relevel(sim_type, "Distinct Sims",
+                                "Overlapping Sims",
+                                "Correlated Sims")) %>% 
+  mutate(model = fct_relevel(model, "npBNMF",
+                                "PCA",
+                                "Factor Analysis",
+                                "NMF"))
+
+pdf("Figures/isee_2020_score.pdf", width = 10)
+plot_ss %>% 
+  filter(type == "Scores") %>% 
+  ggplot(aes(x = model, y = value, color = model, fill = model)) +
+  geom_boxplot(outlier.size = 0.25, alpha = 0.5) +
+  facet_wrap(~sim_type) + 
+  theme_bw(base_size = 30) +
+  scale_y_log10() +
+  theme(strip.text = element_text(size = 20),
+        axis.text.x = element_blank(),
+        strip.background =element_rect(fill="white"),
+        legend.direction = "horizontal",
+        legend.position = c(0.5, -0.1), # c(0,0) bottom left, c(1,1) top-right.
+        axis.title.y = element_text(size = 25)) + 
+  geom_hline(yintercept = 0.5, color = "pink", linetype = "dashed", size = 0.5) +
+  labs(y = "Symmetric Subspace Distance",
+       x = "",
+       title = "Distance from True Individual Scores",
+       color = "", fill = "") + scale_color_nejm() + scale_fill_nejm()
+dev.off()
+
+pdf("Figures/isee_2020_load.pdf", width = 10)
+plot_ss %>% 
+  filter(type == "Loadings") %>% 
+  ggplot(aes(x = model, y = value, color = model, fill = model)) +
+  geom_boxplot(outlier.size = 0.25, alpha = 0.5) +
+  facet_wrap(~sim_type) + 
+  theme_bw(base_size = 30) +
+  scale_y_log10() +
+  theme(strip.text = element_text(size = 20),
+        axis.text.x = element_blank(),
+        strip.background =element_rect(fill="white"),
+        legend.direction = "horizontal",
+        legend.position = c(0.5, -0.1), # c(0,0) bottom left, c(1,1) top-right.
+        axis.title.y = element_text(size = 25)) + 
+  geom_hline(yintercept = 0.5, color = "pink", linetype = "dashed", size = 0.5) +
+  labs(y = "Symmetric Subspace Distance",
+       x = "", color = "", fill = "",
+       title = "Distance from True Pattern Loadings") + 
+  scale_color_nejm() + scale_fill_nejm()
+dev.off()
 
