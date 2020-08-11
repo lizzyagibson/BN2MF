@@ -9,6 +9,6 @@ module load matlab/2018a
 
 clear
 
-matlab -nojvm -nodisplay -nosplash  -singleCompThread -nodesktop  -logfile "/ifs/scratch/msph/ehs/eag2186/log-mat{$SGE_TASK_ID}"  -r "run /ifs/scratch/msph/ehs/eag2186/nmf_sim_hpc.m"
+matlab -nojvm -nodisplay -nosplash  -singleCompThread -nodesktop  -logfile "/ifs/scratch/msph/ehs/eag2186/log-mat{$SGE_TASK_ID}"  -r "run /ifs/scratch/msph/ehs/eag2186/pcp_test_hpc.m"
 
 
