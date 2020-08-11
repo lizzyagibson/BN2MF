@@ -30,10 +30,16 @@ clear opts
 isee2020dat = table2array(isee2020dat);
 %flip = isee2020dat'
 
+% Calculate std for each column
+sd = std(isee2020dat, [], 1); 
+
+% Subtract mean and divide by std
+dataNorm = (isee2020dat) ./ sd; 
+
 %% Clear temporary variables
 clear opts
 
-[ewa_cc,eh_cc] = NPBayesNMF(isee2020dat, 17);
+[ewa_cc,eh_cc] = NPBayesNMF(dataNorm, 17);
 
 labels = ["mecpp", "mehhp", "meohp", "mcpp", "mibp", "mbp", "mbzp", "mep", "mehp", ...
     "dcp_24", "dcp_25", "b_pb", "bp_3", "m_pb", "p_pb", "tcs", "bpa"];
@@ -53,5 +59,5 @@ stem(eh_cc(3,:));
 set(gca,'XTick',1:size(eh_cc,2));
 set(gca,'XTickLabels',labels);
 
-save("/Users/lizzy/nmf/MATLAB/Output/isee_2020_ewa3.mat", 'ewa_cc');
-save("/Users/lizzy/nmf/MATLAB/Output/isee_2020_eh3.mat", 'eh_cc');
+save("/Users/lizzy/nmf/MATLAB/Output/isee_2020_ewa1.mat", 'ewa_cc');
+save("/Users/lizzy/nmf/MATLAB/Output/isee_2020_eh1.mat", 'eh_cc');
