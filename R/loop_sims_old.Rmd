@@ -99,7 +99,7 @@ add_noise <- function (seed, chem) {
   sim_noise <- chem_dist - chem
   list(chem_dist = chem_dist, noise = sim_noise)
 }
-sim_dist <- sim_dist0 %>% 
+sim_dist1 <- sim_dist0 %>% 
  mutate(sim = map2(seed, chem, ~add_noise(seed = .x, chem = .y)[[1]]),
         noise = map2(seed, chem, function(x, y) {add_noise(x, y)[[2]]}))
 ```  

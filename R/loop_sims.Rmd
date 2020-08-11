@@ -146,7 +146,7 @@ ggplot(data = labelled, aes(x = Var1, y = Var2)) +
 
 ```{r}
 sim_dist <- sim_dist %>% rename(true_patterns = patterns, true_scores = scores) %>% dplyr::select(-chem, -noise)
-         
+
 #save(sim_dist, file = "./R/Sims/Iterate/sim_dist.RDA")
 
 # for (i in 1:100) {
@@ -172,7 +172,7 @@ create_patterns_cor <- function (seed) {
 }
 
 patterns_cor_iter <- tibble(seed = 1:100) %>% 
- mutate(patterns = map(seed, ~create_patterns_cor(seed = .x)))
+ mutate(patterns = map(seed, create_patterns_cor))
 ```
 
 ```{r, fig.width=5, fig.height=5}
