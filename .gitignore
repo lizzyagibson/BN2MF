@@ -19,3 +19,4 @@ R/Sims/Iterate_Out
 R/Sims/*.mat
 HPC/MATLABout
 HPC/Rout
+MATLAB/Output/*
