@@ -1,0 +1,205 @@
+---
+title: "GNMF & MN Data"
+author: "Lizzy Gibson"
+date: "2/25/2020"
+output: 
+  html_document:
+    toc: TRUE
+    toc_float: TRUE
+---
+
+```{r setup, include=FALSE}
+options(scipen = 999)
+library(MNdata) # my data
+library(reshape2) # melt
+library(gridExtra) # gridarrange
+library(bindata) # multivariate binomial dist
+library(NMF) # rmatrix
+library(MASS) # mvrnorm
+library(tidyverse)
+library(R.matlab)
+library(gplots)
+library(GGally)
+library(janitor)
+```
+
+## MN Data
+
+```{r}
+mn_edc
+# PHT and phenols specific gravity adj
+# pbde and pcb lipid adj
+names(mn_edc)
+
+edc_cc <- 
+  mn_edc %>% 
+  dplyr::select(grep("sg_adj", colnames(.))) %>% 
+  drop_na() %>% 
+  clean_names()
+
+names(edc_cc) <- str_replace(names(edc_cc), "_sg_adj", "")
+
+edc_std <- apply(edc_cc, 2, function(x) x/sd(x)) %>% as_tibble()
+
+cc_ids <- mn_edc %>% dplyr::select(sid, grep("sg_adj", colnames(.))) %>% drop_na() %>% 
+  dplyr::select(1)
+
+names(edc_cc)
+```
+
+```{r}
+summary(edc_cc)
+
+apply(edc_cc, 2, sd)
+```
+
+```{r}
+#write_csv(edc_cc, "./Data/isee_2020_dat.csv")
+#write_csv(edc_std, "./Data/isee_2020_dat_std.csv")
+```
+
+### Inspect
+
+```{r}
+cormat <- round(cor(edc_cc, method = c("spearman")),2)
+
+melted_cormat <- melt(cormat) %>% rename(Correlation = value)
+
+labelled <- melted_cormat %>% mutate(Class1 = ifelse(str_detect(Var1, "^m"), "Phthalates", "Phenols")) %>%
+  mutate(Class2 = ifelse(str_detect(Var2, "^M"), "Phthalates","Phenols")) %>%
+  mutate(Class2 = factor(Class2, levels = c("Phthalates", "Phenols")))
+
+ggplot(data = labelled, aes(x = Var1, y = Var2)) +
+  geom_tile(aes(fill = Correlation), colour = "white") +
+  scale_fill_gradient2(low = "#00BFC4", mid = "white", high = "#F8766D",
+                       midpoint = 0,
+                       na.value = "transparent", limits = c(-1, 1)) +
+  theme_grey(base_size = 15) + labs(x = "", y = "", title = "EDC correlations in Mothers & Newborns") +
+  scale_x_discrete(expand = c(0, 0)) +
+  scale_y_discrete(expand = c(0, 0)) +
+  theme(axis.text.x = element_blank(), axis.text.y = element_blank(),
+        panel.spacing = unit(0, "lines"),
+        strip.background = element_blank(),
+        strip.placement = "outside", legend.position = "bottom",
+        strip.text.x = element_text(size = 18),
+        strip.text.y = element_text(size = 18)) +
+  facet_grid(Class2 ~ Class1, scales = "free", space = "free", switch = "both")
+```
+
+## npBNMF
+
+### Patterns
+
+```{r}
+eh_cc <- readMat(here::here("./MATLAB/Output/isee_2020_eh3.mat"))[[1]]
+
+labels <-  c("mecpp", "mehhp",  "meohp",  "mcpp",   "mibp",   "mbp",    "mbzp",   "mep",    "mehp",
+             "dcp_24", "dcp_25", "b_pb", "bp_3", "m_pb", "p_pb", "tcs", "bpa")
+
+colnames(eh_cc) <- labels
+
+rowSums(eh_cc)
+```
+
+```{r}
+eh_cc %>% 
+  as_tibble() %>% 
+  mutate(Pattern = 1:13) %>% 
+  gather(key = Chemicals, value = Loadings, -Pattern) %>%
+  mutate(Chemicals = fct_inorder(Chemicals)) %>% 
+  ggplot(aes(x = Chemicals, y = Loadings)) + geom_col() +
+  facet_wrap(.~Pattern) + theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "bottom",
+        strip.background = element_blank())
+```
+
+### Scores
+
+```{r}
+ewa_cc <- readMat(here::here("./MATLAB/Output/isee_2020_ewa.mat"))[[1]]
+
+ewa_cc <- ewa_cc %>%
+  cbind(., cc_ids) %>% 
+  as_tibble(.) %>% 
+  clean_names()
+
+ewa_cc
+colSums(ewa_cc[,1:3])
+```
+
+## Raw
+
+### Product Use
+
+```{r read2}
+quest <- mn_edc %>% dplyr::select(sid, eth, edu, age, lotion:creme_rinse)
+personal <- left_join(ewa_cc, quest, by = "sid") %>% drop_na()
+```
+
+### Exposure Model
+
+```{r}
+#function to take component and binary personal care product, regress, and output as tibble
+product_model <- function(P, product) {
+
+  model <- lm(P ~ product + eth + age + edu, data = personal)
+
+  betas_confint <- as.data.frame(model$coefficient[2]) %>% rownames_to_column() %>% 
+    cbind(., as_tibble(confint(model))[2,]) %>%
+    mutate(pvalue = summary(model)$coefficients[2, 4]) %>% 
+    rename(variable = 1, beta = 2, lower = 3, upper = 4) %>% 
+    as_tibble()
+
+  betas_confint
+}
+
+loop_patterns <- personal %>% dplyr::select(x1:x13) %>% as.matrix()
+loop_prod <- personal %>% dplyr::select(lotion:creme_rinse) %>% as.matrix()
+
+out_care <- tibble()
+for (j in 1:ncol(loop_patterns)) {
+for (i in 1:ncol(loop_prod)) {
+  out <- product_model(loop_patterns[,j], loop_prod[,i])
+  out_care <- rbind(out_care, out)
+}
+}
+
+model_out <- cbind(product = rep(colnames(personal)[18:29], times = 13), 
+                   pattern = rep(colnames(personal)[1:13], times = 12), out_care) %>% 
+  as_tibble(.)
+model_out
+```
+
+```{r}
+### Heat Map
+model_out %>% 
+  ggplot(aes(x = pattern, y = product)) + 
+  geom_tile(aes(fill = beta), colour = "white") + 
+  scale_fill_gradient2(na.value = "transparent") +
+  labs(x = "Components", y = "Products", title = "") + 
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "bottom")
+```
+
+```{r}
+heat <- model_out %>% dplyr::select(beta, pattern, product) %>% 
+  spread(pattern, beta) %>%
+  dplyr::select(-product) %>% 
+  as.matrix()
+
+row.names(heat) <- model_out %>% dplyr::select(beta, pattern, product) %>% 
+  spread(pattern, beta) %>%
+  dplyr::select(product) %>% 
+  as.matrix()
+
+## Plot heatmap 
+cool = rainbow(50, start=rgb2hsv(col2rgb('cyan'))[1], end=rgb2hsv(col2rgb('blue'))[1])
+warm = rainbow(50, start=rgb2hsv(col2rgb('red'))[1], end=rgb2hsv(col2rgb('yellow'))[1])
+cols = c(rev(cool), rev(warm))
+
+heatmap.2(heat, key.xlab = "Beta Coefficients", 
+                               margins =c(4,8), Colv = FALSE, # keysize = 1.25,
+          col = cols, density.info="none", trace="none", dendrogram = "none", key.title = "")
+```
