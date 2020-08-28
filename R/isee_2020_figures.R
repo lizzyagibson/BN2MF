@@ -1,8 +1,8 @@
-library(wesanderson)
 library(ggsci)
 library(MNdata)
 library(tidyverse)
 library(R.matlab)
+library(janitor)
 
 ################################
 ################################
@@ -57,31 +57,33 @@ plot_over <- overlap %>% as_tibble() %>%
                                       "Phenols")))) %>% 
   mutate(Pattern = paste0("Pattern ", Pattern))
 
-pdf("Figures/isee_2020_patterns.pdf", width = 12)
+# NEJM "DeepCerulean" = "#0072B5"
+
+#pdf("Figures/isee_2020_patterns.pdf", width = 12)
 plot_over %>% 
   ggplot(aes(x = Chemicals, y = Loadings)) + 
-  geom_col(aes(fill = Group), width = 0.75) +
-  facet_grid(.~Pattern) + theme_bw(base_size = 30) +
+  geom_col(color = "#0072B5", width = 0.75) +
+  facet_grid(.~Pattern) + theme_bw(base_size = 40) +
   theme(axis.text.x = element_blank(),
         axis.ticks.x = element_blank(),
         strip.background = element_blank(),
         legend.position = "none") +
   labs(title = "Overlapping Simulated Patterns") +
   scale_fill_nejm()
-dev.off()
+#dev.off()
 
-pdf("Figures/isee_2020_patterns_dist.pdf", width = 12)
+#pdf("Figures/isee_2020_patterns_dist.pdf", width = 12)
 plot_dist %>% 
   ggplot(aes(x = Chemicals, y = Loadings)) + 
-  geom_col(aes(fill = Group), width = 0.75) +
-  facet_grid(.~Pattern) + theme_bw(base_size = 30) +
+  geom_col(color = "#0072B5", width = 0.75) +
+  facet_grid(.~Pattern) + theme_bw(base_size = 40) +
   theme(axis.text.x = element_blank(),
         strip.background = element_blank(),
         axis.ticks.x = element_blank(),
         legend.position = "none") +
   labs(title = "Distinct Simulated Patterns") +
   scale_fill_nejm()
-dev.off()
+#dev.off()
 
 ################################
 ################################
@@ -109,14 +111,17 @@ applied <- eh_sd %>%
                            grepl("^M", Chemicals) == TRUE ~ "Phthalates")) %>% 
   mutate(Pattern = paste0("Pattern ", Pattern))
 
-pdf("Figures/isee_2020_applied.pdf", width = 18)
+#pdf("Figures/isee_2020_applied.pdf", width = 18)
 applied %>% 
   ggplot(aes(x = Chemicals, y = Loadings)) + geom_col(aes(fill = Class)) +
-  facet_wrap(.~Pattern) + theme_bw(base_size = 20) +
+  facet_wrap(.~Pattern) + theme_bw(base_size = 40) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1),
         strip.background = element_blank(),
-        legend.position = c(0.06, 0.82), # c(1,0) bottom left, c(1,1) top-right.
-        legend.background = element_rect(fill = "#ffffffaa", colour = NA)) +
+        legend.position = c(0.08, 0.65), # c(1,0) bottom left, c(1,1) top-right.
+        legend.background = element_rect(fill = "#ffffffaa", colour = NA),
+        axis.text = element_text(size = 20),
+        legend.title = element_text(size = 20), 
+        legend.text = element_text(size = 20)) +
   scale_fill_nejm() +
-  labs(title = "Identified Patterns of EDC Exposure during Pregnancy in Mothers & Newborns Cohort")
-dev.off()
+  labs(title = "Identified Patterns of EDC Exposure during Pregnancy")
+#dev.off()
