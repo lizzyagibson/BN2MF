@@ -8,9 +8,13 @@
 # %       Pi -- the permutation or signed permutation matrix
 # %
 # %    June 2020 John Wright, jw2966@columbia.edu
+library(CVXR)
+library(tidyverse)
+
 A <- matrix(rnorm(50), nrow = 10)
 Alength <- apply(A, 2, function(y) sqrt(sum(y^2)))
 Al2 <- matrix(NA, nrow = nrow(A), ncol = ncol(A))
+
 for (i in 1:ncol(A)) {
   Al2[,i] <- A[,i]/Alength[i]
 }
@@ -20,7 +24,7 @@ Bl2[,1:5] <- Al2[,sample(1:5)]
 
 ###
 
-factor_correspondence <- function (A,B,nn = TRUE) {
+factor_correspondence <- function (A, B, nn = TRUE) {
 
     G <- t(B) %*% A
     n <- nrow(G)
@@ -30,14 +34,14 @@ factor_correspondence <- function (A,B,nn = TRUE) {
     Pi <- Variable(n,n)
     
     # Step 2. Define the objective to be optimized
-    objective <- Maximize(sum(Pi * G))
+    objective <- Maximize(base::sum(Pi * G))
     
     if (nn) {
           # Step 2.5. Subject to these constraints
           constX = list()
           for (i in 1:nrow(G)) {
-            constX <-  c(constX, list(sum(Pi[,i]) == 1))
-            constX <-  c(constX, list(sum(Pi[i,]) == 1))
+            constX <-  c(constX, list(base::sum(Pi[,i]) == 1))
+            constX <-  c(constX, list(base::sum(Pi[i,]) == 1))
            }
           constX <- c(constX, Pi >= 0)
     } else {
@@ -45,8 +49,8 @@ factor_correspondence <- function (A,B,nn = TRUE) {
           # Step 3. vector l1 norms along rows and columns
           constX = list()
           for (i in 1:nrow(G)) {
-            constX <-  c(constX, list(sum(abs(Pi[,i])) <= 1))
-            constX <-  c(constX, list(sum(abs(Pi[i,])) <= 1))
+            constX <-  c(constX, list(base::sum(abs(Pi[,i])) <= 1))
+            constX <-  c(constX, list(base::sum(abs(Pi[i,])) <= 1))
           }
     }  
         # Step 3. Create a problem to solve
@@ -58,16 +62,17 @@ factor_correspondence <- function (A,B,nn = TRUE) {
         # Step 5. Extract solution and objective value
         perm <- round(result$getValue(Pi), 0)
         
-        e <- norm(B,'f')^2 + norm(A,'f')^2 - 2 * sum(perm * G)
+        e <- norm(B,'f')^2 + norm(A,'f')^2 - 2 * base::sum(perm * G)
         # e -- the sum of squared errors under the best calibration \Pi
         
         # New matrix with best order
         newB <- B %*% perm
         
-        list(rearranged = newB)
+        list(rearranged = newB, permutation_matrix = perm)
     }
 
 Bout <- factor_correspondence(Al2, Bl2)$rearranged
+factor_correspondence(Al2, Bl2)
 
 ## Viz 
 Al2 %>% as_tibble() %>% 

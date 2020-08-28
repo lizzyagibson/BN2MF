@@ -22,6 +22,7 @@ sum(true_score > wa_low & true_score < wa_up)/nrow(true_score)*ncol(true_score)
 
 #####
 ##### CI H
+#####
 
 alphaH <- readMat(here::here("./MATLAB/Output/sim_over_100_alphah.mat"))[[1]]
 betaH <- readMat(here::here("./MATLAB/Output/sim_over_100_betah.mat"))[[1]]
@@ -41,36 +42,46 @@ h_low_norm <- apply(h_low, 2, function(x) x / row_sum_h)
 h_up_norm <- apply(h_up, 2, function(x) x / row_sum_h)
 
 # Truth
-true_load <- sim_over[100,3][[1]]
+true_load <- sim_over[100,3][[1]][[1]]
 head(true_load)[, 1:10]
+
 # normalize loadings
 row_sum <- apply(true_load, 1, sum)
 true_load_norm <- apply(true_load, 2, function(x) x / row_sum)
 head(true_load_norm)
 rowSums(true_load_norm)
 
-sum(true_load_norm > low_norm & true_load_norm < up_norm)
-sum(true_load > h_low & true_load < h_up)
+# rearrange eh and CI
+eh_fc <- factor_correspondence(t(true_load_norm), t(eh_norm))
 
-sum(eh > h_low & eh < h_up)
+eh_fc_norm <- t(eh_fc$rearranged)
+low_fc_norm <- t(t(h_low_norm) %*% eh_fc$permutation_matrix)
+up_fc_norm <- t(t(h_up_norm) %*% eh_fc$permutation_matrix)
 
-head(h_low)[,1:5]
-head(true_load)[,1:5]
-head(eh)[,1:5]
-head(h_up)[,1:5]
+eh_fc_reg <- factor_correspondence(t(true_load), t(eh))
 
-head(h_low_norm)[,1:5]
-head(true_load_norm)[,1:5]
-head(eh_norm)[,1:5]
-head(h_up_norm)[,1:5]
+eh_fc_eh <- t(eh_fc_reg$rearranged)
+low_fc<- t(t(h_low) %*% eh_fc_reg$permutation_matrix)
+up_fc <- t(t(h_up) %*% eh_fc_reg$permutation_matrix)
 
-rowSums(true_load_norm)
-rowSums(eh_norm)
-rowSums(h_low_norm)
-rowSums(h_up_norm)
+# Compare TRUTH to Variational Confidence Interval
+
+true_load_norm[,1:10]
+eh_fc_norm[,1:10]
+
+low_fc[,1:10]
+true_load[,1:10]
+eh_fc_eh[,1:10]
+up_fc[,1:10]
+
+base::sum(true_load > low_fc & true_load < up_fc)
+base::sum(true_load > low_fc)
+base::sum(true_load < up_fc)
+
+
 ##########
 ########## Gamma Dist
-
+##########
 
 #####
 alphaw = 2
