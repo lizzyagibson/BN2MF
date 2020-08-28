@@ -6,31 +6,26 @@
 # %           values of these matrices according to their approximate posterior variational distributions.
 # % num_iter is the number of iterations to run. The code terminates based on convergence currently.
 
-X = matrix(1, 10, 5)
+X = matrix(runif(50), 10, 5)
 
-library(matlab)
+library(matlab) # This is for repmat
 
-NPBayesNMF <- function(X, Kinit) {
+NPBayesNMF <- function(X) {
 
-bnp_switch = 1  # % this turns on/off the Bayesian nonparametric part. On now.
-
-# [dim,N] = size(X);
+  bnp_switch = 1  # % this turns on/off the Bayesian nonparametric part. On now.
   dim = nrow(X)
   N = ncol(X)
+  Kinit = ncol(X)
 
-# end_score = zeros(100, 1);
-  end_score = matrix(rep(0, times = 100))
+  nruns = 100
+  end_score = matrix(rep(0, times = nruns))
   
-# EA = [];
-# EWA = [];
-# EH = [];
-# EW = [];
   EA = matrix()
   EWA = matrix()
   EH = matrix()
   EW = matrix()
 
-for (i in 1:100) {
+for (i in 1:nruns) {
 
     K = Kinit
   
@@ -63,9 +58,10 @@ for (i in 1:100) {
     H1 = matrix(1, Kinit, N)
     H2 = matrix(1, Kinit, N)
   
-    num_iter = 10 # INCREASE
+    num_iter = 100000 # INCREASE
+    
   # score = zeros(num_iter, 1);
-    score = matrix(0, num_iter, 1)
+    score = vector("numeric", length = num_iter)
   
   for (iter in 1:num_iter) {
   
@@ -111,61 +107,58 @@ for (i in 1:100) {
       # % include P to make expectation tractable
       # % These are update steps from optimizing the ELBO 
       # % take the gradient with respect to parameter, set to zero, solve
-      # H1 = h01 + sum(P.*X_reshape,3);
         H1 = h01 + apply(P * X_reshape, c(1,2), sum)
-      
-      # H2 = h02 + repmat(sum(EW.*repmat(A1./A2,dim,1),1),N,1)';
+
         H2 = h02 + t(kronecker(matrix(1, nrow = N, ncol = 1), 
                      matrix(colSums(EW * kronecker(matrix(1, nrow = dim, ncol = 1), A1/A2)), nrow=1)))
-      
-      # W1 = w01 + reshape(sum(X_reshape.*P,2),[K dim])';
+
         W1 = w01 + t(array(apply(X_reshape*P, c(1,3), sum), dim = c(K, dim)))
-      
-      # W2 = w02 + repmat(sum((H1./H2).*repmat((A1./A2)',1,N),2)',dim,1);
+
         W2 = w02 + kronecker(matrix(1, dim, 1), t(rowSums((H1/H2) * kronecker(matrix(1, 1, N), t(A1/A2)))))
-        
-      # A1 = a01 + bnp_switch*sum(sum(X_reshape.*P,3),2)';
+
         A1 = a01 + bnp_switch * t(rowSums(apply(X_reshape*P, c(1,2), sum)))
         
-      # A2 = a02 + bnp_switch*sum(W1./W2,1).*sum(H1./H2,2)'; 
         A2 = a02 + bnp_switch * (colSums(W1/W2) * t(rowSums(H1/H2)))
-                                          
-###        
+    
     # % This is the sparse prior on A, pushing A to zero
-    idx_prune = find(A1./A2 < 10^-3);
-    if length(idx_prune) > 0
-    W1(:,idx_prune) = [];
-    W2(:,idx_prune) = [];
-    A1(idx_prune) = [];
-    A2(idx_prune) = [];
-    H1(idx_prune,:) = [];
-    H2(idx_prune,:) = [];
-    end
-    K = length(A1);
+    idx_prune = which(A1/A2 < 10^-3)
     
-    score(iter) = sum(sum(abs(X-(W1./W2)*diag(A1./A2)*(H1./H2))));
-###
+    if (length(idx_prune) >= 1) {
+            W1 = W1[,-idx_prune]
+            W2 = We[,-idx_prune]
+            A1 = A1[,-idx_prune]
+            A2 = A2[,-idx_prune]
+            H1 = H1[,-idx_prune]
+            H2 = H2[,-idx_prune] 
+            }
     
-    disp(['Run Number: ' num2str(i) '. Iter Number: ' num2str(iter) '. Iter Score: ' num2str(sum(sum(abs(X-(W1./W2)*diag(A1./A2)*(H1./H2)))))]); 
+    K = length(A1)
+  
+   score[iter] = base::sum(abs(X- (W1/W2) %*% diag(as.vector(A1/A2)) %*% (H1/H2)))
     
-    if (iter > 1 && abs(score(iter-1)-score(iter)) < 1e-5) {
+   if (iter %% 100 == 0) {print(paste0("Run Number: ", i, "; Iter Number: ", iter, "; Iter Score: ", round(score[iter], 5)))}
+   
+    if (iter > 1 && abs(score[iter-1] - score[iter]) < 1e-5) {
       break} # % Convergence criteria!
 }
 
-end_score(i) = score(find(score,1,'last'));  
+end_score[i] = score[tail(which(score != 0),1)]
+    
+print(paste0("Run Number: ", i, "; Final Score: ", round(end_score[i], 5)))
 
 # % Among the results, use the fitted variational parameters that achieve the highest ELBO
-if (i == 1 | (i > 1 && (end_score(i) >= max(end_score)))) {
-    EA = A1/A2
-    EWA = (W1/W2)*diag(A1/A2)
-    EH = H1/H2
-    EW = (W1/W2)
-    varA = A1/(A2^2)
-    varW = W1/(W2^2)
-    varH = H1/(H2^2)
+  if (i == 1 | (i > 1 && (end_score[i] >= max(end_score)))) {
+      EA = A1/A2
+      EWA = (W1/W2)*diag(A1/A2)
+      EH = H1/H2
+      EW = (W1/W2)
+      varA = A1/(A2^2)
+      varW = W1/(W2^2)
+      varH = H1/(H2^2)
+      }
 }
-}
-
 
   list(EWA, EH)
   }
+
+NPBayesNMF(X)

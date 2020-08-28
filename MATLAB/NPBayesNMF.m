@@ -1,4 +1,4 @@
-function [EWA, EH] = NPBayesNMF(X,Kinit)
+function [EWA, EH, EW, EA, varWA, varH, varW, alphaH, betaH] = NPBayesNMF(X,Kinit)
 % X is the data matrix of non-negative values
 % Kinit is the maximum allowable factorization (initial). The algorithm tries to reduce this number.
 %       the size of EWA and EH indicate the learned factorization.
@@ -17,6 +17,11 @@ EA = [];
 EWA = [];
 EH = [];
 EW = [];
+varW = [];
+varWA = [];
+varH = [];
+alphaH = [];
+betaH = [];
 
 for i = 1:100
 
@@ -85,7 +90,7 @@ for iter = 1:num_iter
     
     % This is the sparse prior on A, pushing A to zero
     idx_prune = find(A1./A2 < 10^-3);
-    if length(idx_prune) > 0
+    if ~isempty(idx_prune)
       W1(:,idx_prune) = [];
       W2(:,idx_prune) = [];
       A1(idx_prune) = [];
@@ -113,11 +118,26 @@ end
 end_score(i) = score(find(score,1,'last'));  
 
 % Among the results, use the fitted variational parameters that achieve the highest ELBO
-if i == 1 | (i > 1 && (end_score(i) >= max(end_score)))
+%if i == 1 || (i > 1 && (end_score(i) >= max(end_score)))
+% LOWEST ELBO?
+if i == 1 || (i > 1 && (end_score(i) < min(end_score)))
     EA = A1./A2;
     EWA = (W1./W2)*diag(A1./A2);
     EH = H1./H2;
     EW = (W1./W2); 
+    
+    varW = W1 ./ W2.^2;
+    varWA = (W1 .* A1) .* (W1 + A1 + 1) ./ (W2.^2 .* A2.^2);
+    % e(w^2) * e(a^2) - e(w)^2 * e(a)^2
+    %                  - EW^2 .* EA^2
+    varH = H1 ./ H2.^2;
+    
+    alphaH = H1;
+    betaH = H2;
+    % final W1
+    % final W2
+    % final A1
+    % final A2
 end
    
 % disp(['Run Number: ' num2str(i) '. Run score: ' num2str(end_score(i))]);
