@@ -145,7 +145,7 @@ ggplot(data = labelled, aes(x = Var1, y = Var2)) +
 ### Save
 
 ```{r}
-sim_dist <- sim_dist %>% rename(true_patterns = patterns, true_scores = scores) %>% dplyr::select(-chem, -noise)
+sim_dist <- sim_dist %>% rename(true_patterns = patterns, true_scores = scores) %>% dplyr::select(-noise)
 
 #save(sim_dist, file = "./R/Sims/Iterate/sim_dist.RDA")
 
@@ -263,7 +263,7 @@ ggplot(data = labelled2, aes(x = Var1, y = Var2)) +
 ### Save
 
 ```{r}
-sim_cor  <- sim_cor %>% rename(true_patterns = patterns, true_scores = scores) %>% dplyr::select(-chem, -noise)
+sim_cor  <- sim_cor %>% rename(true_patterns = patterns, true_scores = scores) %>% dplyr::select(-noise)
 #save(sim_cor, file = "./R/Sims/Iterate/sim_cor.RDA")
 
 # for (i in 1:100) {
@@ -337,7 +337,7 @@ ggplot(data = labelled3, aes(x = Var1, y = Var2)) +
 ### Save
 
 ```{r} 
-sim_over <- sim_over %>% rename(true_patterns = patterns, true_scores = scores) %>% dplyr::select(-chem, -noise)
+sim_over <- sim_over %>% rename(true_patterns = patterns, true_scores = scores) %>% dplyr::select(-noise)
 #save(sim_over, file = "./R/Sims/Iterate/sim_over.RDA")
 
 # for (i in 1:100) {
@@ -383,7 +383,7 @@ sim_dist_test <- sim_dist0_test %>%
 ### Save
 
 ```{r}
-sim_dist_test <- sim_dist_test %>% dplyr::select(-noise, -chem)
+sim_dist_test <- sim_dist_test %>% dplyr::select(-noise)
 #save(sim_dist_test, file = "./Sims/Iterate/sim_dist_test.RDA")
 ```
 
@@ -423,7 +423,7 @@ sim_cor_test <- sim_cor0_test %>%
 #### Save
 
 ```{r}
-sim_cor_test <- sim_cor_test %>% dplyr::select(-noise, -chem)
+sim_cor_test <- sim_cor_test %>% dplyr::select(-noise)
 #save(sim_cor_test, file = "./Sims/Iterate/sim_cor_test.RDA")
 ```
 
