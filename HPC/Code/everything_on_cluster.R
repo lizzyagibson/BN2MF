@@ -54,6 +54,31 @@ get_pca <- function (sim) {
   list(rotations = rotations, scores = scores, pred = pred, rank = rank)
 }
 
+get_pca_uncenter <- function (sim) {
+  pca_out <- prcomp(sim, center = FALSE)
+  rot <- pca_out$rotation
+  ex <- pca_out$x
+  sv <- pca_out$sdev
+  
+  # Explain >=80% of var
+  pve <- sv^2/sum(sv^2)
+  rank <- 0
+  for (i in 1:length(sv)) {
+    if (sum(pve[1:i]) >= 0.8) {
+      rank <- i
+      break
+    }}
+  
+  # Cut scores and patterns to rank
+  rotations <- as_tibble(rot[, 1:rank])
+  scores <- ex[, 1:rank]
+  
+  # Predicted values
+  pred <- scores %*% t(rotations) + matrix(rep(apply(sim, 2, mean), each= nrow(scores)), nrow = nrow(scores))
+  
+  list(rotations = rotations, scores = scores, pred = pred, rank = rank)
+}
+
 ## Run
 
 out_dist <- sim_dist[job_num,] %>% 
@@ -89,24 +114,66 @@ out_cor <- sim_cor[job_num,] %>%
          pca_rank      = map(pca_out, function(x)
            x[[4]]))
 
+out_dist <- out_dist %>% 
+  mutate(pca_uncenter_out = map(sim, get_pca_uncenter),
+         pca_uncenter_rotations_un = map(pca_out, function(x)
+           x[[1]]),
+         pca_uncenter_scores_un    = map(pca_out, function(x)
+           x[[2]]),
+         pca_uncenter_pred      = map (pca_out, function(x)
+           x[[3]]),
+         pca_uncenter_rank      = map(pca_out, function(x)
+           x[[4]]))
+
+out_over <- out_over %>% 
+  mutate(pca_uncenter_out = map(sim, get_pca_uncenter),
+         pca_uncenter_rotations_un = map(pca_out, function(x)
+           x[[1]]),
+         pca_uncenter_scores_un    = map(pca_out, function(x)
+           x[[2]]),
+         pca_uncenter_pred      = map (pca_out, function(x)
+           x[[3]]),
+         pca_uncenter_rank      = map(pca_out, function(x)
+           x[[4]]))
+
+out_cor <- out_cor %>% 
+  mutate(pca_uncenter_out = map(sim, get_pca_uncenter),
+         pca_uncenter_rotations_un = map(pca_out, function(x)
+           x[[1]]),
+         pca_uncenter_scores_un    = map(pca_out, function(x)
+           x[[2]]),
+         pca_uncenter_pred      = map (pca_out, function(x)
+           x[[3]]),
+         pca_uncenter_rank      = map(pca_out, function(x)
+           x[[4]]))
+
 ## Match Functions
 
 match_eigen <- function (truth, loading) {
   truth <- t(truth)
   loading <- as.matrix(loading)
-  corr <- diag(cor(truth, loading))
+  corr <- cor(truth, loading)
   
-  reordered <- matrix(nrow = nrow(loading), ncol = ncol(loading))
+  if (corr[which.max(abs(corr))] < 0) {
+    new_loading <- -loading
+    corr <- cor(truth, new_loading)
+    } else {new_loading <- loading}
   
-  for (i in 1:nrow(loading)) {  
-    reordered[i,1] <- ifelse(corr[1] < 0, -loading[i,1], loading[i,1])
-    reordered[i,2] <- ifelse(corr[2] < 0, -loading[i,2], loading[i,2])
-    
-    if (ncol(loading) == 3) {reordered[i,3] <- ifelse(corr[3] < 0, -loading[i,3], loading[i,3])}
-  }
+  reordered <- matrix(nrow = nrow(new_loading), ncol = ncol(new_loading))
+  
+  reordered[,which.max(corr[,1])] <- new_loading[,1]
+  
+  if (ncol(reordered) > 1) {
+    if (NA %in% reordered[,which.max(corr[,2])]) {reordered[,which.max(corr[,2])] <- new_loading[,2]
+    } else {reordered[,which.max(corr[,2][-which.max(corr[,2])])] <- new_loading[,2]}
+  } 
+  
+  if (ncol(reordered) == 3) {reordered[,which(NA %in% reordered[1,])] <- new_loading[,3]}
+  
   reordered
 }
 
+### Need to fix scores to go with loadings
 match_pca_scores <- function (rotations_un, rotations, scores_un) {
   scores <- as_tibble(matrix(nrow = nrow(scores_un), ncol = ncol(scores_un)))
       for (k in 1:ncol(rotations_un)) {
