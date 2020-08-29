@@ -406,7 +406,7 @@ output_all <- output_all %>%
          fa_scores_ssdist      = map2(true_scores, fa_scores, symm_subspace_dist),
          nmf_l2_loading_ssdist = map2(true_patterns, nmf_l2_loadings, symm_subspace_dist),
          nmf_l2_scores_ssdist  = map2(true_scores, nmf_l2_scores, symm_subspace_dist),
-         nmf_p_loading_ssdist  = map2(true_patterns, nmf_p_rotations, symm_subspace_dist),
+         nmf_p_loading_ssdist  = map2(true_patterns, nmf_p_loadings, symm_subspace_dist),
          nmf_p_scores_ssdist   = map2(true_scores, nmf_p_scores, symm_subspace_dist))
 
 ###
