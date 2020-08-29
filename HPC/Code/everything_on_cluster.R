@@ -14,9 +14,7 @@ library(GPArotation, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
 library(psych, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
 
 # Read in Sims
-load("Data/sim_dist.RDA")
-load("Data/sim_cor.RDA")
-load("Data/sim_over.RDA")
+load("Data/sim_all.RDA")
 
 ## read job number from system environment
 ## This only works if run on cluster!!
@@ -25,7 +23,9 @@ job_num
 
 # Run everything
 
+#####
 # PCA
+#####
 
 ## Function
 
@@ -164,18 +164,20 @@ output_all <- output_all %>%
                                       match_pca_scores))
 
 
+#####
 # Factor Analysis
+#####
 
 ## Function
   
 get_fa <- function (sim) {
+  # Run FA on 3, 4, and 5 factor models
   set.seed(1988)
   fa_3 <- fa(sim, 3, scores = "regression", rotate = "promax")
-  set.seed(1988)
   fa_4 <- fa(sim, 4, scores = "regression", rotate = "promax")
-  set.seed(1988)
   fa_5 <- fa(sim, 5, scores = "regression", rotate = "promax")
   
+  # Choose the model with the lowest BIC
   if (fa_5$BIC < fa_4$BIC && fa_5$BIC < fa_3$BIC) {
     fa_out <- fa_5
     rank <- 5
@@ -195,7 +197,7 @@ get_fa <- function (sim) {
 
 ## Run
 
-out_dist <- out_dist %>% 
+output_all <- output_all %>% 
   mutate(fa_out = map(sim, get_fa),
          fa_rotations = map(fa_out, function(x)
            x[[1]]),
@@ -206,40 +208,23 @@ out_dist <- out_dist %>%
          fa_rank      = map(fa_out, function(x)
            x[[4]]))
 
-out_over <- out_over %>% 
-  mutate(fa_out = map(sim, get_fa),
-         fa_rotations = map(fa_out, function(x)
-           x[[1]]),
-         fa_scores    = map(fa_out, function(x)
-           x[[2]]),
-         fa_pred      = map (fa_out, function(x)
-           x[[3]]),
-         fa_rank      = map(fa_out, function(x)
-           x[[4]]))
+# FA factors are in the same order every time
 
-out_cor <- out_cor %>% 
-  mutate(fa_out = map(sim, get_fa),
-         fa_rotations = map(fa_out, function(x)
-           x[[1]]),
-         fa_scores    = map(fa_out, function(x)
-           x[[2]]),
-         fa_pred      = map (fa_out, function(x)
-           x[[3]]),
-         fa_rank      = map(fa_out, function(x)
-           x[[4]]))
 
+#####
 # L2 NMF
+#####
 
 ## Function
 
 get_nmf_l2 <- function (sim) {
+  # Run NMF with l2 method 100 times each for 3, 4, and 5 factor models
   set.seed(1988)
   nmf_3 <- nmf(sim, 3, nrun = 100, method = "lee")
-#  set.seed(1988)
   nmf_4 <- nmf(sim, 4, nrun = 100, method = "lee")
-#  set.seed(1988)
   nmf_5 <- nmf(sim, 5, nrun = 100, method = "lee")
   
+  # Calculate BIC for each
   bic_3 <- sum((sim - (basis(nmf_3)%*%coef(nmf_3)))^2) + 
     (1/2)*(nrow(sim) + ncol(sim)) * 3 * log(nrow(sim) * ncol(sim))
   bic_4 <- sum((sim - (basis(nmf_4)%*%coef(nmf_4)))^2) + 
@@ -247,6 +232,7 @@ get_nmf_l2 <- function (sim) {
   bic_5 <- sum((sim - (basis(nmf_5)%*%coef(nmf_5)))^2) +  
     (1/2)*(nrow(sim) + ncol(sim)) * 5 * log(nrow(sim) * ncol(sim))
   
+  # Choose model with lowest BIC
   if (bic_3 <= bic_4) {
     nmf_out <- nmf_3
     rank <- 3
@@ -268,29 +254,7 @@ get_nmf_l2 <- function (sim) {
 
 ## Run
 
-out_dist <- out_dist %>%
-  mutate(nmf_l2_out = map(sim, get_nmf_l2),
-         nmf_l2_loadings_un = map(nmf_l2_out, function(x) 
-           x[[1]]),
-         nmf_l2_scores_un = map(nmf_l2_out, function(x) 
-           x[[2]]),
-         nmf_l2_pred = map(nmf_l2_out, function(x) 
-           x[[3]]),
-         nmf_l2_rank = map(nmf_l2_out, function(x) 
-           x[[4]]))
-
-out_over <- out_over %>%
-  mutate(nmf_l2_out = map(sim, get_nmf_l2),
-         nmf_l2_loadings_un = map(nmf_l2_out, function(x) 
-           x[[1]]),
-         nmf_l2_scores_un = map(nmf_l2_out, function(x) 
-           x[[2]]),
-         nmf_l2_pred = map(nmf_l2_out, function(x) 
-           x[[3]]),
-         nmf_l2_rank = map(nmf_l2_out, function(x) 
-           x[[4]]))
-
-out_cor <- out_cor %>%
+output_all <- output_all %>%
   mutate(nmf_l2_out = map(sim, get_nmf_l2),
          nmf_l2_loadings_un = map(nmf_l2_out, function(x) 
            x[[1]]),
@@ -306,16 +270,20 @@ out_cor <- out_cor %>%
 match_nmf_patterns <- function (truth, loading) {
   truth <- t(truth)
   
+  # Flip loadings to same dimensions as Truth
   if (nrow(truth) != nrow(loading)) {loading <- t(as.matrix(loading))} else {loading <- as.matrix(loading)}
   
   corr <- cor(truth, loading)
   
   reordered <- matrix(nrow = ncol(loading), ncol = nrow(loading))
   
+  # Row 1 of corr matrix is the first pattern in the truth
+  # Take the column index of the highest correlation, that column should be the first
   reordered[1,] <- loading[,which(corr==max(corr[1,]), arr.ind = TRUE)[2]]
   reordered[2,] <- loading[,which(corr==max(corr[2,]), arr.ind = TRUE)[2]]
   reordered[3,] <- loading[,which(corr==max(corr[3,]), arr.ind = TRUE)[2]]
   
+  # Only if solution has this many columns
   if (ncol(loading) >= 4) {reordered[4,] <- loading[,which(corr==max(corr[4,]), arr.ind = TRUE)[2]]}
   
   if (ncol(loading) == 5) {
@@ -345,28 +313,20 @@ match_nmf_scores <- function (rotations_un, rotations, scores_un) {
 
 ## Run
 
-out_dist <- out_dist %>%
+output_all <- output_all %>%
   mutate(nmf_l2_loadings = map2(true_patterns, nmf_l2_loadings_un, match_nmf_patterns),
          nmf_l2_scores = pmap(list(nmf_l2_loadings_un, nmf_l2_loadings, nmf_l2_scores_un), 
                               match_nmf_scores))
 
-out_over <- out_over %>%
-  mutate(nmf_l2_loadings = map2(true_patterns, nmf_l2_loadings_un, match_nmf_patterns),
-         nmf_l2_scores = pmap(list(nmf_l2_loadings_un, nmf_l2_loadings, nmf_l2_scores_un), 
-                              match_nmf_scores))
 
-out_cor <- out_cor %>%
-  mutate(nmf_l2_loadings = map2(true_patterns, nmf_l2_loadings_un, match_nmf_patterns),
-         nmf_l2_scores = pmap(list(nmf_l2_loadings_un, nmf_l2_loadings, nmf_l2_scores_un), 
-                              match_nmf_scores))
+#####
 # Poisson NMF
+#####
 
 get_nmf_p <- function (sim) {
   set.seed(1988)
   nmf_3 <- nmf(sim, 3, nrun = 100, method = "brunet")
-  # set.seed(1988)
   nmf_4 <- nmf(sim, 4, nrun = 100, method = "brunet")
-  # set.seed(1988)
   nmf_5 <- nmf(sim, 5, nrun = 100, method = "brunet")
   
   bic_3 <- -sum((sim * log(basis(nmf_3) %*% coef(nmf_3))) - (basis(nmf_3) %*% coef(nmf_3))) + 
@@ -395,7 +355,7 @@ get_nmf_p <- function (sim) {
   list(coef = coef, basis = basis, pred = pred, rank = rank)
 }
 
-out_dist <- out_dist %>%
+output_all <- output_all %>% 
   mutate(nmf_p_out = map(sim, get_nmf_p),
          nmf_p_loadings_un = map(nmf_p_out, function(x) 
            x[[1]]),
@@ -406,46 +366,11 @@ out_dist <- out_dist %>%
          nmf_p_rank = map(nmf_p_out, function(x) 
            x[[4]]))
 
-out_over <- out_over %>%
-  mutate(nmf_p_out = map(sim, get_nmf_p),
-         nmf_p_loadings_un = map(nmf_p_out, function(x) 
-           x[[1]]),
-         nmf_p_scores_un = map(nmf_p_out, function(x) 
-           x[[2]]),
-         nmf_p_pred = map(nmf_p_out, function(x) 
-           x[[3]]),
-         nmf_p_rank = map(nmf_p_out, function(x) 
-           x[[4]]))
-
-out_cor <- out_cor %>%
-  mutate(nmf_p_out = map(sim, get_nmf_p),
-         nmf_p_loadings_un = map(nmf_p_out, function(x) 
-           x[[1]]),
-         nmf_p_scores_un = map(nmf_p_out, function(x) 
-           x[[2]]),
-         nmf_p_pred = map(nmf_p_out, function(x) 
-           x[[3]]),
-         nmf_p_rank = map(nmf_p_out, function(x) 
-           x[[4]]))
-
-out_dist <- out_dist %>%
+output_all <- output_all %>%
   mutate(nmf_p_loadings = map2(true_patterns, nmf_p_loadings_un, match_nmf_patterns),
          nmf_p_scores = pmap(list(nmf_p_loadings_un, nmf_p_loadings, nmf_p_scores_un), 
                               match_nmf_scores))
 
-out_over <- out_over %>%
-  mutate(nmf_p_loadings = map2(true_patterns, nmf_p_loadings_un, match_nmf_patterns),
-         nmf_p_scores = pmap(list(nmf_p_loadings_un, nmf_p_loadings, nmf_p_scores_un), 
-                              match_nmf_scores))
-
-out_cor <- out_cor %>%
-  mutate(nmf_p_loadings = map2(true_patterns, nmf_p_loadings_un, match_nmf_patterns),
-         nmf_p_scores = pmap(list(nmf_p_loadings_un, nmf_p_loadings, nmf_p_scores_un), 
-                              match_nmf_scores))
-
-#####################
-# Code for Matching #
-#####################
 
 ###############################
 # Symmetric Subspace Distance #
@@ -470,35 +395,7 @@ symm_subspace_dist <- function(U, V) {
   
 }
 
-out_dist <- out_dist %>% 
-  mutate(pca_norm = map2(sim, pca_pred, function(x,y) norm(x-y, "F")/norm(x, "F")),
-         fa_norm = map2(sim, fa_pred, function(x,y) norm(x-y, "F")/norm(x, "F")),
-         nmf_l2_norm = map2(sim, nmf_l2_pred, function(x,y) norm(x-y, "F")/norm(x, "F")),
-         nmf_P_norm = map2(sim, nmf_p_pred, function(x,y) norm(x-y, "F")/norm(x, "F"))) %>% 
-  mutate(pca_rotation_ssdist   = map2(true_patterns, pca_rotations, symm_subspace_dist),
-         pca_scores_ssdist     = map2(true_scores, pca_scores, symm_subspace_dist),
-         fa_rotations_ssdist   = map2(true_patterns, fa_rotations, symm_subspace_dist),
-         fa_scores_ssdist      = map2(true_scores, fa_scores, symm_subspace_dist),
-         nmf_l2_loading_ssdist = map2(true_patterns, nmf_l2_loadings, symm_subspace_dist),
-         nmf_l2_scores_ssdist  = map2(true_scores, nmf_l2_scores, symm_subspace_dist),
-         nmf_p_loading_ssdist  = map2(true_patterns, nmf_p_rotations, symm_subspace_dist),
-         nmf_p_scores_ssdist   = map2(true_scores, nmf_p_scores, symm_subspace_dist))
-
-out_over <- out_over %>% 
-  mutate(pca_norm = map2(sim, pca_pred, function(x,y) norm(x-y, "F")/norm(x, "F")),
-         fa_norm = map2(sim, fa_pred, function(x,y) norm(x-y, "F")/norm(x, "F")),
-         nmf_l2_norm = map2(sim, nmf_l2_pred, function(x,y) norm(x-y, "F")/norm(x, "F")),
-         nmf_P_norm = map2(sim, nmf_p_pred, function(x,y) norm(x-y, "F")/norm(x, "F"))) %>% 
-  mutate(pca_rotation_ssdist   = map2(true_patterns, pca_rotations, symm_subspace_dist),
-         pca_scores_ssdist     = map2(true_scores, pca_scores, symm_subspace_dist),
-         fa_rotations_ssdist   = map2(true_patterns, fa_rotations, symm_subspace_dist),
-         fa_scores_ssdist      = map2(true_scores, fa_scores, symm_subspace_dist),
-         nmf_l2_loading_ssdist = map2(true_patterns, nmf_l2_loadings, symm_subspace_dist),
-         nmf_l2_scores_ssdist  = map2(true_scores, nmf_l2_scores, symm_subspace_dist),
-         nmf_p_loading_ssdist  = map2(true_patterns, nmf_p_rotations, symm_subspace_dist),
-         nmf_p_scores_ssdist   = map2(true_scores, nmf_p_scores, symm_subspace_dist))
-
-out_cor <- out_cor %>% 
+output_all <- output_all %>% 
   mutate(pca_norm = map2(sim, pca_pred, function(x,y) norm(x-y, "F")/norm(x, "F")),
          fa_norm = map2(sim, fa_pred, function(x,y) norm(x-y, "F")/norm(x, "F")),
          nmf_l2_norm = map2(sim, nmf_l2_pred, function(x,y) norm(x-y, "F")/norm(x, "F")),
@@ -514,11 +411,7 @@ out_cor <- out_cor %>%
 
 ###
                            
-out_dist <- out_dist %>% dplyr::select(-grep("_un|_out", colnames(.)))
-out_over <- out_over %>% dplyr::select(-grep("_un|_out", colnames(.)))
-out_cor <- out_cor %>% dplyr::select(-grep("_un|_out", colnames(.)))
+output_all <- output_all %>% dplyr::select(-grep("_un|_out", colnames(.)))
 
-save(out_dist, file = paste0("out_", job_num, "_dist.RDA"))
-save(out_over, file = paste0("out_", job_num, "_over.RDA"))
-save(out_cor, file = paste0("out_", job_num, "_cor.RDA"))
+save(output_all, file = paste0("out_sims", job_num, ".RDA"))
 
