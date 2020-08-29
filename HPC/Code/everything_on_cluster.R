@@ -30,6 +30,7 @@ job_num
 ## Function
 
 get_pca <- function (sim) {
+  # Run PCA centered, not scaled
   pca_out <- prcomp(sim)
   rot <- pca_out$rotation
   ex <- pca_out$x
@@ -55,6 +56,7 @@ get_pca <- function (sim) {
 }
 
 get_pca_uncenter <- function (sim) {
+  # Run PCA not centered, not scaled
   pca_out <- prcomp(sim, center = FALSE)
   rot <- pca_out$rotation
   ex <- pca_out$x
@@ -81,7 +83,7 @@ get_pca_uncenter <- function (sim) {
 
 ## Run
 
-out_dist <- sim_dist[job_num,] %>% 
+output_all <- sim_dist[job_num,] %>% 
   mutate(pca_out = map(sim, get_pca),
          pca_rotations_un = map(pca_out, function(x)
                           x[[1]]),
@@ -92,51 +94,7 @@ out_dist <- sim_dist[job_num,] %>%
          pca_rank      = map(pca_out, function(x)
                           x[[4]]))
 
-out_over <- sim_over[job_num,] %>% 
-  mutate(pca_out = map(sim, get_pca),
-         pca_rotations_un = map(pca_out, function(x)
-           x[[1]]),
-         pca_scores_un    = map(pca_out, function(x)
-           x[[2]]),
-         pca_pred      = map (pca_out, function(x)
-           x[[3]]),
-         pca_rank      = map(pca_out, function(x)
-           x[[4]]))
-
-out_cor <- sim_cor[job_num,] %>% 
-  mutate(pca_out = map(sim, get_pca),
-         pca_rotations_un = map(pca_out, function(x)
-           x[[1]]),
-         pca_scores_un    = map(pca_out, function(x)
-           x[[2]]),
-         pca_pred      = map (pca_out, function(x)
-           x[[3]]),
-         pca_rank      = map(pca_out, function(x)
-           x[[4]]))
-
-out_dist <- out_dist %>% 
-  mutate(pca_uncenter_out = map(sim, get_pca_uncenter),
-         pca_uncenter_rotations_un = map(pca_out, function(x)
-           x[[1]]),
-         pca_uncenter_scores_un    = map(pca_out, function(x)
-           x[[2]]),
-         pca_uncenter_pred      = map (pca_out, function(x)
-           x[[3]]),
-         pca_uncenter_rank      = map(pca_out, function(x)
-           x[[4]]))
-
-out_over <- out_over %>% 
-  mutate(pca_uncenter_out = map(sim, get_pca_uncenter),
-         pca_uncenter_rotations_un = map(pca_out, function(x)
-           x[[1]]),
-         pca_uncenter_scores_un    = map(pca_out, function(x)
-           x[[2]]),
-         pca_uncenter_pred      = map (pca_out, function(x)
-           x[[3]]),
-         pca_uncenter_rank      = map(pca_out, function(x)
-           x[[4]]))
-
-out_cor <- out_cor %>% 
+output_all <- output_all %>% 
   mutate(pca_uncenter_out = map(sim, get_pca_uncenter),
          pca_uncenter_rotations_un = map(pca_out, function(x)
            x[[1]]),
@@ -148,12 +106,13 @@ out_cor <- out_cor %>%
            x[[4]]))
 
 ## Match Functions
-
+## Reorder eigenvector matrix to best match truth
 match_eigen <- function (truth, loading) {
   truth <- t(truth)
   loading <- as.matrix(loading)
   corr <- cor(truth, loading)
   
+  # If highest correlated eigenvector is negative, flip the whole matrix
   if (corr[which.max(abs(corr))] < 0) {
     new_loading <- -loading
     corr <- cor(truth, new_loading)
@@ -161,6 +120,7 @@ match_eigen <- function (truth, loading) {
   
   reordered <- matrix(nrow = nrow(new_loading), ncol = ncol(new_loading))
   
+  # Put eigenvector columns in order that best correlates with truth
   reordered[,which.max(corr[,1])] <- new_loading[,1]
   
   if (ncol(reordered) > 1) {
@@ -173,30 +133,36 @@ match_eigen <- function (truth, loading) {
   reordered
 }
 
-### Need to fix scores to go with loadings
 match_pca_scores <- function (rotations_un, rotations, scores_un) {
+  
   scores <- as_tibble(matrix(nrow = nrow(scores_un), ncol = ncol(scores_un)))
-      for (k in 1:ncol(rotations_un)) {
-            if (all(rotations_un[, k] == rotations[, k])) {
-              scores[, k] = scores_un[, k]
-            } else {scores[, k] = -(scores_un[, k])}
-          }
+  corr <- cor(rotations, rotations_un)
+  
+  # Flip scores to match loading matrix
+  if (corr[which(abs(corr) == 1)][1] < 0) {scores_un = -scores_un}
+  
+  # Match score vectors with loading vectors
+  for (k in 1:ncol(rotations_un)) {
+    for (j in 1:ncol(rotations)) {
+            if (all(abs(rotations[, j]) == abs(rotations_un[, k]))) {
+              scores[, j] = scores_un[, k]
+            }
+    }
+    }
   scores
 }
 
 ## Run
 
-out_dist <- out_dist %>% 
+output_all <- output_all %>% 
   mutate(pca_rotations = map2(true_patterns, pca_rotations_un, match_eigen),
          pca_scores = pmap(list(pca_rotations_un, pca_rotations, pca_scores_un), match_pca_scores))
   
-out_over <- out_over %>% 
-  mutate(pca_rotations = map2(true_patterns, pca_rotations_un, match_eigen),
-         pca_scores = pmap(list(pca_rotations_un, pca_rotations, pca_scores_un), match_pca_scores))
+output_all <- output_all %>% 
+  mutate(pca_uncentered_rotations = map2(true_patterns, pca_uncentered_rotations_un, match_eigen),
+         pca_uncentered_scores = pmap(list(pca_uncentered_rotations_un, pca_uncentered_rotations, pca_uncentered_scores_un), 
+                                      match_pca_scores))
 
-out_cor <- out_cor %>% 
-  mutate(pca_rotations = map2(true_patterns, pca_rotations_un, match_eigen),
-         pca_scores = pmap(list(pca_rotations_un, pca_rotations, pca_scores_un), match_pca_scores))
 
 # Factor Analysis
 
