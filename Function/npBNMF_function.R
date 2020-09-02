@@ -6,17 +6,24 @@
 # %           values of these matrices according to their approximate posterior variational distributions.
 # % num_iter is the number of iterations to run. The code terminates based on convergence currently.
 
-# X = matrix(runif(50), 10, 5)
-# X = edc_cc
+library(parallel)
+library(future)
+library(RhpcBLASctl)
+#get_num_cores()
+#get_num_procs()
+# omp_get_num_procs()
+# omp_get_max_threads()
+# blas_get_num_procs()
+# blas_set_num_threads(5)
 
 NPBayesNMF <- function(X) {
-
+  X = as.matrix(X)
   bnp_switch = 1
   dim = nrow(X)
   N = ncol(X)
   Kinit = ncol(X)
 
-  nruns = 100
+  nruns = 10
   end_score = matrix(rep(0, times = nruns))
   
   EA = matrix()
@@ -47,7 +54,7 @@ NPBayesNMF <- function(X) {
       H1 = matrix(1, Kinit, N)
       H2 = matrix(1, Kinit, N)
     
-      num_iter = 100000
+      num_iter = 100
       
       score = vector("numeric", length = num_iter)
     
@@ -129,3 +136,10 @@ NPBayesNMF <- function(X) {
   }
 
 # NPBayesNMF(X)
+# NPBayesNMF(edc_cc)
+
+X = matrix(runif(50), 10, 5)
+
+system.time(mclapply(list(X, X, X, X), NPBayesNMF, mc.cores = 4))
+system.time(NPBayesNMF(X))
+
