@@ -39,7 +39,9 @@ dataNorm = (isee2020dat) ./ sd;
 %% Clear temporary variables
 clear opts
 
-[ewa_cc,eh_cc] = NPBayesNMF(dataNorm, 17);
+[EWA, EH, varWA, varH, alphaH, betaH, ...
+    EWA_low, EH_low, varWA_low, varH_low, alphaH_low, betaH_low] = NPBayesNMF(dataNorm);
+%[ewa_cc,eh_cc] = NPBayesNMF(isee2020dat);
 
 labels = ["mecpp", "mehhp", "meohp", "mcpp", "mibp", "mbp", "mbzp", "mep", "mehp", ...
     "dcp_24", "dcp_25", "b_pb", "bp_3", "m_pb", "p_pb", "tcs", "bpa"];
@@ -47,17 +49,35 @@ labels = ["mecpp", "mehhp", "meohp", "mcpp", "mibp", "mbp", "mbzp", "mep", "mehp
 %PLOT
 figure;
 subplot(3,1,1);
-stem(eh_cc(1,:));
-set(gca,'XTick',1:size(eh_cc,2));
+stem(EH(1,:));
+set(gca,'XTick',1:size(EH,2));
 set(gca,'XTickLabels',labels);
 subplot(3,1,2);
-stem(eh_cc(2,:));
-set(gca,'XTick',1:size(eh_cc,2));
+stem(EH(2,:));
+set(gca,'XTick',1:size(EH,2));
 set(gca,'XTickLabels',labels);
 subplot(3,1,3);
-stem(eh_cc(3,:));
-set(gca,'XTick',1:size(eh_cc,2));
+stem(EH(3,:));
+set(gca,'XTick',1:size(EH,2));
 set(gca,'XTickLabels',labels);
 
-save("/Users/lizzy/nmf/MATLAB/Output/isee_2020_ewa1.mat", 'ewa_cc');
-save("/Users/lizzy/nmf/MATLAB/Output/isee_2020_eh1.mat", 'eh_cc');
+figure;
+subplot(4,1,1);
+stem(EH_low(1,:));
+set(gca,'XTick',1:size(EH_low,2));
+set(gca,'XTickLabels',labels);
+subplot(4,1,2);
+stem(EH_low(2,:));
+set(gca,'XTick',1:size(EH_low,2));
+set(gca,'XTickLabels',labels);
+subplot(4,1,3);
+stem(EH_low(3,:));
+set(gca,'XTick',1:size(EH_low,2));
+set(gca,'XTickLabels',labels);
+subplot(4,1,4);
+stem(EH_low(4,:));
+set(gca,'XTick',1:size(EH_low,2));
+set(gca,'XTickLabels',labels);
+
+% save("/Users/lizzy/nmf/MATLAB/Output/isee_2020_ewa1.mat", 'ewa_cc');
+% save("/Users/lizzy/nmf/MATLAB/Output/isee_2020_eh1.mat", 'eh_cc');
