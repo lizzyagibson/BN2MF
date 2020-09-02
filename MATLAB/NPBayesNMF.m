@@ -118,9 +118,9 @@ end
 end_score(i) = score(find(score,1,'last'));  
 
 % Among the results, use the fitted variational parameters that achieve the highest ELBO
-%if i == 1 || (i > 1 && (end_score(i) >= max(end_score)))
+if i == 1 || (i > 1 && (end_score(i) >= max(end_score)))
 % LOWEST ELBO?
-if i == 1 || (i > 1 && (end_score(i) < min(end_score)))
+% if i == 1 || (i > 1 && (end_score(i) < min(end_score)))
     EA = A1./A2;
     EWA = (W1./W2)*diag(A1./A2);
     EH = H1./H2;

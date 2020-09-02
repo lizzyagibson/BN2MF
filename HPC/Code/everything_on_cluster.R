@@ -399,8 +399,8 @@ output_all <- output_all %>%
   mutate(pca_norm = map2(sim, pca_pred, function(x,y) norm(x-y, "F")/norm(x, "F")),
          fa_norm = map2(sim, fa_pred, function(x,y) norm(x-y, "F")/norm(x, "F")),
          nmf_l2_norm = map2(sim, nmf_l2_pred, function(x,y) norm(x-y, "F")/norm(x, "F")),
-         nmf_P_norm = map2(sim, nmf_p_pred, function(x,y) norm(x-y, "F")/norm(x, "F"))) %>% 
-  mutate(pca_rotation_ssdist   = map2(true_patterns, pca_rotations, symm_subspace_dist),
+         nmf_P_norm = map2(sim, nmf_p_pred, function(x,y) norm(x-y, "F")/norm(x, "F")),
+         pca_rotation_ssdist   = map2(true_patterns, pca_rotations, symm_subspace_dist),
          pca_scores_ssdist     = map2(true_scores, pca_scores, symm_subspace_dist),
          fa_rotations_ssdist   = map2(true_patterns, fa_rotations, symm_subspace_dist),
          fa_scores_ssdist      = map2(true_scores, fa_scores, symm_subspace_dist),
@@ -409,7 +409,9 @@ output_all <- output_all %>%
          nmf_p_loading_ssdist  = map2(true_patterns, nmf_p_loadings, symm_subspace_dist),
          nmf_p_scores_ssdist   = map2(true_scores, nmf_p_scores, symm_subspace_dist))
 
-###
+#####
+# Save
+#####
                            
 output_all <- output_all %>% dplyr::select(-grep("_un|_out", colnames(.)))
 

@@ -28,7 +28,6 @@ library(janitor)
 ```{r}
 mn_edc
 # PHT and phenols specific gravity adj
-# pbde and pcb lipid adj
 names(mn_edc)
 
 edc_cc <- 
@@ -65,8 +64,9 @@ cormat <- round(cor(edc_cc, method = c("spearman")),2)
 
 melted_cormat <- melt(cormat) %>% rename(Correlation = value)
 
-labelled <- melted_cormat %>% mutate(Class1 = ifelse(str_detect(Var1, "^m"), "Phthalates", "Phenols")) %>%
-  mutate(Class2 = ifelse(str_detect(Var2, "^M"), "Phthalates","Phenols")) %>%
+labelled <- melted_cormat %>% 
+  mutate(Class1 = ifelse(str_detect(Var1, "^m"), "Phthalates", "Phenols")) %>%
+  mutate(Class2 = ifelse(str_detect(Var2, "^m"), "Phthalates","Phenols")) %>%
   mutate(Class2 = factor(Class2, levels = c("Phthalates", "Phenols")))
 
 ggplot(data = labelled, aes(x = Var1, y = Var2)) +
@@ -87,6 +87,14 @@ ggplot(data = labelled, aes(x = Var1, y = Var2)) +
 ```
 
 ## npBNMF
+
+### Run R Function
+
+```{r}
+source("./Function/npBNMF_function.R")
+
+r_out <- NPBayesNMF(edc_cc)
+```
 
 ### Patterns
 
