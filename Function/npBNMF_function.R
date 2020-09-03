@@ -6,16 +6,6 @@
 # %           values of these matrices according to their approximate posterior variational distributions.
 # % num_iter is the number of iterations to run. The code terminates based on convergence currently.
 
-library(parallel)
-library(future)
-library(RhpcBLASctl)
-#get_num_cores()
-#get_num_procs()
-# omp_get_num_procs()
-# omp_get_max_threads()
-# blas_get_num_procs()
-# blas_set_num_threads(5)
-
 NPBayesNMF <- function(X) {
   X = as.matrix(X)
   bnp_switch = 1
@@ -23,7 +13,7 @@ NPBayesNMF <- function(X) {
   N = ncol(X)
   Kinit = ncol(X)
 
-  nruns = 10
+  nruns = 100
   end_score = matrix(rep(0, times = nruns))
   
   EA = matrix()
@@ -54,7 +44,7 @@ NPBayesNMF <- function(X) {
       H1 = matrix(1, Kinit, N)
       H2 = matrix(1, Kinit, N)
     
-      num_iter = 100
+      num_iter = 100000
       
       score = vector("numeric", length = num_iter)
     
@@ -116,7 +106,7 @@ NPBayesNMF <- function(X) {
 
       end_score[i] = score[tail(which(score != 0),1)]
           
-      print(paste0("Run Number: ", i, "; Final Score: ", round(end_score[i], 4)))
+      print(paste0("Run Number: ", i, "; Iter Number: ", iter, "; Final Score: ", round(end_score[i], 4)))
       
       # % Among the results, use the fitted variational parameters that achieve the highest ELBO
       if (i == 1 | (i > 1 && (end_score[i] >= max(end_score)))) {
@@ -135,11 +125,7 @@ NPBayesNMF <- function(X) {
   list(EWA = EWA, EH = EH, H_CI_low = H_CI_low, H_CI_high = H_CI_high)
   }
 
-# NPBayesNMF(X)
-# NPBayesNMF(edc_cc)
 
-X = matrix(runif(50), 10, 5)
-
-system.time(mclapply(list(X, X, X, X), NPBayesNMF, mc.cores = 4))
-system.time(NPBayesNMF(X))
+# X = matrix(runif(50), 10, 5)
+# system.time(NPBayesNMF(X))
 
