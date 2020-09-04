@@ -1,0 +1,306 @@
+---
+title: "Loop Simulations"
+author: "Lizzy Gibson"
+date: "3/5/2020"
+output: 
+  html_document:
+    toc: TRUE
+    toc_float: TRUE
+---
+
+```{r setup, include=FALSE}
+options(scipen = 999)
+library(reshape2) # melt
+library(gridExtra) # gridarrange
+library(bindata) # multivariate binomial dist
+library(NMF) # rmatrix
+library(MASS) # mvrnorm
+library(tidyverse)
+library(R.matlab)
+library(MCMCpack) # for dirichlet
+```
+
+## 1: Distinct Patterns
+
+### Simulate Patterns
+
+Generate 4 non-negative vectors of length 50 “by hand” — vectors should be overlapping a bit, and at this stage don’t have to look too much like pollution. just make 20 (of 50) elements 1 and the rest 0.
+
+Pattern matrix is 4*50, patterns by chemicals.
+
+```{r}
+create_patterns_dist <- function (seed) {
+  set.seed(seed)
+  patterns_dist <- rbind(rdirichlet(1, c(rep(10, 12), rep(0.1, 38))),
+                         rdirichlet(1, c(rep(0.1, 12), rep(10, 12), rep(0.1, 26))),
+                         rdirichlet(1, c(rep(0.1, 26), rep(10, 12), rep(0.1, 12))),
+                         rdirichlet(1, c(rep(0.1, 36), rep(10, 14))))
+  patterns_dist
+}
+
+patterns_dist_iter <- tibble(seed = 1:100) %>% 
+ mutate(true_patterns = map(seed, create_patterns_dist))
+```
+
+```{r}
+patterns_dist_iter[1,2][[1]][[1]] %>% as_tibble() %>% 
+  mutate(Pattern = 1:4) %>% 
+  dplyr::select(Pattern, everything()) %>% 
+  gather(key = Chemicals, value = Loadings, -Pattern) %>% 
+  mutate(Chemicals = fct_inorder(Chemicals)) %>%
+  ggplot(aes(x = Chemicals, y = Loadings)) + geom_col() +
+  facet_wrap(.~Pattern) + theme_bw() +
+  theme(axis.text.x = element_text(angle = 45),
+        strip.background = element_blank()) +
+  labs(title = "Distinct Patterns")
+```
+
+### Simulate Scores
+
+```{r}
+create_scores_dist <- function (seed) {
+  scores_dist <- matrix(nrow = 1000, ncol = 4)
+  set.seed(seed)
+  scores_dist <- exp(mvrnorm(n = 1000, mu = rep(0, 4), 
+                          Sigma = diag(rep(1, 4)))) # Independent log normal dist
+  scores_dist
+}
+
+scores_dist_iter <- tibble(seed = 1:100) %>% 
+ mutate(scores = map(seed, ~create_scores_dist(seed = .x)))
+```
+
+### Simulate Chemical Exposures
+
+Multiple scores and vectors, and add to get the mixture.
+
+```{r}
+sim_dist0 <- full_join(scores_dist_iter, patterns_dist_iter, by = "seed")
+
+sim_dist0 <- sim_dist0 %>% 
+  mutate(chem = map2(scores, true_patterns, `%*%`))
+```
+
+### Simulate Noise
+
+```{r}
+add_noise <- function (seed, chem) {
+  noise <- list(mean=0, sd=1)
+  set.seed(seed)
+  chem_dist <- pmax(chem + rmatrix(1000, 50, dist=rnorm, mean=noise$mean, sd=noise$sd), 0)	
+  chem_dist
+}
+
+sim_dist <- sim_dist0 %>% 
+ mutate(sim = map2(seed, chem, add_noise))
+```
+
+```{r}
+melt(cormat) %>% rename(Correlation = value) %>% 
+ggplot(aes(x = Var1, y = Var2)) +
+  geom_tile(aes(fill = Correlation), colour = "white") +
+  scale_fill_gradient2(low = "#00BFC4", mid = "white", high = "#F8766D",
+                       midpoint = 0,
+                       na.value = "transparent", limits = c(-1, 1)) +
+  theme_grey() + labs(x = "", y = "") +
+  scale_x_discrete(expand = c(0, 0)) +
+  scale_y_discrete(expand = c(0, 0)) +
+  theme(axis.text = element_blank(),
+        panel.spacing = unit(0, "lines"),
+        strip.background = element_blank(),
+        strip.placement = "outside", legend.position = "bottom") + ggtitle("Correlation w/ Distinct Underlying Patterns")
+```
+
+## 2: Correlated Patterns
+
+### Simulate Patterns
+
+```{r}
+create_patterns_dist <- function (seed) {
+  set.seed(seed)
+  patterns_dist <- rbind(rdirichlet(1, c(rep(10, 12), rep(0.1, 38))),
+                         rdirichlet(1, c(rep(0.1, 12), rep(10, 12), rep(0.1, 26))),
+                         rdirichlet(1, c(rep(0.1, 26), rep(10, 12), rep(0.1, 12))),
+                         rdirichlet(1, c(rep(0.1, 36), rep(10, 14))))
+  patterns_dist
+}
+
+## Construct a matrix for 4 TRUE exposure patterns
+create_patterns_cor <- function (seed) {
+  set.seed(seed)
+  patterns_cor <- rbind( rdirichlet(1, c(rep(10, 12),  rep(5, 12),   rep(0.1, 26))),
+                         rdirichlet(1, c(rep(0.1, 12), rep(10, 12),  rep(5, 12),  rep(0.1, 14))),
+                         rdirichlet(1, c(rep(0.1, 12), rep(5, 12),   rep(10, 12), rep(0.1, 14))),
+                         rdirichlet(1, c(rep(5, 12),   rep(0.1, 24), rep(10, 14))))
+  patterns_cor
+}
+
+patterns_cor_iter <- tibble(seed = 1:100) %>% 
+ mutate(true_patterns = map(seed, create_patterns_cor))
+```
+
+```{r, fig.width=5, fig.height=5}
+patterns_cor_iter[1,2][[1]][[1]] %>% as_tibble() %>% 
+  mutate(Pattern = 1:4) %>% dplyr::select(Pattern, everything()) %>% 
+  gather(key = Chemicals, value = Loadings, -Pattern) %>% 
+  mutate(Chemicals = fct_inorder(Chemicals)) %>%
+  ggplot(aes(x = Chemicals, y = Loadings)) + geom_col() +
+  facet_wrap(.~Pattern) + theme_bw() +
+  theme(axis.text.x = element_text(angle = 45),
+        strip.background = element_blank()) +
+  labs(title = "Overlapping Patterns")
+```
+
+### Simulate Scores
+
+```{r}
+create_scores_cor <- function (seed) {
+  scores_cor <- matrix(nrow = 1000, ncol = 4)
+  cov <- matrix( c(1,    0.25, 0.15, 0.15,
+                  0.25, 1,    0.15, 0.15,
+                  0.15, 0.15, 1,    0.25,
+                  0.15, 0.15, 0.25, 1), nrow = 4)
+  
+  set.seed(seed)
+  scores_cor <- exp(mvrnorm(n = 1000, mu = rep(1, 4), 
+                          Sigma = cov)) # dists are kind of DEPENDENT
+  }
+
+scores_cor_iter <- tibble(seed = 1:100) %>% 
+ mutate(scores = map(seed, ~create_scores_cor(seed = .x)))
+```
+
+### Simulate Chemical Exposures
+
+Multiple scores and vectors, and add to get the mixture.
+
+```{r}
+sim_cor0 <- full_join(scores_cor_iter, patterns_cor_iter, by = "seed")
+
+sim_cor0 <- sim_cor0 %>% 
+  mutate(chem = map2(scores, true_patterns, `%*%`))
+```
+
+### Simulate Noise
+
+```{r}
+sim_cor <- sim_cor0 %>% 
+ mutate(sim = map2(seed, chem, ~add_noise(seed = .x, chem = .y)[[1]]),
+        noise = map2(seed, chem, function(x, y) {add_noise(x, y)[[2]]}),
+        sim = map(sim, function(x) scale(x, center = FALSE, scale = apply(x, 2, sd))))
+```  
+
+```{r}
+cormat2 <- round(cor(sim_cor[2,5][[1]][[1]]),2)
+
+melted_cormat2 <- melt(cormat2) %>% rename(Correlation = value)
+
+labelled2 <- melted_cormat2 %>% mutate(Class1 = ifelse(str_detect(Var1, "BDE"), "PBDEs",
+                                                     ifelse(str_detect(Var1, "^M"), "Phthalates",
+                                                            ifelse(str_detect(Var1, "pcb"), "PCBs",
+                                                                   "Phenols")))) %>%
+  mutate(Class2 = ifelse(str_detect(Var2, "BDE"), "PBDEs",
+                         ifelse(str_detect(Var2, "^M"), "Phthalates",
+                                ifelse(str_detect(Var2, "pcb"), "PCBs",
+                                       "Phenols")))) %>%
+  mutate(Class2 = factor(Class2, levels = c("Phthalates", "Phenols",
+                                            "PCBs", "PBDEs")))
+
+ggplot(data = labelled2, aes(x = Var1, y = Var2)) +
+  geom_tile(aes(fill = Correlation), colour = "white") +
+  scale_fill_gradient2(low = "#00BFC4", mid = "white", high = "#F8766D",
+                       midpoint = 0,
+                       na.value = "transparent", limits = c(-1, 1)) +
+  theme_grey() + labs(x = "", y = "") +
+  scale_x_discrete(expand = c(0, 0)) +
+  scale_y_discrete(expand = c(0, 0)) +
+  theme(axis.text = element_blank(),
+        panel.spacing = unit(0, "lines"),
+        strip.background = element_blank(),
+        strip.placement = "outside", legend.position = "bottom") + ggtitle("Overlapping Patterns & Correlated Scores")
+```
+
+### Save
+
+```{r}
+sim_cor  <- sim_cor %>% dplyr::select(-noise)
+#save(sim_cor, file = "./R/Sims/Iterate/sim_cor.RDA")
+
+# for (i in 1:100) {
+#   write_csv(as_tibble(sim_cor[i,4][[1]][[1]]), paste0("./R/Sims/Iterate/sim_cor_", i, "_stand.csv"))
+# }
+```
+
+## 3: Overlapping Patterns
+
+### Simulate Patterns
+
+Use correlated patterns.
+
+### Simulate Scores
+
+Use distinct scores.
+
+### Simulate Chemical Exposures
+
+Multiple scores and vectors, and add to get the mixture.
+
+```{r}
+sim_over0 <- full_join(scores_dist_iter, patterns_cor_iter, by = "seed")
+
+sim_over0 <- sim_over0 %>% 
+  mutate(chem = map2(scores, true_patterns, `%*%`))
+```
+
+### Simulate Noise
+
+```{r}
+sim_over <- sim_over0 %>% 
+ mutate(sim = map2(seed, chem, ~add_noise(seed = .x, chem = .y)[[1]]),
+        noise = map2(seed, chem, function(x, y) {add_noise(x, y)[[2]]}),
+        sim = map(sim, function(x) scale(x, center = FALSE, scale = apply(x, 2, sd))))
+```  
+
+```{r}
+cormat3 <- round(cor(sim_over[100,4][[1]][[1]]),2)
+
+summary(sim_over[100,4][[1]][[1]])
+
+melted_cormat3 <- melt(cormat3) %>% rename(Correlation = value)
+
+labelled3 <- melted_cormat3 %>% mutate(Class1 = ifelse(str_detect(Var1, "BDE"), "PBDEs",
+                                                     ifelse(str_detect(Var1, "^M"), "Phthalates",
+                                                            ifelse(str_detect(Var1, "pcb"), "PCBs",
+                                                                   "Phenols")))) %>%
+  mutate(Class2 = ifelse(str_detect(Var2, "BDE"), "PBDEs",
+                         ifelse(str_detect(Var2, "^M"), "Phthalates",
+                                ifelse(str_detect(Var2, "pcb"), "PCBs",
+                                       "Phenols")))) %>%
+  mutate(Class2 = factor(Class2, levels = c("Phthalates", "Phenols",
+                                            "PCBs", "PBDEs")))
+
+ggplot(data = labelled3, aes(x = Var1, y = Var2)) +
+  geom_tile(aes(fill = Correlation), colour = "white") +
+  scale_fill_gradient2(low = "#00BFC4", mid = "white", high = "#F8766D",
+                       midpoint = 0,
+                       na.value = "transparent") +
+  theme_grey() + labs(x = "", y = "") +
+  scale_x_discrete(expand = c(0, 0)) +
+  scale_y_discrete(expand = c(0, 0)) +
+  theme(axis.text = element_blank(),
+        panel.spacing = unit(0, "lines"),
+        strip.background = element_blank(),
+        legend.position = "bottom") + 
+        labs(title = "Simulated correlation structure for overlapping patterns & independent scores")
+```
+
+### Save
+
+```{r} 
+sim_over <- sim_over %>% dplyr::select(-noise)
+#save(sim_over, file = "./R/Sims/Iterate/sim_over.RDA")
+
+# for (i in 1:100) {
+#   write_csv(as_tibble(sim_over[i,4][[1]][[1]]), paste0("./R/Sims/Iterate/sim_over_", i, "_stand.csv"))
+# }
+```
