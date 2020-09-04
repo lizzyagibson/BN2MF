@@ -39,10 +39,16 @@ dataNorm = (isee2020dat) ./ sd;
 %% Clear temporary variables
 clear opts
 
-[EWA, EH, varWA, varH, alphaH, betaH, ...
-    EWA_low, EH_low, varWA_low, varH_low, alphaH_low, betaH_low] = NPBayesNMF(dataNorm);
-%[ewa_cc,eh_cc] = NPBayesNMF(isee2020dat);
+% tic()
+% [EWA, EH, varWA, varH, alphaH, betaH] = NPBayesNMF(dataNorm);
+% toc()
+% Elapsed time is 47.751565 seconds.
 
+% tic()
+% [EWA, EH, varWA, varH, alphaH, betaH] = NPBayesNMF(isee2020dat);
+% %[ewa_cc,eh_cc] = NPBayesNMF(isee2020dat);
+% toc()
+% Elapsed time is 8859.970457 seconds.
 labels = ["mecpp", "mehhp", "meohp", "mcpp", "mibp", "mbp", "mbzp", "mep", "mehp", ...
     "dcp_24", "dcp_25", "b_pb", "bp_3", "m_pb", "p_pb", "tcs", "bpa"];
        

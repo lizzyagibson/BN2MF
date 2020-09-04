@@ -91,9 +91,14 @@ ggplot(data = labelled, aes(x = Var1, y = Var2)) +
 ### Run R Function
 
 ```{r}
-source("./Function/npBNMF_function.R")
+source("./Function/future_function.R")
 
-r_out <- NPBayesNMF(edc_cc)
+r_out <- NPBayesNMF(edc_std)
+
+# system.time(NPBayesNMF(edc_std))
+# Time: 729.100 
+# Size 342x17
+# Standardized
 ```
 
 ### Patterns
