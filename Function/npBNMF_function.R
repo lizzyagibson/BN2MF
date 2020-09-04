@@ -106,7 +106,7 @@ NPBayesNMF <- function(X) {
 
       end_score[i] = score[tail(which(score != 0),1)]
           
-      print(paste0("Run Number: ", i, "; Iter Number: ", iter, "; Final Score: ", round(end_score[i], 4)))
+      #print(paste0("Run Number: ", i, "; Iter Number: ", iter, "; Final Score: ", round(end_score[i], 4)))
       
       # % Among the results, use the fitted variational parameters that achieve the highest ELBO
       if (i == 1 | (i > 1 && (end_score[i] >= max(end_score)))) {

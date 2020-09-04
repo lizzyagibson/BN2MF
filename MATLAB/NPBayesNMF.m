@@ -1,6 +1,5 @@
-function [EWA, EH, varWA, varH, alphaH, betaH, ...
-    EWA_low, EH_low, varWA_low, varH_low, ...
-    alphaH_low, betaH_low] = NPBayesNMF(X)
+function [EWA, EH, varWA, varH, alphaH, betaH] = NPBayesNMF(X)
+    %EWA_low, EH_low, varWA_low, varH_low, alphaH_low, betaH_low] = NPBayesNMF(X)
 % X is the data matrix of non-negative values
 % Kinit is the maximum allowable factorization (initial). The algorithm tries to reduce this number.
 %       the size of EWA and EH indicate the learned factorization.
@@ -22,12 +21,12 @@ varH = [];
 alphaH = [];
 betaH = [];
 
-EWA_low = [];
-EH_low = [];
-varWA_low = [];
-varH_low = [];
-alphaH_low = [];
-betaH_low = [];
+% EWA_low = [];
+% EH_low = [];
+% varWA_low = [];
+% varH_low = [];
+% alphaH_low = [];
+% betaH_low = [];
 
 Kinit = N;
 for i = 1:100
@@ -142,21 +141,21 @@ if i == 1 || (i > 1 && (end_score(i) >= max(end_score)))
     % final A2
 end
 
-% LOWEST ELBO?
-if i == 1 || (i > 1 && (end_score(i) < min(end_score)))
-    EWA_low = (W1./W2)*diag(A1./A2);
-    EH_low = H1./H2;
-    varWA_low = (W1 .* A1) .* (W1 + A1 + 1) ./ (W2.^2 .* A2.^2);
-    % e(w^2) * e(a^2) - e(w)^2 * e(a)^2
-    %                  - EW^2 .* EA^2
-    varH_low = H1 ./ H2.^2;
-    
-    alphaH_low = H1;
-    betaH_low = H2;
-    % final W1
-    % final W2
-    % final A1
-    % final A2
-end
+% % LOWEST ELBO?
+% if i == 1 || (i > 1 && (end_score(i) < min(end_score)))
+%     EWA_low = (W1./W2)*diag(A1./A2);
+%     EH_low = H1./H2;
+%     varWA_low = (W1 .* A1) .* (W1 + A1 + 1) ./ (W2.^2 .* A2.^2);
+%     % e(w^2) * e(a^2) - e(w)^2 * e(a)^2
+%     %                  - EW^2 .* EA^2
+%     varH_low = H1 ./ H2.^2;
+%     
+%     alphaH_low = H1;
+%     betaH_low = H2;
+%     % final W1
+%     % final W2
+%     % final A1
+%     % final A2
+% end
 
 end

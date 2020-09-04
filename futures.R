@@ -81,12 +81,10 @@ a
 pid
 
 
-plan(sequential)
+plan(multiprocess)
 system.time(demo("mandelbrot", package = "future", ask = FALSE))
 
-> library("future")
-
-> library("graphics")
+library("graphics")
 
 plot_what_is_done <- function(counts) {
       for (kk in seq_along(counts)) {
@@ -175,3 +173,33 @@ repeat {
         counts <- plot_what_is_done(counts)
         if (!any(sapply(counts, FUN = inherits, "Future"))) break
 }
+
+###############
+
+# 1 .... 100
+# [1 ... 25 ], [26 : 50]
+
+nruns <- list(1:25, 26:50, 51:75, 76:100)
+
+
+f <- function(listofruns){
+
+    for (i in listofruns){ # list of runs is 1:25
+      
+    
+  }
+  
+}
+##
+
+for (i in 1:4) {
+  res[i]= future(f(i))
+}
+
+agg <- c(1:10)
+for (i in 1:10) {
+  agg[i]<- value(res[i])
+}
+
+normal stuff
+
