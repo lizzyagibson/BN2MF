@@ -138,7 +138,12 @@ NPBayesNMF <- function(X) {
 
 # X = matrix(runif(50), 10, 5)
 # system.time(NPBayesNMF(X))
-# X = sim_over$sim[1][[1]]
-# tic()
-# NPBayesNMF(X)
-# toc()
+X = sim_over$sim[1][[1]]
+tic()
+NPBayesNMF(X)
+NPBayesNMF_future(X)
+toc()
+
+system.time(NPBayesNMF(X))
+system.time(NPBayesNMF_future(X))
+

@@ -7,6 +7,7 @@
 # % num_iter is the number of iterations to run. The code terminates based on convergence currently.
 
 library(future)
+plan(multiprocess)
 
 middle_loop <- function(X, N, dim, Kinit, bnp_switch, nruns) {   
 
@@ -58,18 +59,24 @@ middle_loop <- function(X, N, dim, Kinit, bnp_switch, nruns) {
         A1 = a01 + bnp_switch * t(rowSums(apply(X_reshape*P, c(1,2), sum)))
         A2 = a02 + bnp_switch * (colSums(W1/W2) * t(rowSums(H1/H2)))
   
-        idx_prune = which(A1/A2 < 10^-3)
+        if ( all(A1/A2 < 10^-3) ) {idx_prune = integer(0)} else {idx_prune = which(A1/A2 < 10^-3)} 
+        
         if (length(idx_prune) >= 1) {
-            W1 = W1[,-idx_prune]
-            W2 = W2[,-idx_prune]
-            A1 = matrix(A1[,-idx_prune], nrow = 1)
-            A2 = matrix(A2[,-idx_prune], nrow = 1)
-            H1 = H1[-idx_prune,]
-            H2 = H2[-idx_prune,] 
-            }
+          W1 = matrix(W1[,-idx_prune], nrow = dim)
+          W2 = matrix(W2[,-idx_prune], nrow = dim)
+          A1 = matrix(A1[,-idx_prune], nrow = 1)
+          A2 = matrix(A2[,-idx_prune], nrow = 1)
+          H1 = matrix(H1[-idx_prune,], ncol = N)
+          H2 = matrix(H2[-idx_prune,], ncol = N)
+        }
+        
         K = length(A1)
         
-        score[iter] = base::sum(abs(X- (W1/W2) %*% diag(as.vector(A1/A2)) %*% (H1/H2)))
+        score[iter] = if (ncol(A1/A2) > 1) {
+          sum( abs( X - (W1/W2) %*% diag(as.vector(A1/A2)) %*% (H1/H2) ) )
+        } else if (ncol(A1/A2) == 1) {
+          sum( abs( X - (W1/W2) %*% as.vector(A1/A2) %*% (H1/H2) ) )
+        }
         
         # if (iter %% 100 == 0) {print(paste0("Run Number: ", i, "; Iter Number: ", iter, "; Iter Score: ", round(score[iter], 4)))}
         if (iter > 1 && abs(score[iter-1] - score[iter]) < 1e-5) {break} # Convergence criteria!
@@ -79,16 +86,16 @@ middle_loop <- function(X, N, dim, Kinit, bnp_switch, nruns) {
         # print(paste0("Run Number: ", i, "; Final Score: ", round(end_score[i], 4)))
         
       # % Among the results, use the fitted variational parameters that achieve the highest ELBO
-    if (i == 1 | (i > 1 && (end_score[i] >= max(end_score)))) {
-        EA = A1/A2
-        EWA = (W1/W2)*diag(A1/A2)
-        EH = H1/H2
-        EW = (W1/W2)
-        varA = A1/(A2^2)
-        varW = W1/(W2^2)
-        alphaH = H1
-        betaH = H2
-      }
+      if (i == 1 | (i > 1 && (end_score[i] >= max(end_score)))) {
+          EA = A1/A2
+          EWA = (W1/W2)*diag(A1/A2)
+          EH = H1/H2
+          EW = (W1/W2)
+          varA = A1/(A2^2)
+          varW = W1/(W2^2)
+          alphaH = H1
+          betaH = H2
+        }
   }
       H_CI_low  <- qgamma(0.025, shape = alphaH, rate = betaH)
       H_CI_high <- qgamma(0.975, shape = alphaH, rate = betaH)
@@ -96,7 +103,7 @@ middle_loop <- function(X, N, dim, Kinit, bnp_switch, nruns) {
     }
 
 
-NPBayesNMF <- function(X) {
+NPBayesNMF_future <- function(X) {
   
   X = as.matrix(X)
   dim = nrow(X)
