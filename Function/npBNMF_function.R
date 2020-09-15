@@ -85,25 +85,34 @@ NPBayesNMF <- function(X) {
           A2 = a02 + bnp_switch * (colSums(W1/W2) * t(rowSums(H1/H2)))
       
           # % This is the sparse prior on A, pushing A to zero
-          idx_prune = which(A1/A2 < 10^-3)
+          # If all patterns are zero, don't push anything
+          # prohibits pushing all patterns to zero
+          if ( all(A1/A2 < 10^-3) ) {idx_prune = integer(0)} else {idx_prune = which(A1/A2 < 10^-3)} 
           
           if (length(idx_prune) >= 1) {
-                  W1 = W1[,-idx_prune]
-                  W2 = W2[,-idx_prune]
+                  W1 = matrix(W1[,-idx_prune], nrow = dim)
+                  W2 = matrix(W2[,-idx_prune], nrow = dim)
                   A1 = matrix(A1[,-idx_prune], nrow = 1)
                   A2 = matrix(A2[,-idx_prune], nrow = 1)
-                  H1 = H1[-idx_prune,]
-                  H2 = H2[-idx_prune,] 
+                  H1 = matrix(H1[-idx_prune,], ncol = N)
+                  H2 = matrix(H2[-idx_prune,], ncol = N)
                   }
           
           K = length(A1)
-        
-          score[iter] = base::sum(abs(X- (W1/W2) %*% diag(as.vector(A1/A2)) %*% (H1/H2)))
+
+          score[iter] = if (ncol(A1/A2) > 1) {
+                            sum( abs( X - (W1/W2) %*% diag(as.vector(A1/A2)) %*% (H1/H2) ) )
+                        } else if (ncol(A1/A2) == 1) {
+                            sum( abs( X - (W1/W2) %*% as.vector(A1/A2) %*% (H1/H2) ) )
+                          }
           
           if (iter %% 100 == 0) {print(paste0("Run Number: ", i, "; Iter Number: ", iter, "; Iter Score: ", round(score[iter], 4)))}
-          if (iter > 1 && abs(score[iter-1] - score[iter]) < 1e-5) {break} # Convergence criteria!
+          if (iter > 1 && abs(score[iter-1] - score[iter]) < 1e-5) {
+            print(paste0('Converged in ', iter,' iterations.'))
+            break} # Convergence criteria!
           }
 
+      if( iter == num_iter ) warning('Maximum iterations reached. BNMF did not converge.')
       end_score[i] = score[tail(which(score != 0),1)]
           
       #print(paste0("Run Number: ", i, "; Iter Number: ", iter, "; Final Score: ", round(end_score[i], 4)))
@@ -121,11 +130,15 @@ NPBayesNMF <- function(X) {
       }
       H_CI_low  <- qgamma(0.025, shape = alphaH, rate = betaH)
       H_CI_high <- qgamma(0.975, shape = alphaH, rate = betaH)
-      }
+  }
+
   list(EWA = EWA, EH = EH, H_CI_low = H_CI_low, H_CI_high = H_CI_high)
   }
 
 
 # X = matrix(runif(50), 10, 5)
 # system.time(NPBayesNMF(X))
-
+# X = sim_over$sim[1][[1]]
+# tic()
+# NPBayesNMF(X)
+# toc()
