@@ -220,7 +220,7 @@ sim_over <- scores_dist_iter %>%
 
 ```{r}
 sim_over <- sim_over %>% 
- mutate(sim = map2(seed, chem, ~add_noise))
+ mutate(sim = map2(seed, chem, add_noise))
 ```  
 
 ```{r}
@@ -245,8 +245,15 @@ melt(cormat3) %>% rename(Correlation = value) %>%
 
 ```{r} 
 sim_norm <- rbind(sim_dist %>% mutate(data = "Distinct"),
-      sim_over %>% mutate(data = "Overlapping"),
-      sim_cor %>% mutate(data = "Correlated"))
+      sim_over %>% mutate(data = "Overlapping")) %>% 
+  mutate(sim_type = "L1 Norm") %>%
+ mutate(sim_var10 = map(sim, function(x) x*5)) %>% 
+  pivot_longer(c(sim, sim_var10),
+               names_to = "var",
+               values_to = "sim") %>% 
+  mutate(var = ifelse(var == "sim", "reg", "var10"))
+
+sim_norm
 
 #save(sim_norm, file = "./R/Sims/Iterate/sim_norm.RDA")
 

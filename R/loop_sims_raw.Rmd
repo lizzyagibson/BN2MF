@@ -165,14 +165,19 @@ sim_over <- sim_over %>%
 sim_old <- rbind(sim_dist %>% mutate(data = "Distinct"),
       sim_over %>% mutate(data = "Overlapping"),
       sim_cor %>% mutate(data = "Correlated")) %>% 
-  mutate(std_sim = map(sim, function(x) apply(x, 2, function(x) x/sd(x))), #standardize
-         std_10_sim = map(std_sim, function(x) x*10)) %>% # scale sd up by 10
-  pivot_longer(cols = c(sim, std_sim, std_10_sim),
+  mutate(stand = map(sim, function(x) apply(x, 2, function(x) x/sd(x))), #standardize
+         var10 = map(stand, function(x) x*sqrt(10))) %>% # scale up var = 10
+  pivot_longer(cols = c(sim, stand, var10),
                values_to = "sim",
-               names_to = "sim_type")
+               names_to = "var") %>% 
+  mutate(sim_type = "Raw") %>% 
+  mutate(var = ifelse(var == "sim", "reg", var))
+  
+sim_old
 
-system.time(NPBayesNMF(sim_old$sim[[1]]))
+# sim_bnmf <- full_join(sim_old, sim_norm)
 #save(sim_old, file = "./R/Sims/Iterate/sim_old.RDA")
+save(sim_bnmf, file = "./R/Sims/Iterate/sim_bnmf.RDA")
 
 # for (i in 1:100) {
 #   write_csv(as_tibble(sim_over[i,4][[1]][[1]]), paste0("./R/Sims/Iterate/sim_over_", i, "_stand.csv"))
