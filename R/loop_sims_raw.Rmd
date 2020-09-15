@@ -176,8 +176,8 @@ sim_old <- rbind(sim_dist %>% mutate(data = "Distinct"),
 sim_old
 
 # sim_bnmf <- full_join(sim_old, sim_norm)
-#save(sim_old, file = "./R/Sims/Iterate/sim_old.RDA")
-save(sim_bnmf, file = "./R/Sims/Iterate/sim_bnmf.RDA")
+# save(sim_old, file = "./R/Sims/Iterate/sim_old.RDA")
+# save(sim_bnmf, file = "./R/Sims/Iterate/sim_bnmf.RDA")
 
 # for (i in 1:100) {
 #   write_csv(as_tibble(sim_over[i,4][[1]][[1]]), paste0("./R/Sims/Iterate/sim_over_", i, "_stand.csv"))
