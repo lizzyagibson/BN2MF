@@ -2,6 +2,7 @@
 # Sims, npBNMF, regular NMF (L2 & Poisson), PCA, and FA #
 #########################################################
 # Lizzy Gibson # 6/22/2020 ##############################
+# Added BNMF   # 9/17/2020 ##############################
 #########################################################
 
 # Packages
@@ -144,7 +145,7 @@ NPBayesNMF <- function(X) {
 }
 
 # Read in Sims
-load("Data/sim_bnmf.RDA")
+load("/ifs/scratch/msph/ehs/eag2186/Data/sim_bnmf.RDA")
 
 ## read job number from system environment
 ## This only works if run on cluster!!
@@ -213,7 +214,7 @@ get_pca_uncenter <- function (sim) {
 
 ## Run
 
-output_all <- sim_dist[job_num,] %>% 
+output_all <- sim_bnmf[job_num,] %>% 
   mutate(pca_out = map(sim, get_pca),
          pca_rotations_un = map(pca_out, function(x)
                           x[[1]]),
@@ -237,6 +238,7 @@ output_all <- output_all %>%
 
 ## Match Functions
 ## Reorder eigenvector matrix to best match truth
+
 match_eigen <- function (truth, loading) {
   truth <- t(truth)
   loading <- as.matrix(loading)
@@ -248,17 +250,25 @@ match_eigen <- function (truth, loading) {
     corr <- cor(truth, new_loading)
     } else {new_loading <- loading}
   
+  corr <- corr[1:ncol(corr),]
+  
   reordered <- matrix(nrow = nrow(new_loading), ncol = ncol(new_loading))
   
   # Put eigenvector columns in order that best correlates with truth
+  # Put column 1 in column it is most correlated with
   reordered[,which.max(corr[,1])] <- new_loading[,1]
   
-  if (ncol(reordered) > 1) {
-    if (NA %in% reordered[,which.max(corr[,2])]) {reordered[,which.max(corr[,2])] <- new_loading[,2]
-    } else {reordered[,which.max(corr[,2][-which.max(corr[,2])])] <- new_loading[,2]}
-  } 
+  # Set corresponding ROW to NA so it can't be chosen again
+  corr[which.max(corr[,1]),] <- NA
   
-  if (ncol(reordered) == 3) {reordered[,which(NA %in% reordered[1,])] <- new_loading[,3]}
+  # Put column 2 in column it is most correlated with
+  if (ncol(reordered) > 1) {
+    reordered[,which.max(corr[,2])] <- new_loading[,2]
+    # Set corresponding ROW to NA so it can't be chosen again
+    corr[which.max(corr[,2]),] <- NA
+    }
+  
+  if (ncol(reordered) > 2) {reordered[,which.max(corr[,3])] <- new_loading[,3]}
   
   reordered
 }
@@ -289,8 +299,8 @@ output_all <- output_all %>%
          pca_scores = pmap(list(pca_rotations_un, pca_rotations, pca_scores_un), match_pca_scores))
   
 output_all <- output_all %>% 
-  mutate(pca_uncentered_rotations = map2(true_patterns, pca_uncentered_rotations_un, match_eigen),
-         pca_uncentered_scores = pmap(list(pca_uncentered_rotations_un, pca_uncentered_rotations, pca_uncentered_scores_un), 
+  mutate(pca_uncenter_rotations = map2(true_patterns, pca_uncenter_rotations_un, match_eigen),
+         pca_uncenter_scores = pmap(list(pca_uncenter_rotations_un, pca_uncenter_rotations, pca_uncenter_scores_un), 
                                       match_pca_scores))
 
 
@@ -397,6 +407,34 @@ output_all <- output_all %>%
 
 ## Match Functions
 
+# # If highest correlated eigenvector is negative, flip the whole matrix
+# if (corr[which.max(abs(corr))] < 0) {
+#   new_loading <- -loading
+#   corr <- cor(truth, new_loading)
+# } else {new_loading <- loading}
+# 
+# corr <- corr[1:ncol(corr),]
+# 
+# reordered <- matrix(nrow = nrow(new_loading), ncol = ncol(new_loading))
+# 
+# # Put eigenvector columns in order that best correlates with truth
+# # Put column 1 in column it is most correlated with
+# reordered[,which.max(corr[,1])] <- new_loading[,1]
+# 
+# # Set corresponding ROW to NA so it can't be chosen again
+# corr[which.max(corr[,1]),] <- NA
+# 
+# # Put column 2 in column it is most correlated with
+# if (ncol(reordered) > 1) {
+#   reordered[,which.max(corr[,2])] <- new_loading[,2]
+#   # Set corresponding ROW to NA so it can't be chosen again
+#   corr[which.max(corr[,2]),] <- NA
+# }
+# 
+# if (ncol(reordered) > 2) {reordered[,which.max(corr[,3])] <- new_loading[,3]}
+# 
+# reordered
+
 match_nmf_patterns <- function (truth, loading) {
   truth <- t(truth)
   
@@ -405,26 +443,32 @@ match_nmf_patterns <- function (truth, loading) {
   
   corr <- cor(truth, loading)
   
-  reordered <- matrix(nrow = ncol(loading), ncol = nrow(loading))
+  reordered <- matrix(nrow = nrow(loading), ncol = ncol(loading))
   
-  # Row 1 of corr matrix is the first pattern in the truth
-  # Take the column index of the highest correlation, that column should be the first
-  reordered[1,] <- loading[,which(corr==max(corr[1,]), arr.ind = TRUE)[2]]
-  reordered[2,] <- loading[,which(corr==max(corr[2,]), arr.ind = TRUE)[2]]
-  reordered[3,] <- loading[,which(corr==max(corr[3,]), arr.ind = TRUE)[2]]
+  # Put column 1 in column it is most correlated with
+  reordered[,which.max(corr[,1])] <- loading[,1]
   
-  # Only if solution has this many columns
-  if (ncol(loading) >= 4) {reordered[4,] <- loading[,which(corr==max(corr[4,]), arr.ind = TRUE)[2]]}
+  # Set corresponding ROW to NA so it can't be chosen again
+  corr[which.max(corr[,1]),] <- NA
+   
+  # Put column 2 in column it is most correlated with
+  if (ncol(reordered) > 1) {
+     reordered[,which.max(corr[,2])] <- loading[,2]
+     corr[which.max(corr[,2]),] <- NA
+   }
+   
+  if (ncol(reordered) > 2) {
+    reordered[,which.max(corr[,3])] <- loading[,3]
+    corr[which.max(corr[,3]),] <- NA
+    }
   
-  if (ncol(loading) == 5) {
-    
-    no <- c(which(corr==max(corr[1,]), arr.ind = TRUE)[2],
-            which(corr==max(corr[2,]), arr.ind = TRUE)[2],
-            which(corr==max(corr[3,]), arr.ind = TRUE)[2],
-            which(corr==max(corr[4,]), arr.ind = TRUE)[2])
-    
-    reordered[5,] <- loading[,-no]
+  if (ncol(reordered) > 3) {
+    reordered[,which.max(corr[,4])] <- loading[,4]
+    corr[which.max(corr[,4]),] <- NA
   }
+  
+  if (ncol(reordered) > 4) {reordered[,which.max(corr[,5])] <- loading[,5]}
+  
   reordered
 }
 
@@ -433,8 +477,8 @@ match_nmf_scores <- function (rotations_un, rotations, scores_un) {
   scores <- as_tibble(matrix(nrow = nrow(scores_un), ncol = ncol(scores_un)))
   
   for (k in 1:nrow(rotations_un)) {
-    for (j in 1:nrow(rotations)) {
-        if (all(rotations_un[k, ] == rotations[j, ])) {
+    for (j in 1:ncol(rotations)) {
+        if (all(rotations_un[k, ] == rotations[, j])) {
           scores[, j] = scores_un[, k]
         }}
       }
