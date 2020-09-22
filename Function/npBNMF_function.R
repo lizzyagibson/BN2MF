@@ -13,7 +13,7 @@ NPBayesNMF <- function(X) {
   N = ncol(X)
   Kinit = ncol(X)
 
-  nruns = 100
+  nruns = 1 # 1 run for testing, only >> increase!
   end_score = matrix(rep(0, times = nruns))
   
   EA = matrix()
@@ -146,4 +146,3 @@ toc()
 
 system.time(NPBayesNMF(X))
 system.time(NPBayesNMF_future(X))
-
