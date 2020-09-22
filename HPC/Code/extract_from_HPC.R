@@ -1,18 +1,19 @@
 #######################################################################################
 #######################################################################################
 #######################################################################################
+library(tidyverse)
 
 # Aggregate HPC output
 comb_data <- tibble()
 
 for (i in 1:1300) {
-  if (file.exists(here::here(paste0("/HPC/out_comb/out_", i, ".RDA")))) { 
-    load(here::here(paste0("/HPC/out_comb/out_", i, ".RDA"))) }
+  if (file.exists(here::here(paste0("HPC/Rout/out_comb/out_sims", i, ".RDA")))) { 
+    load(here::here(paste0("HPC/Rout/out_comb/out_sims", i, ".RDA"))) 
+    }
     comb_data <- rbind(comb_data, output_all)
 }
 
 comb_data %>%
-  mutate(bnmf_rank = map(eh, nrow)) %>%
   dplyr::select(seed, fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank, bnmf_rank) %>%
   unnest(c(fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank, bnmf_rank)) %>%
   pivot_longer(cols = fa_rank:bnmf_rank) %>%
@@ -49,7 +50,6 @@ comb_data
 ####################################################################################################
 
 # Relative Error
-
 comb_data %>% dplyr::select(seed, sim_type, sim, grep("pred", colnames(.))) %>% 
   pivot_longer(pca_pred:bnmf_pred) %>% 
   mutate(l2 = map2(sim, value, function (x,y) norm(x-y, "F")/norm(x, "F"))) %>% 
@@ -60,6 +60,7 @@ comb_data %>% dplyr::select(seed, sim_type, sim, grep("pred", colnames(.))) %>%
             mean = mean(l2),
             max = max(l2)) %>% knitr::kable()
 
+
 comb_data_error <- comb_data %>% dplyr::select(seed, sim_type, sim, chem, grep("pred", colnames(.))) %>% 
   pivot_longer(pca_pred:bnmf_pred) %>% 
   mutate(l2_true = map2(chem, value, function (x,y) norm(x-y, "F")/norm(x, "F")),
@@ -67,6 +68,7 @@ comb_data_error <- comb_data %>% dplyr::select(seed, sim_type, sim, chem, grep("
   dplyr::select(seed, sim_type, name, l2_true, l2_sim) %>% 
   unnest(c(l2_sim, l2_true)) %>% 
   mutate(Standardized = "Yes")
+
 # save(comb_data_error, file = "./HPC/Rout/comb_data_error.RDA")
 
 comb_data_error %>% 
