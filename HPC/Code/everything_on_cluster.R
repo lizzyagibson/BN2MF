@@ -1,8 +1,9 @@
 #########################################################
 # Sims, npBNMF, regular NMF (L2 & Poisson), PCA, and FA #
 #########################################################
-# Lizzy Gibson # 6/22/2020 ##############################
-# Added BNMF   # 9/17/2020 ##############################
+# Lizzy Gibson    # 6/22/2020 ###########################
+# Added BNMF      # 9/17/2020 ###########################
+# Cleaned up code # 9/22/202  ###########################
 #########################################################
 
 # Packages
@@ -15,16 +16,15 @@ library(GPArotation, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
 library(psych, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
 
 # Read in Sims
-load("/ifs/scratch/msph/ehs/eag2186/Data/sim_bnmf.RDA")
+load("/ifs/scratch/msph/ehs/eag2186/Data/sim_norm.RDA")
 
 ## read job number from system environment
 ## This only works if run on cluster!!
 job_num = as.integer(Sys.getenv("SGE_TASK_ID"))
 job_num
 
-load("/ifs/scratch/msph/ehs/eag2186/npbnmf/to_do.RDA")
-
-if (!(job_num %in% to_do)) {stop("Job id already ran.")}
+# load("/ifs/scratch/msph/ehs/eag2186/npbnmf/to_do.RDA")
+# if (!(job_num %in% to_do)) {stop("Job id already ran.")}
 
 # Run everything
 
@@ -88,34 +88,25 @@ get_pca_uncenter <- function (sim) {
 
 ## Run
 
-output_all <- sim_bnmf[job_num,] %>% 
-  mutate(pca_out = map(sim, get_pca),
-         pca_rotations_un = map(pca_out, function(x)
-                          x[[1]]),
-         pca_scores_un    = map(pca_out, function(x)
-                          x[[2]]),
-         pca_pred      = map (pca_out, function(x)
-                          x[[3]]),
-         pca_rank      = map(pca_out, function(x)
-                          x[[4]]))
+output_all <- sim_norm[job_num,] %>% 
+  mutate(pca_out          = map(sim, get_pca),
+         pca_rotations_un = map(pca_out, function(x) x[[1]]),
+         pca_scores_un    = map(pca_out, function(x) x[[2]]),
+         pca_pred         = map(pca_out, function(x) x[[3]]),
+         pca_rank         = map(pca_out, function(x) x[[4]]))
 
 output_all <- output_all %>% 
-  mutate(pca_uncenter_out = map(sim, get_pca_uncenter),
-         pca_uncenter_rotations_un = map(pca_out, function(x)
-           x[[1]]),
-         pca_uncenter_scores_un    = map(pca_out, function(x)
-           x[[2]]),
-         pca_uncenter_pred      = map (pca_out, function(x)
-           x[[3]]),
-         pca_uncenter_rank      = map(pca_out, function(x)
-           x[[4]]))
+  mutate(pca_uncenter_out          = map(sim, get_pca_uncenter),
+         pca_uncenter_rotations_un = map(pca_out, function(x) x[[1]]),
+         pca_uncenter_scores_un    = map(pca_out, function(x) x[[2]]),
+         pca_uncenter_pred         = map(pca_out, function(x) x[[3]]),
+         pca_uncenter_rank         = map(pca_out, function(x) x[[4]]))
 
 ## Match Functions
 ## Reorder eigenvector matrix to best match truth
-
 match_eigen <- function (truth, loading) {
-  truth <- t(truth)
-  loading <- as.matrix(loading)
+  truth <- t(truth) # want patterns as columns
+  loading <- as.matrix(loading) # patterns already loadings
   corr <- cor(truth, loading)
   
   # If highest correlated eigenvector is negative, flip the whole matrix
@@ -124,7 +115,7 @@ match_eigen <- function (truth, loading) {
     corr <- cor(truth, new_loading)
     } else {new_loading <- loading}
   
-  corr <- if (ncol(corr) < nrow(corr)) {corr[1:ncol(corr),]} else {corr}
+  if (ncol(corr) < nrow(corr)) {corr <- corr[1:ncol(corr),]}
   
   reordered <- matrix(nrow = nrow(new_loading), ncol = ncol(new_loading))
   
@@ -138,7 +129,6 @@ match_eigen <- function (truth, loading) {
   # Put column 2 in column it is most correlated with
   if (ncol(reordered) > 1) {
     reordered[,which.max(corr[,2])] <- new_loading[,2]
-    # Set corresponding ROW to NA so it can't be chosen again
     corr[which.max(corr[,2]),] <- NA
     }
   
@@ -182,20 +172,21 @@ match_pca_scores <- function (rotations_un, rotations, scores_un) {
 
 output_all <- output_all %>% 
   mutate(pca_rotations = map2(true_patterns, pca_rotations_un, match_eigen),
-         pca_scores = pmap(list(pca_rotations_un, pca_rotations, pca_scores_un), match_pca_scores))
+         pca_scores    = pmap(list(pca_rotations_un, pca_rotations, pca_scores_un), match_pca_scores))
   
 output_all <- output_all %>% 
   mutate(pca_uncenter_rotations = map2(true_patterns, pca_uncenter_rotations_un, match_eigen),
-         pca_uncenter_scores = pmap(list(pca_uncenter_rotations_un, pca_uncenter_rotations, pca_uncenter_scores_un), 
+         pca_uncenter_scores    = pmap(list(pca_uncenter_rotations_un, pca_uncenter_rotations, pca_uncenter_scores_un), 
                                       match_pca_scores))
-
 
 #####
 # Factor Analysis
 #####
 
 ## Function
-  
+
+sim = output_all$sim[[1]]
+
 get_fa <- function (sim) {
   # Run FA on 3, 4, and 5 factor models
   set.seed(1988)
@@ -204,10 +195,10 @@ get_fa <- function (sim) {
   fa_5 <- fa(sim, 5, scores = "regression", rotate = "promax")
   
   # Choose the model with the lowest BIC
-  if (fa_5$BIC < fa_4$BIC && fa_5$BIC < fa_3$BIC) {
+  if (max(fa_5$BIC, fa_4$BIC, fa_3$BIC) == fa_5$BIC) {
     fa_out <- fa_5
     rank <- 5
-  } else if (fa_4$BIC < fa_3$BIC && fa_4$BIC < fa_5$BIC) {
+  } else if (max(fa_5$BIC, fa_4$BIC, fa_3$BIC) == fa_4$BIC) {
     fa_out <- fa_4
     rank <- 4
   } else {
@@ -224,18 +215,13 @@ get_fa <- function (sim) {
 ## Run
 
 output_all <- output_all %>% 
-  mutate(fa_out = map(sim, get_fa),
-         fa_rotations = map(fa_out, function(x)
-           x[[1]]),
-         fa_scores    = map(fa_out, function(x)
-           x[[2]]),
-         fa_pred      = map (fa_out, function(x)
-           x[[3]]),
-         fa_rank      = map(fa_out, function(x)
-           x[[4]]))
+  mutate(fa_out       = map(sim, get_fa),
+         fa_rotations = map(fa_out, function(x) x[[1]]),
+         fa_scores    = map(fa_out, function(x) x[[2]]),
+         fa_pred      = map(fa_out, function(x) x[[3]]),
+         fa_rank      = map(fa_out, function(x) x[[4]]))
 
 # FA factors are in the same order every time
-
 
 #####
 # L2 NMF
@@ -259,11 +245,10 @@ get_nmf_l2 <- function (sim) {
     (1/2)*(nrow(sim) + ncol(sim)) * 5 * log(nrow(sim) * ncol(sim))
   
   # Choose model with lowest BIC
-  if (bic_3 <= bic_4) {
+  if (max(bic_3, bic_4, bic_5) == bic_3) {
     nmf_out <- nmf_3
     rank <- 3
-  } else if (bic_4 < bic_3 &&
-             bic_4 <= bic_5) {
+  } else if (max(bic_3, bic_4, bic_5) == bic_4) {
     nmf_out <- nmf_4
     rank <- 4
   } else {
@@ -281,26 +266,22 @@ get_nmf_l2 <- function (sim) {
 ## Run
 
 output_all <- output_all %>%
-  mutate(nmf_l2_out = map(sim, get_nmf_l2),
-         nmf_l2_loadings_un = map(nmf_l2_out, function(x) 
-           x[[1]]),
-         nmf_l2_scores_un = map(nmf_l2_out, function(x) 
-           x[[2]]),
-         nmf_l2_pred = map(nmf_l2_out, function(x) 
-           x[[3]]),
-         nmf_l2_rank = map(nmf_l2_out, function(x) 
-           x[[4]]))
+  mutate(nmf_l2_out         = map(sim, get_nmf_l2),
+         nmf_l2_loadings_un = map(nmf_l2_out, function(x) x[[1]]),
+         nmf_l2_scores_un   = map(nmf_l2_out, function(x) x[[2]]),
+         nmf_l2_pred        = map(nmf_l2_out, function(x) x[[3]]),
+         nmf_l2_rank        = map(nmf_l2_out, function(x) x[[4]]))
 
 ## Match Functions
 
 match_nmf_patterns <- function (truth, loading) {
-  truth <- t(truth)
+  truth <- t(truth) # want patterns as columns
   
   # Flip loadings to same dimensions as Truth
   if (nrow(truth) != nrow(loading)) {loading <- t(as.matrix(loading))} else {loading <- as.matrix(loading)}
   
   corr <- cor(truth, loading)
-  corr <- if (ncol(corr) < nrow(corr)) {corr[1:ncol(corr),]}
+  if (ncol(corr) < nrow(corr)) {corr <- corr[1:ncol(corr),]}
   
   if (length(corr) != 1) {
       reordered <- matrix(nrow = nrow(loading), ncol = ncol(loading))
@@ -327,7 +308,7 @@ match_nmf_patterns <- function (truth, loading) {
         corr[which.max(corr[,4]),] <- NA
       }
       
-      if (ncol(reordered) > 4) {reordered[,which.max(corr[,5])] <- loading[,5]}
+      if (ncol(reordered) > 4) {reordered[,5:ncol(reordered)] <- loading[,5:ncol(reordered)]}
   } else {reordered = loading}
       
       reordered
@@ -335,6 +316,7 @@ match_nmf_patterns <- function (truth, loading) {
 
 match_nmf_scores <- function (rotations_un, rotations, scores_un) {
   
+  if (nrow(scores_un) != 1000) {scores_un = t(scores_un)} # want patterns as columns
   scores <- as_tibble(matrix(nrow = nrow(scores_un), ncol = ncol(scores_un)))
   
   for (k in 1:nrow(rotations_un)) {
@@ -350,9 +332,8 @@ match_nmf_scores <- function (rotations_un, rotations, scores_un) {
 
 output_all <- output_all %>%
   mutate(nmf_l2_loadings = map2(true_patterns, nmf_l2_loadings_un, match_nmf_patterns),
-         nmf_l2_scores = pmap(list(nmf_l2_loadings_un, nmf_l2_loadings, nmf_l2_scores_un), 
+         nmf_l2_scores   = pmap(list(nmf_l2_loadings_un, nmf_l2_loadings, nmf_l2_scores_un), 
                               match_nmf_scores))
-
 
 #####
 # Poisson NMF
@@ -371,11 +352,10 @@ get_nmf_p <- function (sim) {
   bic_5 <- -sum((sim * log(basis(nmf_5) %*% coef(nmf_5))) - (basis(nmf_5) %*% coef(nmf_5))) + 
     (1/2)*(nrow(sim) + ncol(sim)) * 5 * log(nrow(sim) * ncol(sim))
   
-  if (bic_3 <= bic_4) {
+  if (max(bic_3, bic_4, bic_5) == bic_3) {
     nmf_out <- nmf_3
     rank <- 3
-  } else if (bic_4 < bic_3 &&
-             bic_4 <= bic_5) {
+  } else if (max(bic_3, bic_4, bic_5) == bic_4) {
     nmf_out <- nmf_4
     rank <- 4
   } else {
@@ -391,21 +371,16 @@ get_nmf_p <- function (sim) {
 }
 
 output_all <- output_all %>% 
-  mutate(nmf_p_out = map(sim, get_nmf_p),
-         nmf_p_loadings_un = map(nmf_p_out, function(x) 
-           x[[1]]),
-         nmf_p_scores_un = map(nmf_p_out, function(x) 
-           x[[2]]),
-         nmf_p_pred = map(nmf_p_out, function(x) 
-           x[[3]]),
-         nmf_p_rank = map(nmf_p_out, function(x) 
-           x[[4]]))
+  mutate(nmf_p_out         = map(sim, get_nmf_p),
+         nmf_p_loadings_un = map(nmf_p_out, function(x) x[[1]]),
+         nmf_p_scores_un = map(nmf_p_out, function(x) x[[2]]),
+         nmf_p_pred = map(nmf_p_out, function(x) x[[3]]),
+         nmf_p_rank = map(nmf_p_out, function(x) x[[4]]))
 
 output_all <- output_all %>%
   mutate(nmf_p_loadings = map2(true_patterns, nmf_p_loadings_un, match_nmf_patterns),
          nmf_p_scores = pmap(list(nmf_p_loadings_un, nmf_p_loadings, nmf_p_scores_un), 
                               match_nmf_scores))
-
 
 #####
 # np BNMF
@@ -562,7 +537,7 @@ output_all <- output_all %>%
             
 output_all <- output_all %>%
   mutate(bnmf_loadings = map2(true_patterns, bnmf_loadings_un, match_nmf_patterns),
-         bnmf_scores = pmap(list(bnmf_loadings_un, bnmf_loadings, bnmf_scores_un), 
+         bnmf_scores   = pmap(list(bnmf_loadings_un, bnmf_loadings, bnmf_scores_un), 
                              match_nmf_scores))
 
 
@@ -590,21 +565,21 @@ symm_subspace_dist <- function(U, V) {
 }
 
 output_all <- output_all %>% 
-  mutate(pca_norm = map2(sim, pca_pred, function(x,y) norm(x-y, "F")/norm(x, "F")),
-         fa_norm = map2(sim, fa_pred, function(x,y) norm(x-y, "F")/norm(x, "F")),
-         nmf_l2_norm = map2(sim, nmf_l2_pred, function(x,y) norm(x-y, "F")/norm(x, "F")),
-         nmf_p_norm = map2(sim, nmf_p_pred, function(x,y) norm(x-y, "F")/norm(x, "F")),
-         bnmf_norm = map2(sim, bnmf_pred, function(x,y) norm(x-y, "F")/norm(x, "F")),
-         pca_rotation_ssdist   = map2(true_patterns, pca_rotations, symm_subspace_dist),
-         pca_scores_ssdist     = map2(true_scores, pca_scores, symm_subspace_dist),
-         fa_rotations_ssdist   = map2(true_patterns, fa_rotations, symm_subspace_dist),
-         fa_scores_ssdist      = map2(true_scores, fa_scores, symm_subspace_dist),
+  mutate(pca_norm              = map2(sim, pca_pred,    function(x,y) norm(x-y, "F")/norm(x, "F")),
+         fa_norm               = map2(sim, fa_pred,     function(x,y) norm(x-y, "F")/norm(x, "F")),
+         nmf_l2_norm           = map2(sim, nmf_l2_pred, function(x,y) norm(x-y, "F")/norm(x, "F")),
+         nmf_p_norm            = map2(sim, nmf_p_pred,  function(x,y) norm(x-y, "F")/norm(x, "F")),
+         bnmf_norm             = map2(sim, bnmf_pred,   function(x,y) norm(x-y, "F")/norm(x, "F")),
+         pca_rotation_ssdist   = map2(true_patterns, pca_rotations,   symm_subspace_dist),
+         pca_scores_ssdist     = map2(true_scores,   pca_scores,      symm_subspace_dist),
+         fa_rotations_ssdist   = map2(true_patterns, fa_rotations,    symm_subspace_dist),
+         fa_scores_ssdist      = map2(true_scores,   fa_scores,       symm_subspace_dist),
          nmf_l2_loading_ssdist = map2(true_patterns, nmf_l2_loadings, symm_subspace_dist),
-         nmf_l2_scores_ssdist  = map2(true_scores, nmf_l2_scores, symm_subspace_dist),
-         nmf_p_loading_ssdist  = map2(true_patterns, nmf_p_loadings, symm_subspace_dist),
-         nmf_p_scores_ssdist   = map2(true_scores, nmf_p_scores, symm_subspace_dist),
-         bnmf_loading_ssdist   = map2(true_patterns, bnmf_loadings, symm_subspace_dist),
-         bnmf_scores_ssdist    = map2(true_scores, bnmf_scores, symm_subspace_dist))
+         nmf_l2_scores_ssdist  = map2(true_scores,   nmf_l2_scores,   symm_subspace_dist),
+         nmf_p_loading_ssdist  = map2(true_patterns, nmf_p_loadings,  symm_subspace_dist),
+         nmf_p_scores_ssdist   = map2(true_scores,   nmf_p_scores,    symm_subspace_dist),
+         bnmf_loading_ssdist   = map2(true_patterns, bnmf_loadings,   symm_subspace_dist),
+         bnmf_scores_ssdist    = map2(true_scores,   bnmf_scores,     symm_subspace_dist))
 
 #####
 # Save
@@ -612,5 +587,5 @@ output_all <- output_all %>%
                            
 output_all <- output_all %>% dplyr::select(-grep("_un|_out", colnames(.)))
 
-save(output_all, file = paste0("out_sims", job_num, ".RDA"))
+save(output_all, file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/norm_out/norm_sims", job_num, ".RDA"))
 
