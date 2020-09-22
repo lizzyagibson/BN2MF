@@ -14,10 +14,10 @@ for (i in 1:1300) {
 }
 
 comb_data %>%
-  dplyr::select(seed, fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank, bnmf_rank) %>%
+  dplyr::select(seed, data, var, sim_type, fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank, bnmf_rank) %>%
   unnest(c(fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank, bnmf_rank)) %>%
   pivot_longer(cols = fa_rank:bnmf_rank) %>%
-  group_by(name, value) %>%
+  group_by(name, value, data, var, sim_type) %>%
   summarise(n())
 
 comb_data %>% dplyr::select(seed, grep("_ssdist", colnames(.))) %>%
@@ -50,39 +50,40 @@ comb_data
 ####################################################################################################
 
 # Relative Error
-comb_data %>% dplyr::select(seed, sim_type, sim, grep("pred", colnames(.))) %>% 
+comb_data %>% dplyr::select(seed, var, sim_type, sim, grep("pred", colnames(.))) %>% 
   pivot_longer(pca_pred:bnmf_pred) %>% 
   mutate(l2 = map2(sim, value, function (x,y) norm(x-y, "F")/norm(x, "F"))) %>% 
-  dplyr::select(seed, sim_type, name, l2) %>% 
+  dplyr::select(seed, var, sim_type, name, l2) %>% 
   unnest(l2) %>% 
-  group_by(sim_type, name) %>% 
+  group_by(sim_type, var, name) %>% 
   summarize(min = min(l2),
             mean = mean(l2),
             max = max(l2)) %>% knitr::kable()
 
 
-comb_data_error <- comb_data %>% dplyr::select(seed, sim_type, sim, chem, grep("pred", colnames(.))) %>% 
+comb_data_error <- comb_data %>% 
+  dplyr::select(seed, var, sim_type, sim, chem, grep("pred", colnames(.))) %>% 
   pivot_longer(pca_pred:bnmf_pred) %>% 
   mutate(l2_true = map2(chem, value, function (x,y) norm(x-y, "F")/norm(x, "F")),
          l2_sim = map2(sim, value, function (x,y) norm(x-y, "F")/norm(x, "F"))) %>% 
-  dplyr::select(seed, sim_type, name, l2_true, l2_sim) %>% 
-  unnest(c(l2_sim, l2_true)) %>% 
-  mutate(Standardized = "Yes")
-
-# save(comb_data_error, file = "./HPC/Rout/comb_data_error.RDA")
+  dplyr::select(seed, var, sim_type, name, l2_true, l2_sim) %>% 
+  unnest(c(l2_sim, l2_true))
 
 comb_data_error %>% 
-  ggplot(aes(x = name, y = l2, color = name, fill = name)) +
+  filter(sim_type == "L1 Norm")
+
+comb_data_error %>%
+  ggplot(aes(x = name, y = l2_sim, color = name, fill = name)) +
   geom_boxplot(alpha = 0.5) +
-  facet_grid(~sim_type, scales = "free") + 
+  facet_grid(~sim_type + var, scales = "free") + 
   geom_vline(xintercept = 0, color = "pink", linetype = "dashed", size = 0.5) +
   theme_bw() +
-  scale_y_log10(limits = c(0.07,1)) +
+  scale_y_log10() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
   labs(title = "Relative Predictive Error")
 
 comb_data_error %>% 
-  ggplot(aes(x = l2, color = sim_type, fill = sim_type)) +
+  ggplot(aes(x = l2_sim, color = sim_type, fill = sim_type)) +
   geom_histogram(bins = 100, alpha = 0.75) +
   facet_grid(name~., scales = "free") + 
   theme_bw() + scale_x_log10() +
@@ -126,3 +127,70 @@ comb_data_ssdist %>%
   labs(title = "Symmetric Subspace Distance")
 
 # save(comb_data_ssdist, file = "./HPC/Rout/comb_data_ssdist.RDA")
+
+#####
+# Sept 22
+#####
+#####
+
+rank_l1 <- comb_data %>%
+  dplyr::dplyr::select(seed, data, var, sim_type, fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank, bnmf_rank) %>%
+  unnest(c(fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank, bnmf_rank)) %>%
+  pivot_longer(cols = fa_rank:bnmf_rank) %>%
+  group_by(name, value, data, var, sim_type) %>%
+  filter(sim_type == "L1 Norm") %>% 
+  summarise(n = n())
+
+rank_raw <- comb_data %>%
+  dplyr::dplyr::select(seed, data, var, sim_type, fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank, bnmf_rank) %>%
+  unnest(c(fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank, bnmf_rank)) %>%
+  pivot_longer(cols = fa_rank:bnmf_rank) %>%
+  group_by(name, value, data, var, sim_type) %>%
+  filter(sim_type == "Raw") %>% 
+  summarise(n = n())
+
+#####
+# Rank
+#####
+
+rank_l1 %>% 
+  dplyr::select(-sim_type) %>% 
+  filter(var == "reg") %>% 
+  pivot_wider(names_from = value,
+              values_from = n) %>% 
+  mutate_if(is.integer, replace_na, 0)
+
+rank_l1 %>% 
+  dplyr::select(-sim_type) %>% 
+  filter(var == "var10") %>% 
+  pivot_wider(names_from = value,
+              values_from = n) %>% 
+  mutate_if(is.integer, replace_na, 0)
+
+rank_raw %>% 
+  dplyr::select(-sim_type) %>% 
+  filter(var == "reg") %>% 
+  pivot_wider(names_from = value,
+              values_from = n) %>% 
+  mutate_if(is.integer, replace_na, 0)
+
+rank_raw %>% 
+  dplyr::select(-sim_type) %>% 
+  filter(var == "stand") %>% 
+  pivot_wider(names_from = value,
+              values_from = n) %>% 
+  mutate_if(is.integer, replace_na, 0)
+
+#####
+# Relative Predictive Error
+#####
+
+comb_data_error %>%
+  ggplot(aes(x = name, y = l2_sim, color = name, fill = name)) +
+  geom_boxplot(alpha = 0.5) +
+  facet_grid(~sim_type + var, scales = "free") + 
+  geom_vline(xintercept = 0, color = "pink", linetype = "dashed", size = 0.5) +
+  theme_bw() +
+  scale_y_log10() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+  labs(title = "Relative Predictive Error")
