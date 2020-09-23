@@ -278,7 +278,11 @@ match_nmf_patterns <- function (truth, loading) {
   truth <- t(truth) # want patterns as columns
   
   # Flip loadings to same dimensions as Truth
-  if (nrow(truth) != nrow(loading)) {loading <- t(as.matrix(loading))} else {loading <- as.matrix(loading)}
+  if (nrow(loading) == ncol(loading)) { # this is only potentially true for BNMF
+    loading <- t(as.matrix(loading))
+  } else if ((nrow(loading) != ncol(loading)) & (nrow(truth) != nrow(loading))) {
+    loading <- t(as.matrix(loading))
+    } else {loading <- as.matrix(loading)}
   
   corr <- cor(truth, loading)
   if (ncol(corr) < nrow(corr)) {corr <- corr[1:ncol(corr),]}
@@ -588,4 +592,3 @@ output_all <- output_all %>%
 output_all <- output_all %>% dplyr::select(-grep("_un|_out", colnames(.)))
 
 save(output_all, file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/norm_out/norm_sims", job_num, ".RDA"))
-
