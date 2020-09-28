@@ -1,196 +1,256 @@
 #######################################################################################
 #######################################################################################
-#######################################################################################
 library(tidyverse)
+library(ggsci)
+library(GGally)
+#######################################################################################
+theme_set(theme_bw(base_size = 10) + 
+            theme(legend.position = "bottom",
+                  strip.background =element_rect(fill="white"),
+                  axis.text.x = element_text(angle = 45, hjust = 1)))
+#######################################################################################
+ggsci <- pal_nejm()(8)
+
+options(
+  ggplot2.discrete.colour = ggsci,
+  ggplot2.discrete.fill = ggsci)
+#######################################################################################
 
 # Aggregate HPC output
-comb_data <- tibble()
+load(here::here(paste0("HPC/Rout/norm_out/norm_sims", 2, ".RDA"))) 
+norm_data <- output_all
 
-for (i in 1:1300) {
-  if (file.exists(here::here(paste0("HPC/Rout/out_comb/out_sims", i, ".RDA")))) { 
-    load(here::here(paste0("HPC/Rout/out_comb/out_sims", i, ".RDA"))) 
-    }
-    comb_data <- rbind(comb_data, output_all)
+for (i in 2:600) {
+  if (file.exists(here::here(paste0("HPC/Rout/norm_out/norm_sims", i, ".RDA")))) { 
+             load(here::here(paste0("HPC/Rout/norm_out/norm_sims", i, ".RDA"))) 
+             norm_data <- full_join(norm_data, output_all)
+  }
 }
 
-comb_data %>%
-  dplyr::select(seed, data, var, sim_type, fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank, bnmf_rank) %>%
-  unnest(c(fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank, bnmf_rank)) %>%
-  pivot_longer(cols = fa_rank:bnmf_rank) %>%
-  group_by(name, value, data, var, sim_type) %>%
-  summarise(n())
+norm_data %>% arrange(seed)
 
-comb_data %>% dplyr::select(seed, grep("_ssdist", colnames(.))) %>%
-  unnest(cols = c(pca_rotation_ssdist, pca_scores_ssdist, fa_rotations_ssdist,
-                  fa_scores_ssdist, nmf_l2_loading_ssdist, nmf_l2_scores_ssdist,
-                  nmf_p_loading_ssdist, nmf_p_scores_ssdist,
-                  bnmf_scores_ssdist, bnmf_loading_ssdist)) %>%
-  pivot_longer(grep("pca|nmf|fa", colnames(.)),
-               names_to = "type",
-               values_to = "value") %>%
-  mutate(model = str_sub(type, 1, 6),
-         model = ifelse(str_detect(model, 'pca'), 'pca', model),
-         model = ifelse(str_detect(model, 'l2'), 'nmf_l2', model),
-         model = ifelse(str_detect(model, 'fa'), 'fa', model),
-         model = ifelse(str_detect(model, '_p_'), 'nmf_p', model),
-         model = ifelse(str_detect(model, 'bnmf'), 'bnmf', model),
-         type = ifelse(str_detect(type, 'scores'), 'scores', "loadings")) %>%
-  ggplot(aes(x = value)) +
-  geom_histogram(bins = 100, alpha = 0.75) +
-  #geom_density(color = "grey") +
-  facet_grid(model~type, scales = "free") +
-  geom_vline(xintercept = 0.5, color = "pink", linetype = "dashed", size = 0.5) +
-  theme_bw() +
-  labs(title = "Distinct Sims")
+#####################
+#####################
 
-# save(comb_data, file = "./HPC/Rout/comb_data.RDA")
-# load("./HPC/Rout/comb_data.RDA")
-comb_data
+# What does this data look like
 
-####################################################################################################
+# Distinct
+sim <- norm_data$sim[3][[1]]
+
+as_tibble(sim) %>% 
+  pivot_longer(V1:V50) %>% 
+  ggplot(aes(x = value)) + 
+  geom_histogram(bins = 100) + 
+  facet_wrap(~name) +
+  labs(x = "Distinct Simulations",
+       y = "Count")
+
+as_tibble(sim) %>% 
+  pivot_longer(V1:V50) %>% 
+  ggplot(aes(x = value)) + 
+  geom_histogram(bins = 100) + 
+  labs(x = "Distinct Simulations",
+       y = "Count")
+
+max(sim)
+summary(sim)
+
+# 10% of sim is zero
+sum(sim == 0)/(1000*50)
+
+ggcorr(as_tibble(sim), limits = FALSE,
+       hjust = 0.85, size = 2, layout.exp = 1) +
+  labs(x = "Simulated Correlation Matrix") +
+  theme_minimal(base_size = 10)
+
+# Overlapping
+simO <- norm_data$sim[303][[1]]
+
+as_tibble(simO) %>% 
+  pivot_longer(V1:V50) %>% 
+  ggplot(aes(x = value)) + 
+  geom_histogram(bins = 100) + 
+  facet_wrap(~name) +
+  labs(x = "Overlapping Simulations",
+       y = "Count")
+
+as_tibble(simO) %>% 
+  pivot_longer(V1:V50) %>% 
+  ggplot(aes(x = value)) + 
+  geom_histogram(bins = 100) + 
+  labs(x = "Overlapping Simulations",
+       y = "Count")
+
+max(simO)
+
+# 7% of sim is zero
+sum(simO == 0)/(1000*50)
+
+ggcorr(as_tibble(simO), limits = FALSE,
+       hjust = 0.85, size = 2, layout.exp = 1) +
+  labs(x = "Simulated Correlation Matrix") +
+  theme_minimal(base_size = 10)
+
+#####################
+#####################
 
 # Relative Error
-comb_data %>% dplyr::select(seed, var, sim_type, sim, grep("pred", colnames(.))) %>% 
-  pivot_longer(pca_pred:bnmf_pred) %>% 
-  mutate(l2 = map2(sim, value, function (x,y) norm(x-y, "F")/norm(x, "F"))) %>% 
-  dplyr::select(seed, var, sim_type, name, l2) %>% 
-  unnest(l2) %>% 
-  group_by(sim_type, var, name) %>% 
-  summarize(min = min(l2),
-            mean = mean(l2),
-            max = max(l2)) %>% knitr::kable()
-
-
-comb_data_error <- comb_data %>% 
-  dplyr::select(seed, var, sim_type, sim, chem, grep("pred", colnames(.))) %>% 
+error <- norm_data %>% 
+  dplyr::select(seed, data, sim_factor, sim, chem, grep("pred", colnames(.))) %>% 
+  select(-pca_uncenter_pred) %>% 
   pivot_longer(pca_pred:bnmf_pred) %>% 
   mutate(l2_true = map2(chem, value, function (x,y) norm(x-y, "F")/norm(x, "F")),
-         l2_sim = map2(sim, value, function (x,y) norm(x-y, "F")/norm(x, "F"))) %>% 
-  dplyr::select(seed, var, sim_type, name, l2_true, l2_sim) %>% 
+         l2_sim = map2(sim, value, function (x,y) norm(x-y, "F")/norm(x, "F")),
+         name = str_remove(name, "_pred")) %>% 
+  dplyr::select(seed, data, sim_factor, name, l2_true, l2_sim) %>% 
   unnest(c(l2_sim, l2_true))
 
-comb_data_error %>% 
-  filter(sim_type == "L1 Norm")
-
-comb_data_error %>%
+error %>%
   ggplot(aes(x = name, y = l2_sim, color = name, fill = name)) +
   geom_boxplot(alpha = 0.5) +
-  facet_grid(~sim_type + var, scales = "free") + 
+  facet_grid(sim_factor ~ data, scales = "free") + 
   geom_vline(xintercept = 0, color = "pink", linetype = "dashed", size = 0.5) +
-  theme_bw() +
   scale_y_log10() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
-  labs(title = "Relative Predictive Error")
+  theme(legend.position = "none") + 
+  labs(title = "Relative Predictive Error vs SIMS")
 
-comb_data_error %>% 
-  ggplot(aes(x = l2_sim, color = sim_type, fill = sim_type)) +
+error %>%
+  ggplot(aes(x = name, y = l2_true, color = name, fill = name)) +
+  geom_boxplot(alpha = 0.5) +
+  facet_grid(sim_factor ~ data, scales = "free") + 
+  geom_vline(xintercept = 0, color = "pink", linetype = "dashed", size = 0.5) +
+  scale_y_log10() +
+  theme(legend.position = "none") + 
+  labs(title = "Relative Predictive Error vs PRE NOISE TRUTH")
+
+error %>% 
+  ggplot(aes(x = l2_true, color = sim_factor, fill = sim_factor)) +
   geom_histogram(bins = 100, alpha = 0.75) +
-  facet_grid(name~., scales = "free") + 
-  theme_bw() + scale_x_log10() +
-  labs(title = "Relative Predictive Error") +
-  theme(legend.position = "bottom")
+  facet_grid(name ~ data) + 
+  scale_x_log10() +
+  labs(title = "Relative Predictive Error vs PRE NOISE TRUTH")
 
-####################################################################################################
+error %>% 
+  ggplot(aes(x = l2_sim, color = sim_factor, fill = sim_factor)) +
+  geom_histogram(bins = 100, alpha = 0.75) +
+  facet_grid(name ~ data) + 
+  scale_x_log10() +
+  labs(title = "Relative Predictive Error vs SIMS")
+
+#######################
+#######################
 # Symmetric Subspace Distance
+########################
+########################
 
-comb_data_ssdist <- comb_data %>% dplyr::select(seed, sim_type, grep("_ssdist", colnames(.))) %>% 
+ssdist <- norm_data %>% dplyr::select(seed, data, sim_factor, grep("_ssdist", colnames(.))) %>% 
+  select(-grep("uncenter", colnames(.))) %>% 
   unnest(cols = grep("_ssdist", colnames(.))) %>% 
   pivot_longer(grep("_ssdist", colnames(.)),
                names_to = "type",
                values_to = "value") %>%
-  mutate(Normalized = ifelse(grepl("norm", type), "Yes", "No"),
-         model = str_sub(type, 1, 6),
-         model = ifelse(str_detect(model, 'pca'), 'pca', model),
-         model = ifelse(str_detect(model, 'l2'), 'nmf_l2', model),
-         model = ifelse(str_detect(model, 'fa'), 'fa', model),
-         model = ifelse(str_detect(model, '_p_'), 'nmf_p', model),
-         model = ifelse(str_detect(model, 'bnmf'), 'bnmf', model),
-         type = ifelse(str_detect(type, 'scores'), 'Scores', "Loadings")) %>% 
-  mutate(Standardized = "Yes")
+  mutate(model = str_sub(type, 1, 6),
+         model = ifelse(str_detect(model, 'pca'), 'PCA', model),
+         model = ifelse(str_detect(model, 'l2'), 'L2 NMF', model),
+         model = ifelse(str_detect(model, 'fa'), 'FA', model),
+         model = ifelse(str_detect(model, '_p_'), 'Poisson NMF', model),
+         model = ifelse(str_detect(model, 'bnmf'), 'BNMF', model),
+         type = ifelse(str_detect(type, 'scores'), 'Scores', "Loadings"))
 
-comb_data_ssdist %>% 
+ssdist %>% 
   ggplot(aes(x = value)) +
-  geom_histogram(aes(fill = sim_type), bins = 100, alpha = 0.75) +
-  facet_grid(type ~ model) + 
+  geom_histogram(aes(fill = sim_factor), bins = 100, alpha = 0.75) +
+  facet_grid(model ~ data + type) + 
+  scale_x_log10() +
   geom_vline(xintercept = 0.5, color = "pink", linetype = "dashed", size = 0.5) +
-  theme_bw() +
-  labs(title = "Symmetric Subspace Distance")
+  labs(y = "Symmetric Subspace Distance")
 
-comb_data_ssdist %>% 
+ssdist %>% 
   ggplot(aes(x = model, y = value, color = model)) +
-  geom_boxplot(varwidth = TRUE) +
-  facet_grid(sim_type~type) + 
+  geom_boxplot() +
+  facet_grid(sim_factor ~ data + type) + 
   geom_hline(yintercept = 0.5, color = "pink", linetype = "dashed", size = 0.5) +
-  theme_bw() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1),
-        legend.position = "none") + 
-  labs(title = "Symmetric Subspace Distance")
+  theme(legend.position = "none") + 
+  scale_y_log10() +
+  labs(y = "Symmetric Subspace Distance")
 
-# save(comb_data_ssdist, file = "./HPC/Rout/comb_data_ssdist.RDA")
-
-#####
-# Sept 22
-#####
-#####
-
-rank_l1 <- comb_data %>%
-  dplyr::dplyr::select(seed, data, var, sim_type, fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank, bnmf_rank) %>%
-  unnest(c(fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank, bnmf_rank)) %>%
-  pivot_longer(cols = fa_rank:bnmf_rank) %>%
-  group_by(name, value, data, var, sim_type) %>%
-  filter(sim_type == "L1 Norm") %>% 
-  summarise(n = n())
-
-rank_raw <- comb_data %>%
-  dplyr::dplyr::select(seed, data, var, sim_type, fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank, bnmf_rank) %>%
-  unnest(c(fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank, bnmf_rank)) %>%
-  pivot_longer(cols = fa_rank:bnmf_rank) %>%
-  group_by(name, value, data, var, sim_type) %>%
-  filter(sim_type == "Raw") %>% 
-  summarise(n = n())
+ssdist %>% 
+  filter(sim_factor == 100) %>% 
+  ggplot(aes(x = model, y = value, color = model)) +
+  geom_boxplot() +
+  facet_grid(data ~ type) + 
+  geom_hline(yintercept = 0.5, color = "pink", linetype = "dashed", size = 0.5) +
+  theme(legend.position = "none") + 
+  scale_y_log10() +
+  labs(y = "Symmetric Subspace Distance")
 
 #####
 # Rank
 #####
 
-rank_l1 %>% 
-  dplyr::select(-sim_type) %>% 
-  filter(var == "reg") %>% 
+norm_data %>%
+  dplyr::select(seed, data, sim_factor, fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank, bnmf_rank) %>%
+  unnest(c(fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank, bnmf_rank)) %>%
+  pivot_longer(cols = fa_rank:bnmf_rank) %>%
+  mutate(value = ifelse(value > 5, "> 5", as.factor(value))) %>% 
+  group_by(name, value, data, sim_factor) %>%
+  summarise(n = n()) %>% 
+  ungroup() %>% 
+  filter(data == "Distinct") %>% 
+  dplyr::select(-data) %>% 
   pivot_wider(names_from = value,
               values_from = n) %>% 
-  mutate_if(is.integer, replace_na, 0)
+  mutate_if(is.integer, replace_na, 0) %>% 
+  arrange(sim_factor) %>% select(name, sim_factor, `1`:`5`, `> 5`)
 
-rank_l1 %>% 
-  dplyr::select(-sim_type) %>% 
-  filter(var == "var10") %>% 
+norm_data %>%
+  dplyr::select(seed, data, sim_factor, fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank, bnmf_rank) %>%
+  unnest(c(fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank, bnmf_rank)) %>%
+  pivot_longer(cols = fa_rank:bnmf_rank) %>%
+  mutate(value = ifelse(value > 5, "> 5", as.factor(value))) %>% 
+  group_by(name, value, data, sim_factor) %>%
+  summarise(n = n()) %>% 
+  ungroup() %>% 
+  filter(data == "Overlapping") %>% 
+  dplyr::select(-data) %>% 
   pivot_wider(names_from = value,
               values_from = n) %>% 
-  mutate_if(is.integer, replace_na, 0)
+  mutate_if(is.integer, replace_na, 0) %>% 
+  arrange(sim_factor) %>% select(name, sim_factor, `1`:`5`, `> 5`)
 
-rank_raw %>% 
-  dplyr::select(-sim_type) %>% 
-  filter(var == "reg") %>% 
-  pivot_wider(names_from = value,
-              values_from = n) %>% 
-  mutate_if(is.integer, replace_na, 0)
+###
+# Mean Square Error
+# Median Square Error
+###
 
-rank_raw %>% 
-  dplyr::select(-sim_type) %>% 
-  filter(var == "stand") %>% 
-  pivot_wider(names_from = value,
-              values_from = n) %>% 
-  mutate_if(is.integer, replace_na, 0)
+med_error <- norm_data %>% 
+  select(seed, data, sim_factor, sim, chem, grep("pred", colnames(.))) %>% 
+  select(-grep("uncenter", colnames(.))) %>% 
+  pivot_longer(pca_pred:bnmf_pred) %>% 
+  mutate(mse_sim      = map2(sim,  value, function (x,y) mean(   (x-y)^2) ),
+         med_se_sim   = map2(sim,  value, function (x,y) median( (x-y)^2) ),
+         rmse_sim     = map2(sim,  value, function (x,y) sqrt(mean(   (x-y)^2)) ),
+         rmed_se_sim  = map2(sim,  value, function (x,y) sqrt(median( (x-y)^2)) ),
+         mse_true     = map2(chem, value, function (x,y) mean(   (x-y)^2) ),
+         med_se_true  = map2(chem, value, function (x,y) median( (x-y)^2) ),
+         rmse_true    = map2(chem, value, function (x,y) sqrt(mean(   (x-y)^2)) ),
+         rmed_se_true = map2(chem, value, function (x,y) sqrt(median( (x-y)^2)) ),
+         name = str_remove(name, "_pred")) %>% 
+  dplyr::select(-sim, -chem, -value) %>% 
+  unnest(c(mse_sim:rmed_se_true))
 
-#####
-# Relative Predictive Error
-#####
+med_error
 
-comb_data_error %>%
-  ggplot(aes(x = name, y = l2_sim, color = name, fill = name)) +
+# Plot any of these metrics, similar results
+# "mse_sim" "med_se_sim" "rmse_sim" "rmed_se_sim" "mse_true" "med_se_true" "rmse_true" "rmed_se_true"
+
+med_error %>% 
+  ggplot(aes(x = name, y = rmed_se_true, color = name, fill = name)) +
   geom_boxplot(alpha = 0.5) +
-  facet_grid(~sim_type + var, scales = "free") + 
+  facet_grid(sim_factor ~ data, scales = "free") + 
   geom_vline(xintercept = 0, color = "pink", linetype = "dashed", size = 0.5) +
-  theme_bw() +
   scale_y_log10() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
-  labs(title = "Relative Predictive Error")
+  theme(legend.position = "none") + 
+  labs(title = "")
+
+  
