@@ -44,6 +44,17 @@ cc_ids <- mn_edc %>% dplyr::select(sid, grep("sg_adj", colnames(.))) %>% drop_na
   dplyr::select(1)
 
 names(edc_cc)
+apply(edc_cc, 2, sd)
+apply(edc_cc, 2, mean)
+
+summary(edc_cc)
+edc_cc %>% 
+  pivot_longer(1:17) %>% 
+  ggplot(aes(x = value)) +
+  geom_histogram(bins = 100) +
+facet_wrap(~name) +
+  theme(axis.text.x = element_blank(),
+        axis.text.y = element_blank())
 ```
 
 ```{r}
