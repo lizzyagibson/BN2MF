@@ -8,20 +8,23 @@
 
 # Packages
 library(tidyverse)
-library(registry, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
-library(pkgmaker, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
-library(rngtools, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
-library(NMF, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
-library(GPArotation, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
-library(psych, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
+library(psych)
+library(NMF)
+
+# library(registry, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
+# library(pkgmaker, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
+# library(rngtools, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
+# library(NMF, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
+# library(GPArotation, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
+# library(psych, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
 
 # Read in Sims
-load("/ifs/scratch/msph/ehs/eag2186/Data/sim_dim.RDA")
+# load("/ifs/scratch/msph/ehs/eag2186/Data/sim_dim.RDA")
 
 ## read job number from system environment
 ## This only works if run on cluster!!
-job_num = as.integer(Sys.getenv("SGE_TASK_ID"))
-job_num
+# job_num = as.integer(Sys.getenv("SGE_TASK_ID"))
+# job_num
 
 # load("/ifs/scratch/msph/ehs/eag2186/npbnmf/to_do.RDA")
 # if (!(job_num %in% to_do)) {stop("Job id already ran.")}
@@ -88,7 +91,7 @@ get_pca_uncenter <- function (sim) {
 
 ## Run
 
-output_all <- sim_dim[job_num,] %>% 
+output_all <- sim_dgp[1:2,] %>% 
   mutate(pca_out       = map(sim, get_pca),
          pca_rotations = map(pca_out, function(x) x[[1]]),
          pca_scores    = map(pca_out, function(x) x[[2]]),

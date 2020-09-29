@@ -17,7 +17,7 @@ options(
 #######################################################################################
 
 # Aggregate HPC output
-load(here::here(paste0("HPC/Rout/norm_out/norm_sims", 2, ".RDA"))) 
+load(here::here(paste0("HPC/Rout/norm_out/norm_sims", 1, ".RDA"))) 
 norm_data <- output_all
 
 for (i in 2:600) {
@@ -97,7 +97,7 @@ ggcorr(as_tibble(simO), limits = FALSE,
 # Relative Error
 error <- norm_data %>% 
   dplyr::select(seed, data, sim_factor, sim, chem, grep("pred", colnames(.))) %>% 
-  select(-pca_uncenter_pred) %>% 
+  dplyr::select(-pca_uncenter_pred) %>% 
   pivot_longer(pca_pred:bnmf_pred) %>% 
   mutate(l2_true = map2(chem, value, function (x,y) norm(x-y, "F")/norm(x, "F")),
          l2_sim = map2(sim, value, function (x,y) norm(x-y, "F")/norm(x, "F")),
@@ -112,7 +112,8 @@ error %>%
   geom_vline(xintercept = 0, color = "pink", linetype = "dashed", size = 0.5) +
   scale_y_log10() +
   theme(legend.position = "none") + 
-  labs(title = "Relative Predictive Error vs SIMS")
+  labs(y = "Relative Predictive Error",
+        title = "vs SIMS")
 
 error %>%
   ggplot(aes(x = name, y = l2_true, color = name, fill = name)) +
@@ -121,7 +122,8 @@ error %>%
   geom_vline(xintercept = 0, color = "pink", linetype = "dashed", size = 0.5) +
   scale_y_log10() +
   theme(legend.position = "none") + 
-  labs(title = "Relative Predictive Error vs PRE NOISE TRUTH")
+  labs(y = "Relative Predictive Error",
+        title = "vs PRE NOISE TRUTH")
 
 error %>% 
   ggplot(aes(x = l2_true, color = sim_factor, fill = sim_factor)) +
@@ -144,7 +146,7 @@ error %>%
 ########################
 
 ssdist <- norm_data %>% dplyr::select(seed, data, sim_factor, grep("_ssdist", colnames(.))) %>% 
-  select(-grep("uncenter", colnames(.))) %>% 
+  dplyr::select(-grep("uncenter", colnames(.))) %>% 
   unnest(cols = grep("_ssdist", colnames(.))) %>% 
   pivot_longer(grep("_ssdist", colnames(.)),
                names_to = "type",
@@ -161,9 +163,9 @@ ssdist %>%
   ggplot(aes(x = value)) +
   geom_histogram(aes(fill = sim_factor), bins = 100, alpha = 0.75) +
   facet_grid(model ~ data + type) + 
-  scale_x_log10() +
+  # scale_x_log10() +
   geom_vline(xintercept = 0.5, color = "pink", linetype = "dashed", size = 0.5) +
-  labs(y = "Symmetric Subspace Distance")
+  labs(title = "Symmetric Subspace Distance")
 
 ssdist %>% 
   ggplot(aes(x = model, y = value, color = model)) +
@@ -171,7 +173,7 @@ ssdist %>%
   facet_grid(sim_factor ~ data + type) + 
   geom_hline(yintercept = 0.5, color = "pink", linetype = "dashed", size = 0.5) +
   theme(legend.position = "none") + 
-  scale_y_log10() +
+  # scale_y_log10() +
   labs(y = "Symmetric Subspace Distance")
 
 ssdist %>% 
@@ -181,7 +183,7 @@ ssdist %>%
   facet_grid(data ~ type) + 
   geom_hline(yintercept = 0.5, color = "pink", linetype = "dashed", size = 0.5) +
   theme(legend.position = "none") + 
-  scale_y_log10() +
+  # scale_y_log10() +
   labs(y = "Symmetric Subspace Distance")
 
 #####
@@ -201,7 +203,7 @@ norm_data %>%
   pivot_wider(names_from = value,
               values_from = n) %>% 
   mutate_if(is.integer, replace_na, 0) %>% 
-  arrange(sim_factor) %>% select(name, sim_factor, `1`:`5`, `> 5`)
+  arrange(sim_factor) %>% dplyr::select(name, sim_factor, `1`:`5`, `> 5`)
 
 norm_data %>%
   dplyr::select(seed, data, sim_factor, fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank, bnmf_rank) %>%
@@ -216,7 +218,7 @@ norm_data %>%
   pivot_wider(names_from = value,
               values_from = n) %>% 
   mutate_if(is.integer, replace_na, 0) %>% 
-  arrange(sim_factor) %>% select(name, sim_factor, `1`:`5`, `> 5`)
+  arrange(sim_factor) %>% dplyr::select(name, sim_factor, `1`:`5`, `> 5`)
 
 ###
 # Mean Square Error
@@ -224,8 +226,8 @@ norm_data %>%
 ###
 
 med_error <- norm_data %>% 
-  select(seed, data, sim_factor, sim, chem, grep("pred", colnames(.))) %>% 
-  select(-grep("uncenter", colnames(.))) %>% 
+  dplyr::select(seed, data, sim_factor, sim, chem, grep("pred", colnames(.))) %>% 
+  dplyr::select(-grep("uncenter", colnames(.))) %>% 
   pivot_longer(pca_pred:bnmf_pred) %>% 
   mutate(mse_sim      = map2(sim,  value, function (x,y) mean(   (x-y)^2) ),
          med_se_sim   = map2(sim,  value, function (x,y) median( (x-y)^2) ),
@@ -252,5 +254,5 @@ med_error %>%
   scale_y_log10() +
   theme(legend.position = "none") + 
   labs(title = "")
-
+# could plot rmse and show a line for sd/var
   
