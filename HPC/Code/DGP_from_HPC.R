@@ -209,3 +209,42 @@ dgp_data %>%
               values_from = n) %>% 
   mutate_if(is.integer, replace_na, 0) %>% 
   dplyr::select(name, `1`:`5`, `> 5`)
+
+#####
+##### 10/6
+#####
+
+dgp_data %>%
+  dplyr::select(seed, data, fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank, bnmf_rank) %>%
+  unnest(c(fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank, bnmf_rank)) %>%
+  pivot_longer(cols = fa_rank:bnmf_rank) %>%
+  mutate(value = ifelse(value > 5, "> 5", as.factor(value))) %>% 
+  group_by(name, value, data) %>%
+  summarise(n = n()) %>% 
+  ungroup() %>% 
+  filter(data == "Distinct") %>% 
+  dplyr::select(-data) %>% 
+  pivot_wider(names_from = value,
+              values_from = n) %>% 
+  mutate_if(is.integer, replace_na, 0) %>% 
+  dplyr::select(name, `1`:`5`, `> 5`)
+
+dgp_e %>%
+  ggplot(aes(x = name, y = l2_sim, color = name, fill = name)) +
+  geom_boxplot(alpha = 0.5) +
+  facet_grid(. ~ data, scales = "free") + 
+  geom_vline(xintercept = 0, color = "pink", linetype = "dashed", size = 0.5) +
+  scale_y_log10() +
+  theme(legend.position = "none") + 
+  labs(y = "Relative Predictive Error",
+       title = "vs SIMS")
+
+dgp_s %>% 
+  ggplot(aes(x = model, y = value, color = model)) +
+  geom_boxplot() +
+  facet_grid(data ~ type) + 
+  geom_hline(yintercept = 0.5, color = "pink", linetype = "dashed", size = 0.5) +
+  theme(legend.position = "none") + 
+  # scale_y_log10() +
+  labs(y = "Symmetric Subspace Distance")
+
