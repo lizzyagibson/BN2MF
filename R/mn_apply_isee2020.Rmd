@@ -26,7 +26,6 @@ library(janitor)
 ## MN Data
 
 ```{r}
-mn_edc
 # PHT and phenols specific gravity adj
 names(mn_edc)
 
@@ -34,9 +33,10 @@ edc_cc <-
   mn_edc %>% 
   dplyr::select(grep("sg_adj", colnames(.))) %>% 
   drop_na() %>% 
-  clean_names()
-
-names(edc_cc) <- str_replace(names(edc_cc), "_sg_adj", "")
+  clean_names() %>% 
+  dplyr::rename_all(function(x) str_replace(x, "_sg_adj", "")) %>% 
+  dplyr::rename_all(toupper)
+  
 
 edc_std <- apply(edc_cc, 2, function(x) x/sd(x)) %>% as_tibble()
 
@@ -61,6 +61,49 @@ facet_wrap(~name) +
 summary(edc_cc)
 
 apply(edc_cc, 2, sd)
+
+round(cor(edc_cc, method = "spearman"),2)
+corr.test(as.matrix(edc_cc), method = "spearman")
+
+edc_re <- edc_cc %>% dplyr::select(1:11, 13, 16:17, 12, 14:15)
+
+#pdf("Figures/mn_edc_corr.pdf", width = 7, height = 5)
+ggcorr(edc_re, method = c("pairwise", "spearman"),
+       hjust = 0.85, size = 5, color = "grey50",
+       layout.exp = 3,
+       label = TRUE, label_size = 2, label_round = 2, label_alpha = TRUE
+       ) + 
+  theme_minimal()
+#dev.off()
+
+
+edc_re %>% 
+  mutate_all(function (x) x/sd(x) ) %>% 
+  ggcorr(., method = c("pairwise", "spearman"),
+       hjust = 0.85, size = 5, color = "grey50",
+       layout.exp = 3,
+       label = TRUE, label_size = 2, label_round = 2, label_alpha = TRUE
+       ) + 
+  theme_minimal()
+
+apply(edc_cc, 2, function(x) x/sd(x)) %>% as_tibble()
+
+prcomp(edc_std)$sdev
+sum( prcomp(edc_std)$sdev[1:11]/sum(prcomp(edc_std)$sdev) )
+# 11 > 80% var
+# no obvious elbow
+
+plot(prcomp(edc_std)$sdev)
+prcomp(edc_std)$rotation
+
+as_tibble(prcomp(edc_std)$rotation) %>% 
+  mutate(edc = colnames(edc_cc)) %>% 
+  pivot_longer(1:17) %>% 
+  mutate(name = as.factor(name)) %>% 
+  filter(name %in% c("PC1", "PC2", "PC3", "PC4", "PC5", "PC6")) %>% 
+  ggplot(aes(x = edc, y = value)) + 
+  geom_col() +
+  facet_wrap(.~ name)
 ```
 
 ```{r}
