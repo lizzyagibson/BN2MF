@@ -48,3 +48,6 @@ symm_subspace_dist(U,V)
 symm_subspace_dist(V,U)
 symm_subspace_dist(S,U)
 
+symm_subspace_dist(simo, simO)
+simo = cbind(simO[,50:1])
+
