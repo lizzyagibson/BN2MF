@@ -1,0 +1,282 @@
+---
+title: "Loop Simulations"
+author: "Lizzy Gibson"
+date: "3/5/2020"
+output: 
+  html_document:
+    toc: TRUE
+    toc_float: TRUE
+---
+
+```{r setup, include=FALSE}
+options(scipen = 999)
+library(reshape2) # melt
+library(MASS) # mvrnorm
+library(tidyverse)
+```
+
+## 1: Distinct Patterns
+
+### Simulate Patterns
+
+* Generate 4 non-negative vectors of length 50
+* Pattern matrix is 4*50, patterns by chemicals
+* Draw each pattern: number 1-2 if pattern is ON, basically 0 otherwise
+
+```{r}
+## Construct a matrix for 4 TRUE exposure patterns
+create_patterns_dist <- function (seed) {
+  set.seed(seed)
+  patterns_dist <- 
+    rbind(c(runif(12, 1, 2),   runif(12, 0, 0.2), runif(13, 0, 0.2), runif(13, 0, 0.2)),
+          c(runif(12, 0, 0.2), runif(12, 1, 2),   runif(13, 0, 0.2), runif(13, 0, 0.2)),
+          c(runif(12, 0, 0.2), runif(12, 0, 0.2), runif(13, 1, 2),   runif(13, 0, 0.2)),
+          c(runif(12, 0, 0.2), runif(12, 0, 0.2), runif(13, 0, 0.2), runif(13, 1, 2)))
+  patterns_dist
+}
+
+patterns_dist_iter <- tibble(seed = 1:100) %>% 
+ mutate(true_patterns = map(seed, create_patterns_dist))
+```
+
+```{r}
+patterns_dist_iter$true_patterns[[1]] %>% as_tibble() %>% 
+  mutate(Pattern = 1:4) %>% 
+  dplyr::select(Pattern, everything()) %>% 
+  gather(key = Chemicals, value = Loadings, -Pattern) %>% 
+  mutate(Chemicals = fct_inorder(Chemicals)) %>%
+  ggplot(aes(x = Chemicals, y = Loadings)) + geom_col() +
+  facet_wrap(.~Pattern) + theme_bw() +
+  theme(axis.text.x = element_blank(),
+        strip.background = element_blank()) +
+  labs(title = "Distinct Patterns")
+```
+
+### Simulate Scores
+
+* Generate non-negative scores
+* 1,000 individuals with scores on each of 4 patterns
+* Individual distributions are independent
+* Patterns (columns) are NOT standardized
+* Each pattern = log-normal distribution 
+    * Mean drawn from normal (`rnorm(4, mean = 2)`)
+        * e.g., `1.5258908 0.5124556 2.1382508 2.2151344`
+    * Var approx 1
+    * Cov = 0
+   
+```{r}
+create_scores_dist <- function (seed) {
+  scores_dist <- matrix(nrow = 1000, ncol = 4)
+  set.seed(seed)
+  scores_dist <- exp(mvrnorm(n = 1000, mu = rnorm(4, mean = 1), 
+                          Sigma = diag(rep(1, 4)))) # Independent log normal dist
+  scores_dist
+}
+
+scores_dist_iter <- patterns_dist_iter %>% 
+ mutate(true_scores = map(seed, create_scores_dist))
+```
+
+### Simulate Chemical Exposures
+
+* Matrix multiple scores and pattern loadings
+
+```{r}
+sim_dist <- scores_dist_iter %>% 
+  mutate(chem = map2(true_scores, true_patterns, `%*%`))
+```
+
+### Simulate Noise
+
+* Add noise
+* Noise distribution Normal(0, s)
+    * where s = simulated variance/10 for each variable
+    
+```{r}
+add_noise <- function (seed, chemx) {
+  #noise <- list(mean = 0, sd = apply(chemx, 2, var)/10)
+  noise <- list(mean = 0, sd = rep(1, 50)) # QUICK CHECK FOR NOISE SENSITIVITY
+  set.seed(seed)
+  chem_dist <- pmax(chemx + 
+                      mvrnorm(n = 1000, mu = rep(0, 50), 
+                                        Sigma = diag(noise$sd)), 0)	
+  chem_dist
+}
+
+sim_dist <- sim_dist %>% 
+ mutate(sim = map2(seed, chem, add_noise))
+```  
+
+Mothers \& Newborns phthalates, phenols, parabens (17 total):
+
+`apply(edc_cc, 2, sd)`
+`     mecpp      mehhp      meohp       mcpp       mibp        mbp       mbzp        mep       mehp     dcp_24 `
+`138.477399 124.334142  88.676474   2.708577  18.533785  59.807515  49.739692 597.863602  33.568066  17.029572 `
+`    dcp_25       b_pb       bp_3       m_pb       p_pb        tcs        bpa `
+`307.279835   7.395033 215.282629 318.976581 128.788362 164.312044   4.136665 `
+
+` apply(edc_cc, 2, mean)`
+`     mecpp      mehhp      meohp       mcpp       mibp        mbp       mbzp        mep       mehp     dcp_24 `
+` 72.741399  51.200487  39.018626   2.990761  13.625495  55.572506  28.447649 336.009628  13.074791   8.817393 `
+`    dcp_25       b_pb       bp_3       m_pb       p_pb        tcs        bpa `
+`206.986763   2.794003  70.910095 256.967194  72.418903  71.415968   2.862945 `
+
+`     mecpp              mehhp               meohp              mcpp               mibp              mbp     ` 
+`Min.   :   4.509   Min.   :   0.8727   Min.   :  1.018   Min.   : 0.05333   Min.   :  0.600   Min.   :  4.08`  
+`1st Qu.:  21.038   1st Qu.:  11.2250   1st Qu.:  9.742   1st Qu.: 1.40000   1st Qu.:  5.497   1st Qu.: 22.72`  
+`Median :  35.294   Median :  20.9731   Median : 17.067   Median : 2.34476   Median :  9.600   Median : 37.10`  
+`Mean   :  72.741   Mean   :  51.2005   Mean   : 39.019   Mean   : 2.99076   Mean   : 13.626   Mean   : 55.57`  
+`3rd Qu.:  68.869   3rd Qu.:  39.7335   3rd Qu.: 32.145   3rd Qu.: 3.73144   3rd Qu.: 16.081   3rd Qu.: 66.43`  
+`Max.   :1382.851   Max.   :1217.3912   Max.   :918.261   Max.   :26.69995   Max.   :272.291   Max.   :657.78` 
+
+```{r}
+dist <- sim_dist$sim[[1]]
+
+apply(dist, 2, sd)
+apply(dist, 2, mean)
+summary(dist)[1:6, 1:5]
+
+as_tibble(dist) %>% 
+  dplyr::select(-(11:50)) %>% 
+  pivot_longer(1:10) %>% 
+  ggplot(aes(x = value)) +
+  geom_histogram(bins = 100) +
+facet_wrap(~name) +
+  theme(axis.text.x = element_blank(),
+        axis.text.y = element_blank())
+```
+
+```{r}
+summary(melt(cor(sim_dist$chem[[1]], method = "spearman")))
+summary(melt(cor(dist, method = "spearman")))
+
+melt(cor(dist, method = "spearman")) %>% 
+  as_tibble() %>% 
+  rename(Correlation = value) %>% 
+  mutate(Var1 = as.factor(Var1),
+         Var2 = as.factor(Var2)) %>% 
+  ggplot(aes(x = Var1, y = Var2)) +
+  geom_tile(aes(fill = Correlation), colour = "white") +
+  scale_fill_gradient2(low = "#00BFC4", mid = "white", high = "#F8766D",
+                       midpoint = 0,
+                       na.value = "transparent", limits = c(-1, 1)) +
+  theme_classic() + labs(x = "", y = "") +
+  theme(axis.text = element_blank(),
+        legend.position = "bottom") + 
+  ggtitle("Correlation w/ Distinct Underlying Patterns")
+```
+
+## 2: Overlapping Patterns
+
+### Simulate Patterns
+
+* Generate 4 non-negative vectors of length 50
+* Pattern matrix is 4*50, patterns by chemicals
+* Draw each pattern: number 1-2 if pattern is ON, 0.5-1 is the overlapping group, basically 0 otherwise
+```{r}
+create_patterns_over <- function (seed) {
+  set.seed(seed)
+  patterns_cor <-
+    rbind(c(runif(12, 1, 2),  runif(12, 0.5, 1), runif(13, 0, 0.3), runif(13, 0, 0.3)),
+          c(runif(12, 0, 0.3), runif(12, 1, 2),  runif(13, 0.5, 1), runif(13, 0, 0.3)),
+          c(runif(12, 0, 0.3), runif(12, 0, 0.3), runif(13, 1, 2), runif(13, 0.5, 1)),
+          c(runif(12, 0.5, 1), runif(12, 0, 0.3), runif(13, 0, 0.3), runif(13, 1, 2)))
+  patterns_cor
+}
+
+patterns_over_iter <- tibble(seed = 1:100) %>% 
+ mutate(true_patterns = map(seed, create_patterns_over))
+```
+
+```{r}
+patterns_over_iter$true_patterns[[1]] %>% as_tibble() %>% 
+  mutate(Pattern = 1:4) %>% 
+  dplyr::select(Pattern, everything()) %>% 
+  gather(key = Chemicals, value = Loadings, -Pattern) %>% 
+  mutate(Chemicals = fct_inorder(Chemicals)) %>%
+  ggplot(aes(x = Chemicals, y = Loadings)) + geom_col() +
+  facet_wrap(.~Pattern) + theme_bw() +
+  theme(axis.text.x = element_blank(),
+        strip.background = element_blank()) +
+  labs(title = "Overlapping Patterns")
+```
+
+### Simulate Scores
+
+Use distinct scores.
+
+* Generate non-negative scores
+* 1,000 individuals with scores on each of 4 patterns
+* Individual distributions are independent
+* Patterns (columns) are NOT standardized
+* Each pattern = log-normal distribution 
+    * Mean drawn from normal (`rnorm(4, mean = 2)`)
+        * e.g., `1.5258908 0.5124556 2.1382508 2.2151344`
+    * Var approx 1
+    * Cov = 0
+
+### Simulate Chemical Exposures
+
+* Matrix multiple scores and pattern loadings
+
+```{r}
+sim_over <- scores_dist_iter %>% 
+  dplyr::select(seed, true_scores) %>% 
+  full_join(., patterns_over_iter) %>% 
+  mutate(chem = map2(true_scores, true_patterns, `%*%`))
+```
+
+### Simulate Noise
+
+* Add noise
+* Noise distribution Normal(0, s)
+    * where s = simulated variance/4 for each variable
+    
+```{r}
+sim_over <- sim_over %>% 
+ mutate(sim = map2(seed, chem, add_noise))
+```  
+
+```{r}
+over <- sim_over$sim[[1]]
+
+min(apply(over, 2, sd))
+min(apply(over, 2, mean))
+summary(over)[1:6, 1:5]
+
+as_tibble(over) %>% 
+  dplyr::select(-(11:50)) %>% 
+  pivot_longer(1:10) %>% 
+  ggplot(aes(x = value)) +
+  geom_histogram(bins = 100) +
+facet_wrap(~name) +
+  theme(axis.text.x = element_blank(),
+        axis.text.y = element_blank())
+```
+
+```{r}
+melt(cor(over, method = "spearman")) %>% 
+  as_tibble() %>% 
+  rename(Correlation = value) %>% 
+  mutate(Var1 = as.factor(Var1),
+         Var2 = as.factor(Var2)) %>% 
+  ggplot(aes(x = Var1, y = Var2)) +
+  geom_tile(aes(fill = Correlation), colour = "white") +
+  scale_fill_gradient2(low = "#00BFC4", high = "#F8766D") +
+  theme_classic() + labs(x = "", y = "") +
+  theme(axis.text = element_blank(),
+        legend.position = "bottom") + 
+  ggtitle("Correlation w/ Overlapping Underlying Patterns")
+```
+
+## Save
+
+```{r} 
+sim_dgp_sd1 <- rbind(sim_dist %>% mutate(data = "Distinct"),
+      sim_over %>% mutate(data = "Overlapping"))
+  
+sim_dgp_sd1
+
+# save(sim_dgp_sd1, file = "./Sims/sim_dgp_sd1.RDA")
+```
+

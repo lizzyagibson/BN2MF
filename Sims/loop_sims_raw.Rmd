@@ -1,0 +1,222 @@
+---
+title: "Loop Simulations"
+author: "Lizzy Gibson"
+date: "3/5/2020"
+output: 
+  html_document:
+    toc: TRUE
+    toc_float: TRUE
+---
+
+```{r setup, include=FALSE}
+options(scipen = 999)
+library(reshape2) # melt
+library(gridExtra) # gridarrange
+library(bindata) # multivariate binomial dist
+library(NMF) # rmatrix
+library(MASS) # mvrnorm
+library(tidyverse)
+library(R.matlab)
+```
+
+## 1: Distinct Patterns
+
+### Simulate Patterns
+
+Pattern matrix is 4*50, patterns by chemicals.
+
+```{r}
+## Construct a matrix for 4 TRUE exposure patterns
+create_patterns_dist <- function (seed) {
+  set.seed(seed)
+  patterns_dist <- rbind(c(runif(12, 1, 2), rep(0, 38)),
+                         c(rep(0, 12),      runif(12, 1, 2), rep(0, 26)),
+                         c(rep(0, 24),      runif(13, 1, 2), rep(0, 13)),
+                         c(rep(0, 37),                       runif(13, 1, 2)))
+  patterns_dist
+}
+
+patterns_dist_iter <- tibble(seed = 1:100) %>% 
+ mutate(true_patterns = map(seed, create_patterns_dist))
+```
+
+### Simulate Scores
+
+```{r}
+create_scores_dist <- function (seed) {
+  scores_dist <- matrix(nrow = 1000, ncol = 4)
+  set.seed(seed)
+  scores_dist <- exp(mvrnorm(n = 1000, mu = rep(1, 4), 
+                          Sigma = diag(rep(1, 4)))) # Independent log normal dist
+  scores_dist
+}
+
+scores_dist_iter <- patterns_dist_iter %>% 
+ mutate(true_scores = map(seed, create_scores_dist))
+```
+
+### Simulate Chemical Exposures
+
+Multiple scores and vectors, and add to get the mixture.
+
+```{r}
+sim_dist <- scores_dist_iter %>% 
+  mutate(chem = map2(true_scores, true_patterns, `%*%`))
+```
+
+### Simulate Noise
+
+```{r}
+add_noise <- function (seed, chem) {
+  noise <- list(mean=0, sd=1)
+  set.seed(seed)
+  chem_dist <- pmax(chem + rmatrix(1000, 50, dist=rnorm, mean=noise$mean, sd=noise$sd), 0)	
+  chem_dist
+}
+
+sim_dist <- sim_dist %>% 
+ mutate(sim = map2(seed, chem, add_noise))
+```  
+
+```{r}
+simm <- sim_dist$sim[1][[1]]
+
+as_tibble(simm) %>% 
+  pivot_longer(V1:V50) %>% 
+  ggplot(aes(x = value)) + 
+  geom_histogram(bins = 100) + 
+  labs(x = "Distinct Simulations",
+       y = "Count")
+
+apply(simm, 2, max)
+apply(simm, 2, mean)
+apply(simm, 2, sd)
+summary(simm)
+sum(simm == 0)/(1000*50)
+
+ggcorr(as_tibble(simm), limits = FALSE,
+       hjust = 0.85, size = 2, layout.exp = 1) +
+  labs(x = "Simulated Correlation Matrix") +
+  theme_minimal(base_size = 10)
+```
+
+## 2: Correlated Patterns
+
+### Simulate Patterns
+```{r}
+## Construct a matrix for 4 TRUE exposure patterns
+create_patterns_cor <- function (seed) {
+  set.seed(seed)
+  patterns_cor <- rbind(c(runif(12, 1, 2), runif(12, 0.5, 1), rep(0, 26)),
+                         c(rep(0, 12),     runif(12, 1, 2),   runif(13, 0.5, 1), rep(0, 13)),
+                         c(rep(0, 24),                        runif(13, 1, 2),   runif(13, 0.5, 1)),
+                         c(runif(12, 0.5, 1), rep(0, 25),                        runif(13, 1, 2)))
+  patterns_cor
+}
+
+patterns_cor_iter <- tibble(seed = 1:100) %>% 
+ mutate(true_patterns = map(seed, create_patterns_cor))
+```
+
+### Simulate Scores
+
+```{r}
+create_scores_cor <- function (seed) {
+  scores_cor <- matrix(nrow = 1000, ncol = 4)
+  cov <- matrix( c(1,    0.25, 0.15, 0.15,
+                  0.25, 1,    0.15, 0.15,
+                  0.15, 0.15, 1,    0.25,
+                  0.15, 0.15, 0.25, 1), nrow = 4)
+  
+  set.seed(seed)
+  scores_cor <- exp(mvrnorm(n = 1000, mu = rep(1, 4), 
+                          Sigma = cov)) # dists are kind of DEPENDENT
+  }
+
+scores_cor_iter <- patterns_cor_iter %>% 
+ mutate(true_scores = map(seed, create_scores_cor))
+```
+
+### Simulate Chemical Exposures
+
+Multiple scores and vectors, and add to get the mixture.
+
+```{r}
+sim_cor <- scores_cor_iter %>% 
+  mutate(chem = map2(true_scores, true_patterns, `%*%`))
+```
+
+### Simulate Noise
+
+```{r}
+sim_cor <- sim_cor %>% 
+ mutate(sim = map2(seed, chem, add_noise))
+```  
+
+```{r}
+simm <- sim_cor$sim[1][[1]]
+
+as_tibble(simm) %>% 
+  pivot_longer(V1:V50) %>% 
+  ggplot(aes(x = value)) + 
+  geom_histogram(bins = 100) + 
+  labs(x = "Distinct Simulations",
+       y = "Count")
+
+apply(simm, 2, max)
+apply(simm, 2, mean)
+apply(simm, 2, sd)
+summary(simm)
+sum(simm == 0)/(1000*50)
+
+ggcorr(as_tibble(simm), limits = FALSE,
+       hjust = 0.85, size = 2, layout.exp = 1) +
+  labs(x = "Simulated Correlation Matrix") +
+  theme_minimal(base_size = 10)
+```
+
+## 3: Overlapping Patterns
+
+### Simulate Patterns
+
+Use correlated patterns.
+
+### Simulate Scores
+
+Use distinct scores.
+
+### Simulate Chemical Exposures
+
+Multiple scores and vectors, and add to get the mixture.
+
+```{r}
+sim_over <- scores_dist_iter %>% 
+  dplyr::select(seed, true_scores) %>% 
+  full_join(., scores_cor_iter %>% 
+  dplyr::select(seed, true_patterns), by = "seed") %>% 
+  mutate(chem = map2(true_scores, true_patterns, `%*%`))
+```
+
+### Simulate Noise
+
+```{r}
+sim_over <- sim_over %>% 
+ mutate(sim = map2(seed, chem, add_noise))
+```  
+
+## Save
+
+```{r} 
+sim_old_all1 <- rbind(sim_dist %>% mutate(data = "Distinct"),
+      sim_over %>% mutate(data = "Overlapping")) %>% 
+      # sim_cor %>% mutate(data = "Correlated")) %>% 
+  mutate(sim_type = "Raw")
+  
+sim_old_all1
+# save(sim_old_all1, file = "./Sims/sim_old_all1.RDA")
+
+# sim_bnmf is sim_old raw sims + sim_norm normalized loading sims
+# sim_bnmf <- full_join(sim_old, sim_norm)
+# save(sim_bnmf, file = "./R/Sims/Iterate/sim_bnmf.RDA")
+# load(file = "./R/Sims/Iterate/sim_bnmf.RDA")
+```

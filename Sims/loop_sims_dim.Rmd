@@ -1,0 +1,216 @@
+---
+title: "Loop size, rows, columns, patterns"
+author: "Lizzy Gibson"
+date: "3/5/2020"
+output: 
+  html_document:
+    toc: TRUE
+    toc_float: TRUE
+---
+
+```{r setup, include=FALSE}
+options(scipen = 999)
+library(reshape2) # melt
+library(gridExtra) # gridarrange
+library(bindata) # multivariate binomial dist
+library(NMF) # rmatrix
+library(MASS) # mvrnorm
+library(tidyverse)
+library(R.matlab)
+library(MCMCpack) # for dirichlet
+```
+
+## 0: Loop This
+
+```{r}
+patterns <- c(1, 4, 10)
+participants <- c(200, 1000, 10000)
+chemicals <- c(20, 50, 100)
+seed <- c(1:100)
+
+loop_scores <- expand_grid(seed, patterns, participants, chemicals)
+loop_patterns <- expand_grid(seed, participants, chemicals)
+```
+
+## 1: Distinct Scores
+
+### Simulate Scores
+
+* Generate non-negative scores
+* 1,000 individuals with scores on each of 4 patterns
+* Individual distributions are independent
+* Patterns (columns) are standardized to stdev = 1
+   * Not mean-centered
+
+```{r}
+create_scores_dist <- function (seed, participants, patterns) {
+  scores_dist <- matrix(nrow = participants, ncol = patterns)
+  set.seed(seed)
+  scores_dist <- exp(mvrnorm(n = participants, mu = rep(0, patterns), 
+                          Sigma = diag(rep(1, patterns)))) # independent log normal dist
+  scores_dist <- apply(scores_dist, 2, function (x) x/sd(x)) # divide columns by standard dev 
+  scores_dist
+  }
+
+scores_iter <- loop_scores %>% 
+ mutate(true_scores = pmap(list(seed, participants, patterns), create_scores_dist))
+```
+
+### Simulate Noise
+
+* Add noise
+
+```{r}
+# noise = 1000x50
+add_noise <- function (seed, chem_matrix) {
+  noise <- list(sd = apply(chem_matrix, 2, sd)/2)
+  n = nrow(chem_matrix)
+  p = ncol(chem_matrix)
+  set.seed(seed)
+  chem_dist <- pmax(chem_matrix + mvrnorm(n = n, mu = rep(0, p), 
+                                             Sigma = diag(noise$sd)), 0)	
+  chem_dist
+}
+```
+
+## 2: Overlapping Patterns
+
+### Simulate Patterns
+
+```{r}
+## Construct a matrix for 1,4,10 TRUE exposure patterns
+create_1pattern <- function (seed, chemicals) {
+  set.seed(seed)
+  patterns <- matrix(rdirichlet(1, c(rep(10,  chemicals))), nrow = 1)
+  patterns
+}
+
+create_4patterns <- function (seed, chemicals) {
+  set.seed(seed)
+  group_1 <- chemicals %/% 4
+  group_2 <- (chemicals - 2*group_1)/2
+  
+  patterns <- rbind( 
+    rdirichlet(1, c(rep(10,  group_1), rep(5,  group_1),          rep(0.1, group_2*2))),
+    rdirichlet(1, c(rep(0.1, group_1), rep(10, group_1),          rep(5,   group_2),    rep(0.1, group_2))),
+    rdirichlet(1, c(rep(0.1, group_1), rep(5,  group_1),          rep(10,  group_2),    rep(0.1, group_2))),
+    rdirichlet(1, c(rep(5,   group_1), rep(0.1, group_1+group_2), rep(10,  group_2))))
+  patterns
+}
+
+create_10patterns <- function (seed, chemicals) {
+  set.seed(seed)
+  group <- chemicals / 5
+  
+  patterns <- rbind( 
+    rdirichlet(1, c(rep(10,  group),  rep(5,   group), rep(.1,  group), rep(.1, group), rep(.1, group))), 
+    rdirichlet(1, c(rep(0.1, group),  rep(10,  group), rep(5,   group), rep(.1, group), rep(.1, group))), 
+    rdirichlet(1, c(rep(0.1, group),  rep(.1,  group), rep(10,  group), rep(5,  group), rep(.1, group))), 
+    rdirichlet(1, c(rep(.1,  group),  rep(0.1, group), rep(0.1, group), rep(10, group), rep(5,  group))), 
+    rdirichlet(1, c(rep(5,   group),  rep(.1,  group), rep(.1,  group), rep(.1, group), rep(10, group))),
+    rdirichlet(1, c(rep(10,  group),  rep(.1,  group), rep(5,  group), rep(.1, group), rep(.1,  group))), 
+    rdirichlet(1, c(rep(.1,  group),  rep(10,  group), rep(.1, group), rep(5,  group), rep(0.1, group))), 
+    rdirichlet(1, c(rep(0.1, group),  rep(.1,  group), rep(10, group), rep(.1, group), rep(5,   group))), 
+    rdirichlet(1, c(rep(5,   group),  rep(.1,  group), rep(.1, group), rep(10, group), rep(.1,  group))),
+    rdirichlet(1, c(rep(.1,  group),  rep(5,   group), rep(.1, group), rep(.1, group), rep(10,  group))))
+  patterns
+}
+
+patterns_iter <- loop_patterns %>% 
+ mutate(four = map2(seed, chemicals, create_4patterns),
+        one  = map2(seed, chemicals, create_1pattern),
+        ten  = map2(seed, chemicals, create_10patterns)) %>% 
+  pivot_longer(c(four, one, ten),
+               values_to = "true_patterns",
+               names_to = "patterns") %>% 
+  mutate(patterns = case_when(patterns == "four" ~ 4,
+                              patterns == "one" ~ 1,
+                              patterns == "ten" ~ 10))
+  
+```
+
+```{r}
+patterns_iter[3,5][[1]][[1]] %>% as_tibble() %>% 
+  mutate(Pattern = 1:base::nrow(.)) %>% 
+  dplyr::select(Pattern, everything()) %>% 
+  gather(key = Chemicals, value = Loadings, -Pattern) %>% 
+  mutate(Chemicals = fct_inorder(Chemicals)) %>%
+  ggplot(aes(x = Chemicals, y = Loadings)) + geom_col() +
+  facet_wrap(.~Pattern) + theme_bw() +
+  theme(axis.text.x = element_text(angle = 45),
+        strip.background = element_blank()) +
+  labs(title = "Overlapping Patterns")
+```
+
+### Simulate Chemical Exposures
+
+Multiple scores and vectors, and add to get the mixture.
+
+```{r}
+sim_over <- left_join(patterns_iter, scores_iter) %>% 
+  mutate(chem_1 = map2(true_scores, true_patterns, `%*%`),
+         chem_10 = map(chem_1, function(x) x*10),
+         chem_100 = map(chem_1, function(x) x*100))
+
+chem <- sim_over[1,7][[1]][[1]]
+chem10 <- sim_over[1,8][[1]][[1]]
+chem100 <- sim_over[1,9][[1]][[1]]
+
+# St dev of chemicals
+apply(chem100, 2, sd)
+summary(chem100)
+```
+
+### Simulate Noise
+
+```{r}
+sim_over <- sim_over %>% 
+ mutate(sim_1 = map2(seed, chem_1, add_noise),
+        sim_10 = map2(seed, chem_10, add_noise),
+        sim_100 = map2(seed, chem_100, add_noise))
+
+# St dev of chemicals
+sm <- sim_over[1,10][[1]][[1]]
+sm10 <- sim_over[1,11][[1]][[1]]
+sm100 <- sim_over[1,12][[1]][[1]]
+
+# St dev of chemicals
+apply(sm, 2, sd)
+apply(sm10, 2, sd)
+apply(sm100, 2, sd)
+```  
+
+```{r}
+cormat3 <- cor(sim_over[100,12][[1]][[1]])
+
+melt(cormat3) %>% rename(Correlation = value) %>% 
+  ggplot(aes(x = Var1, y = Var2)) +
+  geom_tile(aes(fill = Correlation), colour = "white") +
+  scale_fill_gradient2(low = "#00BFC4", mid = "white", high = "#F8766D",
+                       midpoint = 0,
+                       na.value = "transparent") +
+  theme_grey() + labs(x = "", y = "") +
+  scale_x_discrete(expand = c(0, 0)) +
+  scale_y_discrete(expand = c(0, 0)) +
+  theme(axis.text = element_blank(),
+        panel.spacing = unit(0, "lines"),
+        strip.background = element_blank(),
+        legend.position = "bottom") + 
+        labs(title = "Overlapping patterns & independent scores")
+```
+
+## Save
+
+```{r} 
+sim_dim <- sim_over %>% 
+      pivot_longer(c(chem_1:sim_100),
+                   names_to = c("chem_sim", "sim_factor"),
+                   names_sep = "_",
+                   values_to = "sim_chem_matrix") %>% 
+      pivot_wider(names_from = "chem_sim",
+                  values_from = "sim_chem_matrix")
+
+sim_dim
+object.size(sim_dim)
+# save(sim_dim, file = "./Sims/sim_dim.RDA")
+```

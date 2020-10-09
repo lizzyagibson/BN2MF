@@ -6,7 +6,7 @@
 *.rData
 *.csv
 Sims/*.mat
-Sims/**
+Sims/*.RDA
 Resources/*.pdf
 R/*cache/**
 R/*cache-bkp/**
