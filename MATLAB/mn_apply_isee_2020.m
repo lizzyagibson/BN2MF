@@ -39,10 +39,12 @@ dataNorm = (isee2020dat) ./ sd;
 %% Clear temporary variables
 clear opts
 
-% tic()
-% [EWA, EH, varWA, varH, alphaH, betaH] = NPBayesNMF(dataNorm);
-% toc()
+tic()
+[EWA, EH, varWA, varH, alphaH, betaH] = NPBayesNMF(dataNorm);
+toc()
 % Elapsed time is 47.751565 seconds.
+% 10 RUNS Elapsed time is 4.764525 seconds.
+% MATLAB Run Time: <1 second.
 
 % tic()
 % [EWA, EH, varWA, varH, alphaH, betaH] = NPBayesNMF(isee2020dat);
