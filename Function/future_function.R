@@ -111,7 +111,7 @@ NPBayesNMF_future <- function(X) {
   Kinit = ncol(X)
   
   bnp_switch = 1
-  nruns = 25
+  nruns = 3
   future_results <- list()
   
   EA = matrix()

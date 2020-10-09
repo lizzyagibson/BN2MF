@@ -13,7 +13,7 @@ NPBayesNMF <- function(X) {
   N = ncol(X)
   Kinit = ncol(X)
 
-  nruns = 1 # 1 run for testing, only >> increase!
+  nruns = 1 # INCREASE
   end_score = matrix(rep(0, times = nruns))
   
   EA = matrix()
@@ -138,11 +138,20 @@ NPBayesNMF <- function(X) {
 
 # X = matrix(runif(50), 10, 5)
 # system.time(NPBayesNMF(X))
-X = sim_over$sim[1][[1]]
+X = sim_dgp$sim[1][[1]]
 tic()
-NPBayesNMF(X)
-NPBayesNMF_future(X)
+out <- NPBayesNMF(X)
 toc()
+# 570.706 sec elapsed with noise = var/10
+# 10 min with noise = var/10
+
+# 607.329 sec elapsed with noise = 1
+# 10 min with noise = 1
+
+tic()
+edc_out <- NPBayesNMF(edc_std)
+toc()
+# 6.832 sec elapsed per run
 
 system.time(NPBayesNMF(X))
 system.time(NPBayesNMF_future(X))
