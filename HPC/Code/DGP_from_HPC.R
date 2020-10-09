@@ -17,33 +17,25 @@ options(
 #######################################################################################
 
 # Aggregate HPC output
-load(here::here(paste0("HPC/Rout/dgp_out/dgp_sims", 1, ".RDA"))) 
+load(here::here(paste0("HPC/Rout/raw_out/raw_sims", 3, ".RDA"))) 
 dgp_data <- output_all
 
-for (i in 2:200) {
-  if (file.exists(here::here(paste0("HPC/Rout/dgp_out/dgp_sims", i, ".RDA")))) { 
-    load(here::here(paste0("HPC/Rout/dgp_out/dgp_sims", i, ".RDA"))) 
-    dgp_data <- full_join(dgp_data, output_all)
+for (i in 1:200) {
+  if (file.exists(here::here(paste0("HPC/Rout/raw_out/raw_sims", i, ".RDA")))) { 
+    load(here::here(paste0("HPC/Rout/raw_out/raw_sims", i, ".RDA"))) 
+    dgp_data <- rbind(dgp_data, output_all)
   }
 }
 
 dgp_data <- dgp_data %>% arrange(seed)
-
+dgp_data
 #####################
 #####################
 
 # What does this data look like
 
-# Distinct
-sim <- dgp_data$sim[3][[1]]
-
-as_tibble(sim) %>% 
-  pivot_longer(V1:V50) %>% 
-  ggplot(aes(x = value)) + 
-  geom_histogram(bins = 100) + 
-  facet_wrap(~name) +
-  labs(x = "Distinct Simulations",
-       y = "Count")
+# distinct
+sim <- dgp_data$sim[1][[1]]
 
 as_tibble(sim) %>% 
   pivot_longer(V1:V50) %>% 
@@ -53,9 +45,10 @@ as_tibble(sim) %>%
        y = "Count")
 
 max(sim)
+apply(sim, 2, sd)
 summary(sim)
 
-# 12% of sim is zero
+# .6% of sim is zero
 sum(sim == 0)/(1000*50)
 
 ggcorr(as_tibble(sim), limits = FALSE,
@@ -64,7 +57,7 @@ ggcorr(as_tibble(sim), limits = FALSE,
   theme_minimal(base_size = 10)
 
 # Overlapping
-simO <- dgp_data$sim[4][[1]]
+simO <- dgp_data$sim[3][[1]]
 
 as_tibble(simO) %>% 
   pivot_longer(V1:V50) %>% 
@@ -74,16 +67,10 @@ as_tibble(simO) %>%
   labs(x = "Overlapping Simulations",
        y = "Count")
 
-as_tibble(simO) %>% 
-  pivot_longer(V1:V50) %>% 
-  ggplot(aes(x = value)) + 
-  geom_histogram(bins = 100) + 
-  labs(x = "Overlapping Simulations",
-       y = "Count")
-
 max(simO)
-
-# 8% of sim is zero
+summary(simO)
+apply(simO, 2, sd)
+# .04% of sim is zero
 sum(simO == 0)/(1000*50)
 
 ggcorr(as_tibble(simO), limits = FALSE,
@@ -125,20 +112,6 @@ dgp_e %>%
   labs(y = "Relative Predictive Error",
        title = "vs PRE NOISE TRUTH")
 
-dgp_e %>% 
-  ggplot(aes(x = l2_true, color = sim_factor, fill = sim_factor)) +
-  geom_histogram(bins = 100, alpha = 0.75) +
-  facet_grid(name ~ data) + 
-  scale_x_log10() +
-  labs(title = "Relative Predictive Error vs PRE NOISE TRUTH")
-
-dgp_e %>% 
-  ggplot(aes(x = l2_sim, color = data, fill = data)) +
-  geom_histogram(bins = 100, alpha = 0.75) +
-  facet_grid(name ~ .) + 
-  scale_x_log10() +
-  labs(title = "Relative Predictive Error vs SIMS")
-
 #######################
 #######################
 # Symmetric Subspace Distance
@@ -158,14 +131,6 @@ dgp_s <- dgp_data %>% dplyr::select(seed, data, grep("_ssdist", colnames(.))) %>
          model = ifelse(str_detect(model, '_p_'), 'Poisson NMF', model),
          model = ifelse(str_detect(model, 'bnmf'), 'BNMF', model),
          type = ifelse(str_detect(type, 'scores'), 'Scores', "Loadings"))
-
-dgp_s %>% 
-  ggplot(aes(x = value)) +
-  geom_histogram(aes(fill = data), bins = 100, alpha = 0.75) +
-  facet_grid(model ~ type) + 
-  # scale_x_log10() +
-  geom_vline(xintercept = 0.5, color = "pink", linetype = "dashed", size = 0.5) +
-  labs(title = "Symmetric Subspace Distance")
 
 dgp_s %>% 
   ggplot(aes(x = model, y = value, color = model)) +
@@ -192,8 +157,7 @@ dgp_data %>%
   dplyr::select(-data) %>% 
   pivot_wider(names_from = value,
               values_from = n) %>% 
-  mutate_if(is.integer, replace_na, 0) %>% 
-  dplyr::select(name, `1`:`5`, `> 5`)
+  mutate_if(is.integer, replace_na, 0)
 
 dgp_data %>%
   dplyr::select(seed, data, fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank, bnmf_rank) %>%
@@ -207,44 +171,4 @@ dgp_data %>%
   dplyr::select(-data) %>% 
   pivot_wider(names_from = value,
               values_from = n) %>% 
-  mutate_if(is.integer, replace_na, 0) %>% 
-  dplyr::select(name, `1`:`5`, `> 5`)
-
-#####
-##### 10/6
-#####
-
-dgp_data %>%
-  dplyr::select(seed, data, fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank, bnmf_rank) %>%
-  unnest(c(fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank, bnmf_rank)) %>%
-  pivot_longer(cols = fa_rank:bnmf_rank) %>%
-  mutate(value = ifelse(value > 5, "> 5", as.factor(value))) %>% 
-  group_by(name, value, data) %>%
-  summarise(n = n()) %>% 
-  ungroup() %>% 
-  filter(data == "Distinct") %>% 
-  dplyr::select(-data) %>% 
-  pivot_wider(names_from = value,
-              values_from = n) %>% 
-  mutate_if(is.integer, replace_na, 0) %>% 
-  dplyr::select(name, `1`:`5`, `> 5`)
-
-dgp_e %>%
-  ggplot(aes(x = name, y = l2_sim, color = name, fill = name)) +
-  geom_boxplot(alpha = 0.5) +
-  facet_grid(. ~ data, scales = "free") + 
-  geom_vline(xintercept = 0, color = "pink", linetype = "dashed", size = 0.5) +
-  scale_y_log10() +
-  theme(legend.position = "none") + 
-  labs(y = "Relative Predictive Error",
-       title = "vs SIMS")
-
-dgp_s %>% 
-  ggplot(aes(x = model, y = value, color = model)) +
-  geom_boxplot() +
-  facet_grid(data ~ type) + 
-  geom_hline(yintercept = 0.5, color = "pink", linetype = "dashed", size = 0.5) +
-  theme(legend.position = "none") + 
-  # scale_y_log10() +
-  labs(y = "Symmetric Subspace Distance")
-
+  mutate_if(is.integer, replace_na, 0)
