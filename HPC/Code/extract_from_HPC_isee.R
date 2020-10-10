@@ -155,58 +155,8 @@ cor_out_un
 load("./Sims/all_unstand.RDA")
 all_unstand
 
-## Normalize loadings, then adjust scores
-normalize_patterns <- function(loading, score) {
-  if(is_tibble(loading) == TRUE) {loading <- as.matrix(loading)}
-  if(is_tibble(score) == TRUE) {score <- as.matrix(score)}
-  
-  load_sum <- apply(loading, 1, sum)
-  load_norm <- loading/load_sum
-
-  score_norm <- matrix(NA, nrow = nrow(score), ncol = ncol(score))
-  for (i in 1:length(load_sum)) {
-    score_norm[,i] <- score[,i] * load_sum[i]
-  }
-  
-  list(loading_norm = load_norm, score_norm = score_norm)
-  }
-
-all_unstand <- all_unstand %>% 
-  # mutate(true_norm = map2(patterns, scores, normalize_patterns),
-  #        pca_norm = map2(pca_rotations, pca_scores, function(x,y) normalize_patterns(t(x), y)),
-  #        fa_norm = map2(fa_rotations, fa_scores, function(x,y) normalize_patterns(t(x), y)),
-  #        nmf_l2_norm = map2(nmf_l2_loadings, nmf_l2_scores, normalize_patterns),
-  #        nmf_p_norm = map2(nmf_p_loadings, nmf_p_scores, normalize_patterns),
-  #        npbnmf_norm = map2(eh, ewa, normalize_patterns)) %>% 
-  # unnest_wider(true_norm) %>% rename(true_score_norm = score_norm, true_loading_norm = loading_norm) %>% 
-  # unnest_wider(pca_norm) %>% rename(pca_score_norm = score_norm, pca_loading_norm = loading_norm) %>% 
-  # unnest_wider(fa_norm) %>% rename(fa_score_norm = score_norm, fa_loading_norm = loading_norm) %>% 
-  # unnest_wider(nmf_l2_norm) %>% rename(nmf_l2_score_norm = score_norm, nmf_l2_loading_norm = loading_norm) %>% 
-  # unnest_wider(nmf_p_norm) %>% rename(nmf_p_score_norm = score_norm, nmf_p_loading_norm = loading_norm) %>% 
-  # unnest_wider(npbnmf_norm) %>% rename(npbnmf_score_norm = score_norm, npbnmf_loading_norm = loading_norm) %>% 
-  mutate(bnmf_norm_scores_ssdist = map2(true_score_norm, npbnmf_score_norm, symm_subspace_dist),
-         bnmf_norm_loading_ssdist = map2(true_loading_norm, npbnmf_loading_norm, symm_subspace_dist),
-         pca_norm_scores_ssdist = map2(true_score_norm, pca_score_norm, symm_subspace_dist),
-         pca_norm_loading_ssdist = map2(true_loading_norm, pca_loading_norm, symm_subspace_dist),
-         fa_norm_scores_ssdist = map2(true_score_norm, fa_score_norm, symm_subspace_dist),
-         fa_norm_loading_ssdist = map2(true_loading_norm, fa_loading_norm, symm_subspace_dist),
-         nmf_l2_norm_scores_ssdist = map2(true_score_norm, nmf_l2_score_norm, symm_subspace_dist),
-         nmf_l2_norm_loading_ssdist = map2(true_loading_norm, nmf_l2_loading_norm, symm_subspace_dist),
-         nmf_p_norm_scores_ssdist = map2(true_score_norm, nmf_p_score_norm, symm_subspace_dist),
-         nmf_p_norm_loading_ssdist = map2(true_loading_norm, nmf_p_loading_norm, symm_subspace_dist))
-
 ####################################################################################################
 # Relative Error
-
-all_unstand %>% dplyr::select(seed, sim_type, chem, grep("pred", colnames(.))) %>% 
-  pivot_longer(pca_pred:bnmf_pred) %>% 
-  mutate(l2 = map2(chem, value, function (x,y) norm(x-y, "F")/norm(x, "F"))) %>% # CHEM is SIM PRE-NOISE
-  dplyr::select(seed, sim_type, name, l2) %>% 
-  unnest(l2) %>% 
-  group_by(sim_type, name) %>% 
-  summarize(min = min(l2),
-            mean = mean(l2),
-            max = max(l2))
 
 all_unstand_error <- all_unstand %>% dplyr::select(seed, sim_type, chem, sim, grep("pred", colnames(.))) %>% 
   pivot_longer(pca_pred:bnmf_pred) %>% 
@@ -220,7 +170,7 @@ all_unstand_error <- all_unstand %>% dplyr::select(seed, sim_type, chem, sim, gr
 all_error %>% 
   ggplot(aes(x = name, y = l2_sim)) +
   geom_boxplot() +
-  facet_grid(~sim_type, scales = "free") + 
+  facet_grid(Standardized~sim_type) + 
   geom_vline(xintercept = 0, color = "pink", linetype = "dashed", size = 0.5) +
   theme_bw() + scale_y_log10() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
@@ -228,13 +178,6 @@ all_error %>%
 
 ####################################################################################################
 # Symmetric Subspace Distance
-
-all_unstand %>% dplyr::select(seed, sim_type, grep("_ssdist", colnames(.))) %>% 
-  unnest(cols = c(pca_rotation_ssdist, pca_scores_ssdist, fa_rotations_ssdist, 
-                  fa_scores_ssdist, nmf_l2_loading_ssdist, nmf_l2_scores_ssdist, 
-                  nmf_p_loading_ssdist, nmf_p_scores_ssdist,
-                  bnmf_scores_ssdist, bnmf_loading_ssdist)) %>% 
-  summary()
 
 all_unstand_ssdist <- all_unstand %>% dplyr::select(seed, sim_type, grep("_ssdist", colnames(.))) %>% 
   unnest(cols = grep("_ssdist", colnames(.))) %>% 
@@ -260,7 +203,7 @@ all_unstand_ssdist %>%
   geom_hline(yintercept = 0.5, color = "pink", linetype = "dashed", size = 0.5) +
   theme_bw() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1),
-        legend.position = "none") + scale_y_log10() +
+        legend.position = "bottom") +
   labs(title = "Symmetric Subspace Distance")
 
 ######################################################
@@ -322,7 +265,6 @@ plot_ss %>%
   geom_boxplot(outlier.size = 0.25, alpha = 0.5) +
   facet_wrap(~sim_type) + 
   theme_bw(base_size = 30) +
-  scale_y_log10() +
   theme(strip.text = element_text(size = 20),
         axis.text.x = element_blank(),
         strip.background =element_rect(fill="white"),
@@ -344,15 +286,16 @@ plot_ss %>%
   geom_hline(yintercept = 0.5, color = "pink", linetype = "dashed", size = 1.05) +
   geom_boxplot(outlier.size = 0.25, alpha = 0.5) +
   facet_wrap(~sim_type) + 
-  theme_bw(base_size = 30) +
-  scale_y_log10() +
-  theme(strip.text = element_text(size = 20),
+  theme_bw(#base_size = 30
+    ) +
+  theme(#strip.text = element_text(size = 20),
         axis.text.x = element_blank(),
         strip.background =element_rect(fill="white"),
         legend.direction = "horizontal",
         legend.position = c(0.5, -0.1), # c(0,0) bottom left, c(1,1) top-right.
-        axis.title.y = element_text(size = 30),
-        legend.text = element_text(size = 25)) + 
+        #axis.title.y = element_text(size = 30),
+        #legend.text = element_text(size = 25)
+        ) + 
   labs(y = "Symmetric Subspace Distance",
        x = "", color = "", fill = "",
        title = "Distance from True Pattern Loadings") + 
