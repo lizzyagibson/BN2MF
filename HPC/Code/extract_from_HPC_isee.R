@@ -158,7 +158,7 @@ all_unstand
 ####################################################################################################
 # Relative Error
 
-all_unstand_error <- all_unstand %>% dplyr::select(seed, sim_type, chem, sim, grep("pred", colnames(.))) %>% 
+all_error <- all_unstand %>% dplyr::select(seed, sim_type, chem, sim, grep("pred", colnames(.))) %>% 
   pivot_longer(pca_pred:bnmf_pred) %>% 
   mutate(l2_true = map2(chem, value, function (x,y) norm(x-y, "F")/norm(x, "F")),
          l2_sim = map2(sim, value, function (x,y) norm(x-y, "F")/norm(x, "F"))) %>% 
@@ -179,7 +179,7 @@ all_error %>%
 ####################################################################################################
 # Symmetric Subspace Distance
 
-all_unstand_ssdist <- all_unstand %>% dplyr::select(seed, sim_type, grep("_ssdist", colnames(.))) %>% 
+all_ssdist <- all_unstand %>% dplyr::select(seed, sim_type, grep("_ssdist", colnames(.))) %>% 
   unnest(cols = grep("_ssdist", colnames(.))) %>% 
   pivot_longer(grep("_ssdist", colnames(.)),
                names_to = "type",
@@ -196,7 +196,7 @@ all_unstand_ssdist <- all_unstand %>% dplyr::select(seed, sim_type, grep("_ssdis
 
 # save(all_unstand_ssdist, file = "./HPC/Rout/all_unstand_ssdist.RDA")
 
-all_unstand_ssdist %>% 
+all_ssdist %>% 
   ggplot(aes(x = model, y = value, color = Normalized)) +
   geom_boxplot() +
   facet_grid(sim_type~type) + 
@@ -211,7 +211,7 @@ all_unstand_ssdist %>%
 # Plots for ISEE
 ######################################################
 
-plot_l2 <- all_unstand_error %>% 
+plot_l2 <- all_error %>% 
   filter(name != "nmf_p_pred") %>% 
   mutate(sim_type = paste0(str_to_title(sim_type), " Sims")) %>% 
   mutate(name = case_when(name == "pca_pred" ~ "PCA",
@@ -249,16 +249,9 @@ plot_l2 %>%
 plot_ss <- 
   all_ssdist %>% 
   filter(Normalized == "No" & Standardized == "No") %>% 
-  filter(model != "NMF_p") %>% 
-  mutate(sim_type = fct_relevel(sim_type, "Distinct Sims",
-                                "Overlapping Sims",
-                                "Correlated Sims")) %>% 
-  mutate(model = fct_relevel(model, "npBNMF",
-                                "PCA",
-                                "Factor Analysis",
-                                "NMF L2"))
+  filter(model != "NMF_p")
 
-pdf("Figures/isee_2020_score.pdf", width = 10)
+#pdf("Figures/isee_2020_score.pdf", width = 10)
 plot_ss %>% 
   filter(type == "Scores") %>% 
   ggplot(aes(x = model, y = value, color = model, fill = model)) +
@@ -277,9 +270,9 @@ plot_ss %>%
        x = "",
        title = "Distance from True Individual Scores",
        color = "", fill = "") + scale_color_nejm() + scale_fill_nejm()
-dev.off()
+#dev.off()
 
-pdf("Figures/isee_2020_load.pdf", width = 10)
+#pdf("Figures/isee_2020_load.pdf", width = 10)
 plot_ss %>% 
   filter(type == "Loadings") %>% 
   ggplot(aes(x = model, y = value, color = model, fill = model)) +
@@ -300,5 +293,5 @@ plot_ss %>%
        x = "", color = "", fill = "",
        title = "Distance from True Pattern Loadings") + 
   scale_color_nejm() + scale_fill_nejm()
-dev.off()
+#dev.off()
 
