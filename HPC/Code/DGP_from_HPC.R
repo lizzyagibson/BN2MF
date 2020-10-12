@@ -1,26 +1,12 @@
-#######################################################################################
-#######################################################################################
 library(tidyverse)
 library(ggsci)
 library(GGally)
-#######################################################################################
-theme_set(theme_bw(base_size = 10) + 
-            theme(legend.position = "bottom",
-                  strip.background =element_rect(fill="white"),
-                  axis.text.x = element_text(angle = 45, hjust = 1)))
-#######################################################################################
-ggsci <- pal_nejm()(8)
 
-options(
-  ggplot2.discrete.colour = ggsci,
-  ggplot2.discrete.fill = ggsci)
-#######################################################################################
-
+#####
 # Aggregate HPC output
-load(here::here(paste0("HPC/Rout/raw_out/raw_sims", 3, ".RDA"))) 
-dgp_data <- output_all
+dgp_data <- tibble()
 
-for (i in 1:200) {
+for (i in 1:200) { # something wrong with 86
   if (file.exists(here::here(paste0("HPC/Rout/raw_out/raw_sims", i, ".RDA")))) { 
     load(here::here(paste0("HPC/Rout/raw_out/raw_sims", i, ".RDA"))) 
     dgp_data <- rbind(dgp_data, output_all)
@@ -29,8 +15,8 @@ for (i in 1:200) {
 
 dgp_data <- dgp_data %>% arrange(seed)
 dgp_data
-#####################
-#####################
+
+#####
 
 # What does this data look like
 
