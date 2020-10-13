@@ -93,7 +93,7 @@ error <- norm_data %>%
 error %>%
   ggplot(aes(x = name, y = l2_sim, color = name, fill = name)) +
   geom_boxplot(alpha = 0.5) +
-  facet_grid(sim_factor ~ data, scales = "free") + 
+  facet_grid(sim_factor ~ data) + 
   geom_vline(xintercept = 0, color = "pink", linetype = "dashed", size = 0.5) +
   scale_y_log10() +
   theme(legend.position = "none") + 
@@ -101,13 +101,13 @@ error %>%
         title = "vs SIMS")
 
 error %>%
-  ggplot(aes(x = name, y = l2_true, color = name, fill = name)) +
+  ggplot(aes(x = name, y = l1_true, color = name, fill = name)) +
   geom_boxplot(alpha = 0.5) +
-  facet_grid(sim_factor ~ data, scales = "free") + 
+  facet_grid(sim_factor ~ data) + 
   geom_vline(xintercept = 0, color = "pink", linetype = "dashed", size = 0.5) +
   scale_y_log10() +
   theme(legend.position = "none") + 
-  labs(y = "Relative Predictive Error",
+  labs(y = "Relative Predictive Error (L1)",
         title = "vs PRE NOISE TRUTH")
 
 #####
