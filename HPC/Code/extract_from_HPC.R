@@ -27,23 +27,12 @@ for (i in 2:600) {
   }
 }
 
-norm_data %>% arrange(seed)
-
-#####################
-#####################
+norm_data <- norm_data %>% arrange(seed)
 
 # What does this data look like
 
-# Distinct
+# Distinct x100
 sim <- norm_data$sim[3][[1]]
-
-as_tibble(sim) %>% 
-  pivot_longer(V1:V50) %>% 
-  ggplot(aes(x = value)) + 
-  geom_histogram(bins = 100) + 
-  facet_wrap(~name) +
-  labs(x = "Distinct Simulations",
-       y = "Count")
 
 as_tibble(sim) %>% 
   pivot_longer(V1:V50) %>% 
@@ -63,16 +52,8 @@ ggcorr(as_tibble(sim), limits = FALSE,
   labs(x = "Simulated Correlation Matrix") +
   theme_minimal(base_size = 10)
 
-# Overlapping
-simO <- norm_data$sim[303][[1]]
-
-as_tibble(simO) %>% 
-  pivot_longer(V1:V50) %>% 
-  ggplot(aes(x = value)) + 
-  geom_histogram(bins = 100) + 
-  facet_wrap(~name) +
-  labs(x = "Overlapping Simulations",
-       y = "Count")
+# Overlapping x100
+simO <- norm_data$sim[6][[1]]
 
 as_tibble(simO) %>% 
   pivot_longer(V1:V50) %>% 
@@ -100,10 +81,14 @@ error <- norm_data %>%
   dplyr::select(-pca_uncenter_pred) %>% 
   pivot_longer(pca_pred:bnmf_pred) %>% 
   mutate(l2_true = map2(chem, value, function (x,y) norm(x-y, "F")/norm(x, "F")),
-         l2_sim = map2(sim, value, function (x,y) norm(x-y, "F")/norm(x, "F")),
+         l2_sim = map2(sim, value, function (x,y) norm(x-y, "F")/norm(x, "F")),    
+         
+         l1_true = map2(chem,value, function (x,y) sum(abs(x-y))/sum(abs(x))),
+         l1_sim  = map2(sim, value, function (x,y) sum(abs(x-y))/sum(abs(x))),
+         
          name = str_remove(name, "_pred")) %>% 
-  dplyr::select(seed, data, sim_factor, name, l2_true, l2_sim) %>% 
-  unnest(c(l2_sim, l2_true))
+  dplyr::select(seed, data, sim_factor, name, l2_true, l2_sim, l1_true, l1_sim) %>% 
+  unnest(c(l2_sim, l2_true, l1_true, l1_sim))
 
 error %>%
   ggplot(aes(x = name, y = l2_sim, color = name, fill = name)) +
@@ -112,7 +97,7 @@ error %>%
   geom_vline(xintercept = 0, color = "pink", linetype = "dashed", size = 0.5) +
   scale_y_log10() +
   theme(legend.position = "none") + 
-  labs(y = "Relative Predictive Error",
+  labs(y = "Relative Predictive Error (L2)",
         title = "vs SIMS")
 
 error %>%
@@ -125,25 +110,9 @@ error %>%
   labs(y = "Relative Predictive Error",
         title = "vs PRE NOISE TRUTH")
 
-error %>% 
-  ggplot(aes(x = l2_true, color = sim_factor, fill = sim_factor)) +
-  geom_histogram(bins = 100, alpha = 0.75) +
-  facet_grid(name ~ data) + 
-  scale_x_log10() +
-  labs(title = "Relative Predictive Error vs PRE NOISE TRUTH")
-
-error %>% 
-  ggplot(aes(x = l2_sim, color = sim_factor, fill = sim_factor)) +
-  geom_histogram(bins = 100, alpha = 0.75) +
-  facet_grid(name ~ data) + 
-  scale_x_log10() +
-  labs(title = "Relative Predictive Error vs SIMS")
-
-#######################
-#######################
+#####
 # Symmetric Subspace Distance
-########################
-########################
+#####
 
 ssdist <- norm_data %>% dplyr::select(seed, data, sim_factor, grep("_ssdist", colnames(.))) %>% 
   dplyr::select(-grep("uncenter", colnames(.))) %>% 
@@ -158,14 +127,6 @@ ssdist <- norm_data %>% dplyr::select(seed, data, sim_factor, grep("_ssdist", co
          model = ifelse(str_detect(model, '_p_'), 'Poisson NMF', model),
          model = ifelse(str_detect(model, 'bnmf'), 'BNMF', model),
          type = ifelse(str_detect(type, 'scores'), 'Scores', "Loadings"))
-
-ssdist %>% 
-  ggplot(aes(x = value)) +
-  geom_histogram(aes(fill = sim_factor), bins = 100, alpha = 0.75) +
-  facet_grid(model ~ data + type) + 
-  # scale_x_log10() +
-  geom_vline(xintercept = 0.5, color = "pink", linetype = "dashed", size = 0.5) +
-  labs(title = "Symmetric Subspace Distance")
 
 ssdist %>% 
   ggplot(aes(x = model, y = value, color = model)) +
