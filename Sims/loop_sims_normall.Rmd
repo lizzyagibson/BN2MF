@@ -65,11 +65,9 @@ patterns_dist_iter[1,2][[1]][[1]] %>% as_tibble() %>%
 
 ```{r}
 create_scores_dist <- function (seed) {
-  scores_dist <- matrix(nrow = 1000, ncol = 4)
   set.seed(seed)
-  scores_dist <- exp(mvrnorm(n = 1000, mu = rep(0, 4), 
-                          Sigma = diag(rep(1, 4)))) # independent log normal dist
-  scores_dist <- apply(scores_dist, 2, function (x) x/sd(x)) # divide columns by standard dev 
+  scores_dist <- rdirichlet(1000, c(rep(1, 4)))
+ 
   scores_dist
   }
 
@@ -77,7 +75,7 @@ scores_dist_iter <- patterns_dist_iter %>%
  mutate(true_scores = map(seed, create_scores_dist))
 
 # st dev of scores
-apply(scores_dist_iter[1,3][[1]][[1]], 2, sd)
+apply(scores_dist_iter[1,3][[1]][[1]], 2, mean)
 ```
 
 ### Simulate Chemical Exposures
@@ -103,7 +101,7 @@ apply(sim_dist[1,6][[1]][[1]], 2, mean)
 ```{r}
 # noise = 1000x50
 add_noise <- function (seed, chemx) {
-  noise <- list(mean = 0, sd = apply(chemx, 2, sd)/2)
+  noise <- list(mean = 0, sd = apply(chemx, 2, sd)/10)
   set.seed(seed)
   chem_dist <- pmax(chemx + mvrnorm(n = 1000, mu = rep(0, 50), 
                                              Sigma = diag(noise$sd)), 0)	
@@ -118,6 +116,7 @@ sim_dist <- sim_dist %>%
 # St dev of chemicals
 apply(sim_dist[1,7][[1]][[1]], 2, sd)
 apply(sim_dist[1,8][[1]][[1]], 2, sd)
+apply(sim_dist[1,9][[1]][[1]], 2, mean)
 apply(sim_dist[1,9][[1]][[1]], 2, sd)
 ```
 
@@ -180,7 +179,7 @@ Multiple scores and vectors, and add to get the mixture.
 
 ```{r}
 sim_over <- scores_dist_iter %>% 
-  select(seed, true_scores) %>% 
+  dplyr::select(seed, true_scores) %>% 
   full_join(., patterns_over_iter) %>% 
   mutate(chem_1 = map2(true_scores, true_patterns, `%*%`),
          chem_10 = map(chem_1, function(x) x*10),
@@ -192,7 +191,7 @@ chem100 <- sim_over[1,6][[1]][[1]]
 
 # St dev of chemicals
 apply(chem100, 2, sd)
-summary(chem10)
+summary(chem100)
 ```
 
 ### Simulate Noise
@@ -238,7 +237,7 @@ melt(cormat3) %>% rename(Correlation = value) %>%
 ## Save
 
 ```{r} 
-sim_norm <- rbind(sim_dist %>% mutate(data = "Distinct"),
+sim_normall <- rbind(sim_dist %>% mutate(data = "Distinct"),
       sim_over %>% mutate(data = "Overlapping")) %>% 
       mutate(sim_type = "L1 Norm") %>% 
       pivot_longer(c(chem_1:sim_100),
@@ -248,50 +247,60 @@ sim_norm <- rbind(sim_dist %>% mutate(data = "Distinct"),
       pivot_wider(names_from = "chem_sim",
                   values_from = "sim_chem_matrix")
 
-sim_norm
-# save(sim_norm, file = "./Sims/sim_norm.RDA")
+sim_normall_1000 <- sim_normall %>% 
+  filter(sim_factor == "1") %>% 
+  mutate(sim = map(sim, function(x) x*1000))
+
+# save(sim_normall_1000, file = "./Sims/sim_normall_1000.RDA")
+# save(sim_normall, file = "./Sims/sim_normall.RDA")
+```
+
+
+```{r}
+dist <- sim_dist$sim_1[[1]]*1000
+apply(dist, 2, mean)
+apply(dist, 2, sd)
 ```
 
 ### Test
 
 ```{r}
-# No noise
-## Distinct Patterns
-dist <- sim_norm[10,7][[1]][[1]]     # 1
-dist_10 <- sim_norm[11,7][[1]][[1]]  # 10
-dist_100 <- sim_norm[12,7][[1]][[1]] # 100
-
-NPBayesNMF(dist)     # Only 1 pattern found
-NPBayesNMF(dist_10)  # 4 patterns found
-NPBayesNMF(dist_100) # 4 patterns found
-
-## Overlapping Patterns
-over <- sim_norm[310,7][[1]][[1]]     # 1
-over_10 <- sim_norm[311,7][[1]][[1]]  # 10
-over_100 <- sim_norm[312,7][[1]][[1]] # 100
-
-NPBayesNMF(over)     # Only 1 pattern found
-NPBayesNMF(over_10)  # 3 patterns found
-NPBayesNMF(over_100) # 4 patterns found
-
-# Yes noise
-## Distinct Patterns
-dist <- sim_norm[10,8][[1]][[1]]     # 1
-dist_10 <- sim_norm[11,8][[1]][[1]]  # 10
-dist_100 <- sim_norm[12,8][[1]][[1]] # 100
-
-NPBayesNMF(dist)     # Only 1 pattern found
-NPBayesNMF(dist_10)  # 4 patterns found
-NPBayesNMF(dist_100) # 4 patterns found
-
-## Overlapping Patterns
-over <- sim_norm[310,8][[1]][[1]]     # 1
-over_10 <- sim_norm[311,8][[1]][[1]]  # 10
-over_100 <- sim_norm[312,8][[1]][[1]] # 100
-
-NPBayesNMF(over)     # Only 1 pattern found
-NPBayesNMF(over_10)  # 4 patterns found
-NPBayesNMF(over_100) # 3 patterns
-
+# # No noise
+# ## Distinct Patterns
+# dist <- sim_norm[10,7][[1]][[1]]     # 1
+# dist_10 <- sim_norm[11,7][[1]][[1]]  # 10
+# dist_100 <- sim_norm[12,7][[1]][[1]] # 100
+# 
+# NPBayesNMF(dist)     # Only 1 pattern found
+# NPBayesNMF(dist_10)  # 4 patterns found
+# NPBayesNMF(dist_100) # 4 patterns found
+# 
+# ## Overlapping Patterns
+# over <- sim_norm[310,7][[1]][[1]]     # 1
+# over_10 <- sim_norm[311,7][[1]][[1]]  # 10
+# over_100 <- sim_norm[312,7][[1]][[1]] # 100
+# 
+# NPBayesNMF(over)     # Only 1 pattern found
+# NPBayesNMF(over_10)  # 3 patterns found
+# NPBayesNMF(over_100) # 4 patterns found
+# 
+# # Yes noise
+# ## Distinct Patterns
+# dist <- sim_norm[10,8][[1]][[1]]     # 1
+# dist_10 <- sim_norm[11,8][[1]][[1]]  # 10
+# dist_100 <- sim_norm[12,8][[1]][[1]] # 100
+# 
+# NPBayesNMF(dist)     # Only 1 pattern found
+# NPBayesNMF(dist_10)  # 4 patterns found
+# NPBayesNMF(dist_100) # 4 patterns found
+# 
+# ## Overlapping Patterns
+# over <- sim_norm[310,8][[1]][[1]]     # 1
+# over_10 <- sim_norm[311,8][[1]][[1]]  # 10
+# over_100 <- sim_norm[312,8][[1]][[1]] # 100
+# 
+# NPBayesNMF(over)     # Only 1 pattern found
+# NPBayesNMF(over_10)  # 4 patterns found
+# NPBayesNMF(over_100) # 3 patterns
 ```
 
