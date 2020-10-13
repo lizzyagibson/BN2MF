@@ -10,21 +10,21 @@ library(janitor)
 load("./HPC/Rout/all_unstand_error.RDA")
 load("./HPC/Rout/all_unstand_ssdist.RDA")
 load("./HPC/Rout/all_unstand.RDA")
-
 load("./HPC/Rout/over_output_all_un.RDA")
-load("./HPC/Rout/all_unstand.RDA")
 
 #####
 ##### Settings
 #####
 
-theme_set(theme_bw(base_size = 20) + 
+theme_set(theme_bw(base_size = 26) + 
             theme(strip.background = element_rect(fill="white"),
-                  axis.text.x = element_text(angle = 45, hjust = 1, size = 25),
-                  legend.position = "none",
-                  #legend.direction = "horizontal",
-                  #legend.position = c(0.5, -0.4), # c(0,0) bottom left, c(1,1) top-right.
-                  axis.title.y = element_text(size = 30)))
+                  axis.text.x = element_blank(), # element_text(angle = 45, hjust = 1, size = 30),
+                  #legend.position = "none",
+                  legend.direction = "horizontal",
+                  legend.position = c(0.5, -0.05), # c(0,0) bottom left, c(1,1) top-right.
+                  axis.title.y = element_text(size = 40),
+                  plot.margin = unit(c(5.5, 30, 40, 5.5), "points")) # top, then right, bottom and left. 
+          )
 
 ggsci <- pal_nejm()(8)
 
@@ -77,9 +77,10 @@ ssdist %>%
            sim_type == "Overlapping Sims" & Standardized == "No") %>% 
   ggplot(aes(x = model, y = value, group = model, 
              color = model, fill = model)) +
-  geom_hline(yintercept = 0.5, color = "pink", linetype = "dashed") +
-  geom_boxplot(alpha = 0.5) +
-  labs(title = "Distance from True Pattern Loadings",
+  geom_hline(yintercept = 0.5, color = "red", linetype = "dashed", alpha = 0.5) +
+  geom_boxplot(alpha = 0.5, width = 1) +
+  lims(y = c(0,1)) +
+  labs(title = "Distance from True Loadings",
        y = "Symmetric Subspace Distance", x = "",
        color = "", fill = "")
 dev.off()
@@ -90,9 +91,10 @@ ssdist %>%
            sim_type == "Overlapping Sims" & Standardized == "No") %>% 
   ggplot(aes(x = model, y = value, group = model, 
              color = model, fill = model)) +
-  geom_hline(yintercept = 0.5, color = "pink", linetype = "dashed") +
-  geom_boxplot(alpha = 0.5) +
-  labs(title = "Distance from True Individual Scores",
+  geom_hline(yintercept = 0.5, color = "red", alpha = 0.5, linetype = "dashed") +
+  geom_boxplot(alpha = 0.5, width = 1, notch = TRUE) +
+  lims(y = c(0,1)) +
+  labs(title = "Distance from True Scores",
        y = "Symmetric Subspace Distance", x = "",
        color = "", fill = "")
 dev.off()
@@ -101,13 +103,25 @@ dev.off()
 ##### Predictive Error
 #####
 
+error %>% 
+  filter(sim_type == "Overlapping Sims") %>% 
+  ggplot(aes(x = name, y = l2_true)) +
+  #geom_boxplot(alpha = 0.5, width = 1) +
+  geom_jitter(height = 0, width = 0.25, size = 0.5, alpha = 0.5) +
+  geom_violin(aes(fill = name), scale = "width", alpha = 0.5, # Scale maximum width to 1 for all violins
+              draw_quantiles = c(0.5)) + 
+  labs(title = "Distance from Truth",
+       y = "Relative Prediction Error", x = "",
+       color = "", fill = "") +
+  scale_y_log10()
+
 pdf("Figures/prime_error.pdf", height = 12)
 error %>% 
   filter(sim_type == "Overlapping Sims") %>% 
-  ggplot(aes(x = name, y = l2, group = name, 
+  ggplot(aes(x = name, y = l2_true, group = name, 
              color = name, fill = name)) +
-  geom_boxplot(alpha = 0.5) +
-  labs(title = "Distance from True Observations",
+  geom_boxplot(alpha = 0.5, width = 1) +
+  labs(title = "Distance from Truth",
        y = "Relative Prediction Error", x = "",
        color = "", fill = "") +
   scale_y_log10()
