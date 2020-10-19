@@ -23,7 +23,7 @@ options(
 
 normall_data <- tibble()
 
-for (i in 1:200) {
+for (i in 1:600) {
   if (file.exists(here::here(paste0("HPC/Rout/normall/normall_sims", i, ".RDA")))) { 
     load(here::here(paste0("HPC/Rout/normall/normall_sims", i, ".RDA"))) 
     normall_data <- rbind(normall_data, output_all)
@@ -31,8 +31,6 @@ for (i in 1:200) {
 }
 
 normall <- normall_data %>% arrange(seed)
-
-normall %>% dplyr::select(seed) %>% distinct()
 
 #####
 # What does this data look like
@@ -61,15 +59,7 @@ ggcorr(as_tibble(normallsim), limits = FALSE,
   theme_minimal(base_size = 10)
 
 # Overlapping
-simO <- norm_data$sim[303][[1]]
-
-as_tibble(simO) %>% 
-  pivot_longer(V1:V50) %>% 
-  ggplot(aes(x = value)) + 
-  geom_histogram(bins = 100) + 
-  facet_wrap(~name) +
-  labs(x = "Overlapping Simulations",
-       y = "Count")
+simO <- normall$sim[6][[1]]
 
 as_tibble(simO) %>% 
   pivot_longer(V1:V50) %>% 
@@ -78,7 +68,8 @@ as_tibble(simO) %>%
   labs(x = "Overlapping Simulations",
        y = "Count")
 
-max(simO)
+apply(simO, 2, mean)
+apply(simO, 2, sd)
 
 # 7% of sim is zero
 sum(simO == 0)/(1000*50)
@@ -180,7 +171,7 @@ normall %>%
   pivot_wider(names_from = value,
               values_from = n) %>% 
   mutate_if(is.integer, replace_na, 0) %>% 
-  arrange(sim_factor) %>% dplyr::select(name, sim_factor, `1`,`2`,`3`,`4`, `> 5`)
+  arrange(sim_factor) %>% dplyr::select(name, sim_factor, `1`,`3`,`4`, `5`, `> 5`)
 
 normall %>%
   dplyr::select(seed, data, sim_factor, fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank, bnmf_rank) %>%
@@ -195,5 +186,5 @@ normall %>%
   pivot_wider(names_from = value,
               values_from = n) %>% 
   mutate_if(is.integer, replace_na, 0) %>% 
-  arrange(sim_factor) %>% dplyr::select(name, sim_factor, `1`:`5`, `> 5`)
+  arrange(sim_factor) %>% dplyr::select(name, sim_factor, `1`, `2`, `3`, `4`, `5`, `> 5`)
 
