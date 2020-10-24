@@ -15,6 +15,9 @@ for (i in 1:200) { # something wrong with 86
 
 dgp_data <- dgp_data %>% arrange(seed)
 dgp_data
+# save(dgp_data, file = "./HPC/Rout/dgp.RDA")
+load(file = "./HPC/Rout/dgp.RDA")
+
 
 #####
 
@@ -135,7 +138,7 @@ dgp_data %>%
   dplyr::select(seed, data, fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank, bnmf_rank) %>%
   unnest(c(fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank, bnmf_rank)) %>%
   pivot_longer(cols = fa_rank:bnmf_rank) %>%
-  mutate(value = ifelse(value > 5, "> 5", as.factor(value))) %>% 
+  mutate(value = ifelse(value > 5, "> 5", value)) %>% 
   group_by(name, value, data) %>%
   summarise(n = n()) %>% 
   ungroup() %>% 
@@ -149,7 +152,7 @@ dgp_data %>%
   dplyr::select(seed, data, fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank, bnmf_rank) %>%
   unnest(c(fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank, bnmf_rank)) %>%
   pivot_longer(cols = fa_rank:bnmf_rank) %>%
-  mutate(value = ifelse(value > 5, "> 5", as.factor(value))) %>% 
+  mutate(value = ifelse(value > 5, "> 5", value)) %>% 
   group_by(name, value, data) %>%
   summarise(n = n()) %>% 
   ungroup() %>% 

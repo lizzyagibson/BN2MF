@@ -20,7 +20,7 @@ options(
 load(here::here(paste0("HPC/Rout/norm_out/norm_sims", 1, ".RDA"))) 
 norm_data <- output_all
 
-for (i in 2:600) {
+for (i in 1:600) {
   if (file.exists(here::here(paste0("HPC/Rout/norm_out/norm_sims", i, ".RDA")))) { 
              load(here::here(paste0("HPC/Rout/norm_out/norm_sims", i, ".RDA"))) 
              norm_data <- full_join(norm_data, output_all)
@@ -28,6 +28,7 @@ for (i in 2:600) {
 }
 
 norm_data <- norm_data %>% arrange(seed)
+#save(norm_data, file = "./HPC/Rout/rawscores_normloadings.RDA")
 
 # What does this data look like
 
