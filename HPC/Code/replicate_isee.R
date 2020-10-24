@@ -10,7 +10,7 @@ library(GGally)
 dist_out_un <- tibble()
 
 for (i in 1:100) {
-  load(paste0("./HPC/Rout/isee_rep/out_", i, "_dist_un.RDA"))
+  load(paste0("./HPC/Rout/isee_rep_1/out_", i, "_dist_un.RDA"))
   dist_out_un <- rbind(dist_out_un, out_dist_un)
 }
 dist_out_un <- dist_out_un %>% mutate(data = "distinct")
@@ -20,7 +20,7 @@ dist_out_un <- dist_out_un %>% mutate(data = "distinct")
 over_out_un <- tibble()
 
 for (i in 1:100) {
-  load(paste0("./HPC/Rout/isee_rep/out_", i, "_over_un.RDA"))
+  load(paste0("./HPC/Rout/isee_rep_1/out_", i, "_over_un.RDA"))
   over_out_un <- rbind(over_out_un, out_over_un)
 }
 over_out_un <- over_out_un %>% mutate(data = "overlapping")
@@ -30,7 +30,7 @@ over_out_un <- over_out_un %>% mutate(data = "overlapping")
 cor_out_un <- tibble()
 
 for (i in 1:100) {
-  load(paste0("./HPC/Rout/isee_rep/out_", i, "_cor_un.RDA"))
+  load(paste0("./HPC/Rout/isee_rep_1/out_", i, "_cor_un.RDA"))
   cor_out_un <- rbind(cor_out_un, out_cor_un)
 }
 cor_out_un <- cor_out_un %>% mutate(data = "correlated")
@@ -38,8 +38,12 @@ cor_out_un <- cor_out_un %>% mutate(data = "correlated")
 #####
 # Aggregate distinct, overlapping, and correlated sims
 
-all_unstand <- rbind(dist_out_un, over_out_un, cor_out_un)
-all_unstand
+isee <- rbind(dist_out_un, over_out_un, cor_out_un)
+
+#save(isee, file = "./HPC/Rout/isee.RDA")
+load(file = "./HPC/Rout/isee.RDA")
+
+isee %>% select(seed, data)
 
 #####
 # Relative Error
@@ -89,36 +93,43 @@ dgp_s %>%
 #####
 # Rank
 all_unstand %>%
-  dplyr::select(seed, data, fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank, bnmf_rank) %>%
-  unnest(c(fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank, bnmf_rank)) %>%
-  pivot_longer(cols = fa_rank:bnmf_rank) %>%
-  mutate(value = ifelse(value > 5, "> 5", as.factor(value))) %>% 
+  dplyr::select(seed, data, fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank) %>%
+  unnest(c(fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank)) %>%
+  pivot_longer(cols = fa_rank:nmf_p_rank) %>%
+  mutate(value = ifelse(value > 5, "> 5", value)) %>% 
   group_by(name, value, data) %>%
   summarise(n = n()) %>% 
   ungroup() %>% 
-  filter(data == "Distinct") %>% 
+  filter(data == "distinct") %>% 
   dplyr::select(-data) %>% 
   pivot_wider(names_from = value,
               values_from = n) %>% 
   mutate_if(is.integer, replace_na, 0)
 
 all_unstand %>%
-  dplyr::select(seed, data, fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank, bnmf_rank) %>%
-  unnest(c(fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank, bnmf_rank)) %>%
-  pivot_longer(cols = fa_rank:bnmf_rank) %>%
-  mutate(value = ifelse(value > 5, "> 5", as.factor(value))) %>% 
+  dplyr::select(seed, data, fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank) %>%
+  unnest(c(fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank)) %>%
+  pivot_longer(cols = fa_rank:nmf_p_rank) %>%
+  mutate(value = ifelse(value > 5, "> 5", value)) %>% 
   group_by(name, value, data) %>%
   summarise(n = n()) %>% 
   ungroup() %>% 
-  filter(data == "Overlapping") %>% 
+  filter(data == "overlapping") %>% 
   dplyr::select(-data) %>% 
   pivot_wider(names_from = value,
               values_from = n) %>% 
   mutate_if(is.integer, replace_na, 0)
 
-dist_out_un %>%
-  dplyr::select(seed, fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank) %>%
+all_unstand %>%
+  dplyr::select(seed, data, fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank) %>%
   unnest(c(fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank)) %>%
   pivot_longer(cols = fa_rank:nmf_p_rank) %>%
-  group_by(name, value) %>%
-  summarise(n())
+  mutate(value = ifelse(value > 5, "> 5", value)) %>% 
+  group_by(name, value, data) %>%
+  summarise(n = n()) %>% 
+  ungroup() %>% 
+  filter(data == "correlated") %>% 
+  dplyr::select(-data) %>% 
+  pivot_wider(names_from = value,
+              values_from = n) %>% 
+  mutate_if(is.integer, replace_na, 0)
