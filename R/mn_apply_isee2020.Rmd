@@ -1,5 +1,5 @@
 ---
-title: "GNMF & MN Data"
+title: "MN Data"
 author: "Lizzy Gibson"
 date: "2/25/2020"
 output: 
@@ -27,8 +27,6 @@ library(janitor)
 
 ```{r}
 # PHT and phenols specific gravity adj
-names(mn_edc)
-
 edc_cc <- 
   mn_edc %>% 
   dplyr::select(grep("sg_adj", colnames(.))) %>% 
@@ -37,34 +35,25 @@ edc_cc <-
   dplyr::rename_all(function(x) str_replace(x, "_sg_adj", "")) %>% 
   dplyr::rename_all(toupper)
   
-
 edc_std <- apply(edc_cc, 2, function(x) x/sd(x)) %>% as_tibble()
 
 cc_ids <- mn_edc %>% dplyr::select(sid, grep("sg_adj", colnames(.))) %>% drop_na() %>% 
   dplyr::select(1)
 
-names(edc_cc)
-apply(edc_cc, 2, sd)
-apply(edc_cc, 2, mean)
-
-summary(edc_cc)
 edc_cc %>% 
   pivot_longer(1:17) %>% 
   ggplot(aes(x = value)) +
   geom_histogram(bins = 100) +
-facet_wrap(~name) +
-  theme(axis.text.x = element_blank(),
-        axis.text.y = element_blank())
+facet_wrap(~name, scales = "free")
+
+apply(edc_cc, 2, mean)
+apply(edc_cc, 2, sd)
+
+summary(apply(edc_cc, 2, mean))
+summary(apply(edc_cc, 2, sd))
 ```
 
 ```{r}
-summary(edc_cc)
-
-apply(edc_cc, 2, sd)
-
-round(cor(edc_cc, method = "spearman"),2)
-corr.test(as.matrix(edc_cc), method = "spearman")
-
 edc_re <- edc_cc %>% dplyr::select(1:11, 13, 16:17, 12, 14:15)
 
 #pdf("Figures/mn_edc_corr.pdf", width = 7, height = 5)
@@ -76,25 +65,12 @@ ggcorr(edc_re, method = c("pairwise", "spearman"),
   theme_minimal()
 #dev.off()
 
-
-edc_re %>% 
-  mutate_all(function (x) x/sd(x) ) %>% 
-  ggcorr(., method = c("pairwise", "spearman"),
-       hjust = 0.85, size = 5, color = "grey50",
-       layout.exp = 3,
-       label = TRUE, label_size = 2, label_round = 2, label_alpha = TRUE
-       ) + 
-  theme_minimal()
-
-apply(edc_cc, 2, function(x) x/sd(x)) %>% as_tibble()
-
 prcomp(edc_std)$sdev
 sum( prcomp(edc_std)$sdev[1:11]/sum(prcomp(edc_std)$sdev) )
 # 11 > 80% var
 # no obvious elbow
 
 plot(prcomp(edc_std)$sdev)
-prcomp(edc_std)$rotation
 
 as_tibble(prcomp(edc_std)$rotation) %>% 
   mutate(edc = colnames(edc_cc)) %>% 
@@ -111,166 +87,40 @@ as_tibble(prcomp(edc_std)$rotation) %>%
 #write_csv(edc_std, "./Data/isee_2020_dat_std.csv")
 ```
 
-### Inspect
+## NMF
 
 ```{r}
-cormat <- round(cor(edc_cc, method = c("spearman")),2)
+nmf_2 <- nmf(edc_std, rank = 2, nrun = 10)
+nmf_3 <- nmf(edc_std, rank = 3, nrun = 10)
+nmf_4 <- nmf(edc_std, rank = 4, nrun = 10)
+nmf_5 <- nmf(edc_std, rank = 5, nrun = 10)
+nmf_6 <- nmf(edc_std, rank = 6, nrun = 10)
 
-melted_cormat <- melt(cormat) %>% rename(Correlation = value)
-
-labelled <- melted_cormat %>% 
-  mutate(Class1 = ifelse(str_detect(Var1, "^m"), "Phthalates", "Phenols")) %>%
-  mutate(Class2 = ifelse(str_detect(Var2, "^m"), "Phthalates","Phenols")) %>%
-  mutate(Class2 = factor(Class2, levels = c("Phthalates", "Phenols")))
-
-ggplot(data = labelled, aes(x = Var1, y = Var2)) +
-  geom_tile(aes(fill = Correlation), colour = "white") +
-  scale_fill_gradient2(low = "#00BFC4", mid = "white", high = "#F8766D",
-                       midpoint = 0,
-                       na.value = "transparent", limits = c(-1, 1)) +
-  theme_grey(base_size = 15) + labs(x = "", y = "", title = "EDC correlations in Mothers & Newborns") +
-  scale_x_discrete(expand = c(0, 0)) +
-  scale_y_discrete(expand = c(0, 0)) +
-  theme(axis.text.x = element_blank(), axis.text.y = element_blank(),
-        panel.spacing = unit(0, "lines"),
-        strip.background = element_blank(),
-        strip.placement = "outside", legend.position = "bottom",
-        strip.text.x = element_text(size = 18),
-        strip.text.y = element_text(size = 18)) +
-  facet_grid(Class2 ~ Class1, scales = "free", space = "free", switch = "both")
-```
-
-## npBNMF
-
-### Run R Function
-
-```{r}
-source("./Function/future_function.R")
-
-r_out <- NPBayesNMF(edc_std)
-
-# system.time(NPBayesNMF(edc_std))
-# Time: 729.100 
-# Size 342x17
-# Standardized
-```
-
-### Patterns
-
-```{r}
-eh_cc <- readMat(here::here("./MATLAB/Output/isee_2020_eh3.mat"))[[1]]
-
-labels <-  toupper(names(edc_cc))
-
-colnames(eh_cc) <- labels
-eh_cc
-
-eh_sd <- apply(eh_cc, 2, function(x) x/sum(x))
-```
-
-```{r}
-eh_sd %>% 
+  bic_2 <- sum((edc_std - (basis(nmf_2)%*%coef(nmf_2)))^2) + 
+    (1/2)*(nrow(edc_std) + ncol(edc_std)) * 3 * log(nrow(edc_std) * ncol(edc_std))
+  bic_3 <- sum((edc_std - (basis(nmf_3)%*%coef(nmf_3)))^2) + 
+    (1/2)*(nrow(edc_std) + ncol(edc_std)) * 3 * log(nrow(edc_std) * ncol(edc_std))
+  bic_4 <- sum((edc_std - (basis(nmf_4)%*%coef(nmf_4)))^2) + 
+    (1/2)*(nrow(edc_std) + ncol(edc_std)) * 4 * log(nrow(edc_std) * ncol(edc_std))
+  bic_5 <- sum((edc_std - (basis(nmf_5)%*%coef(nmf_5)))^2) +  
+    (1/2)*(nrow(edc_std) + ncol(edc_std)) * 5 * log(nrow(edc_std) * ncol(edc_std))
+  bic_6 <- sum((edc_std - (basis(nmf_6)%*%coef(nmf_6)))^2) +  
+    (1/2)*(nrow(edc_std) + ncol(edc_std)) * 5 * log(nrow(edc_std) * ncol(edc_std))
+  
+bic_2
+bic_3
+bic_4
+bic_5
+bic_6
+  
+coef(nmf_3) %>% 
   as_tibble() %>% 
-  mutate(Pattern = 1:3) %>% 
-  gather(key = Chemicals, value = Loadings, -Pattern) %>%
-  mutate(Chemicals = fct_inorder(Chemicals)) %>% 
-  mutate(Group = case_when(Chemicals == "TCS" | Chemicals == "BPA" ~ "Phenols", 
-                           grepl("PB", Chemicals) ~ "Parabens",
-                           grepl("_", Chemicals) ~ "Phenols",
-                           grepl("^M", Chemicals) == TRUE ~ "Phthalates")) %>% 
-  ggplot(aes(x = Chemicals, y = Loadings)) + geom_col(aes(fill = Group)) +
-  facet_wrap(.~Pattern) + theme_bw() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1),
-        legend.position = "bottom",
-        strip.background = element_blank())
+  mutate(pattern = 1:nrow(.)) %>% 
+  pivot_longer(1:17) %>% 
+  mutate(name = as.factor(name)) %>% 
+  ggplot(aes(x = name, y = value)) + 
+  geom_col() +
+  facet_wrap(.~ pattern) + 
+  theme(axis.text.x = element_text(angle = 90))
 ```
 
-### Scores
-
-```{r}
-ewa_cc <- readMat(here::here("./MATLAB/Output/isee_2020_ewa.mat"))[[1]]
-
-ewa_cc <- ewa_cc %>%
-  cbind(., cc_ids) %>% 
-  as_tibble(.) %>% 
-  clean_names()
-
-ewa_cc
-colSums(ewa_cc[,1:3])
-```
-
-## Raw
-
-### Product Use
-
-```{r read2}
-quest <- mn_edc %>% dplyr::select(sid, eth, edu, age, lotion:creme_rinse)
-personal <- left_join(ewa_cc, quest, by = "sid") %>% drop_na()
-```
-
-### Exposure Model
-
-```{r}
-#function to take component and binary personal care product, regress, and output as tibble
-product_model <- function(P, product) {
-
-  model <- lm(P ~ product + eth + age + edu, data = personal)
-
-  betas_confint <- as.data.frame(model$coefficient[2]) %>% rownames_to_column() %>% 
-    cbind(., as_tibble(confint(model))[2,]) %>%
-    mutate(pvalue = summary(model)$coefficients[2, 4]) %>% 
-    rename(variable = 1, beta = 2, lower = 3, upper = 4) %>% 
-    as_tibble()
-
-  betas_confint
-}
-
-loop_patterns <- personal %>% dplyr::select(x1:x13) %>% as.matrix()
-loop_prod <- personal %>% dplyr::select(lotion:creme_rinse) %>% as.matrix()
-
-out_care <- tibble()
-for (j in 1:ncol(loop_patterns)) {
-for (i in 1:ncol(loop_prod)) {
-  out <- product_model(loop_patterns[,j], loop_prod[,i])
-  out_care <- rbind(out_care, out)
-}
-}
-
-model_out <- cbind(product = rep(colnames(personal)[18:29], times = 13), 
-                   pattern = rep(colnames(personal)[1:13], times = 12), out_care) %>% 
-  as_tibble(.)
-model_out
-```
-
-```{r}
-### Heat Map
-model_out %>% 
-  ggplot(aes(x = pattern, y = product)) + 
-  geom_tile(aes(fill = beta), colour = "white") + 
-  scale_fill_gradient2(na.value = "transparent") +
-  labs(x = "Components", y = "Products", title = "") + 
-  theme_bw() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1),
-        legend.position = "bottom")
-```
-
-```{r}
-heat <- model_out %>% dplyr::select(beta, pattern, product) %>% 
-  spread(pattern, beta) %>%
-  dplyr::select(-product) %>% 
-  as.matrix()
-
-row.names(heat) <- model_out %>% dplyr::select(beta, pattern, product) %>% 
-  spread(pattern, beta) %>%
-  dplyr::select(product) %>% 
-  as.matrix()
-
-## Plot heatmap 
-cool = rainbow(50, start=rgb2hsv(col2rgb('cyan'))[1], end=rgb2hsv(col2rgb('blue'))[1])
-warm = rainbow(50, start=rgb2hsv(col2rgb('red'))[1], end=rgb2hsv(col2rgb('yellow'))[1])
-cols = c(rev(cool), rev(warm))
-
-heatmap.2(heat, key.xlab = "Beta Coefficients", 
-                               margins =c(4,8), Colv = FALSE, # keysize = 1.25,
-          col = cols, density.info="none", trace="none", dendrogram = "none", key.title = "")
-```
