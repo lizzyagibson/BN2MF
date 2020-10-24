@@ -25,13 +25,14 @@ library(tidyverse)
 
 ```{r}
 ## Construct a matrix for 4 TRUE exposure patterns
+## replace runif between 0--0.2 with rep 0
 create_patterns_dist <- function (seed) {
   set.seed(seed)
   patterns_dist <- 
-    rbind(c(runif(12, 1, 2),   runif(12, 0, 0.2), runif(13, 0, 0.2), runif(13, 0, 0.2)),
-          c(runif(12, 0, 0.2), runif(12, 1, 2),   runif(13, 0, 0.2), runif(13, 0, 0.2)),
-          c(runif(12, 0, 0.2), runif(12, 0, 0.2), runif(13, 1, 2),   runif(13, 0, 0.2)),
-          c(runif(12, 0, 0.2), runif(12, 0, 0.2), runif(13, 0, 0.2), runif(13, 1, 2)))
+    rbind(c(runif(12, 1, 2),   rep(0, 38)),
+          c(rep(0, 12),        runif(12, 1, 2),   rep(0, 26)),
+          c(rep(0, 24),                           runif(13, 1, 2),  rep(0, 13)),
+          c(rep(0, 37), runif(13, 1, 2)))
   patterns_dist
 }
 
@@ -93,6 +94,8 @@ sim_dist <- scores_dist_iter %>%
     * where s = simulated variance/10 for each variable
     
 ```{r}
+chemx <- sim_dist$chem[[1]]
+
 add_noise <- function (seed, chemx) {
   #noise <- list(mean = 0, sd = apply(chemx, 2, var)/10)
   noise <- list(mean = 0, sd = rep(1, 50)) # QUICK CHECK FOR NOISE SENSITIVITY
@@ -147,9 +150,6 @@ facet_wrap(~name) +
 ```
 
 ```{r}
-summary(melt(cor(sim_dist$chem[[1]], method = "spearman")))
-summary(melt(cor(dist, method = "spearman")))
-
 melt(cor(dist, method = "spearman")) %>% 
   as_tibble() %>% 
   rename(Correlation = value) %>% 
@@ -174,13 +174,14 @@ melt(cor(dist, method = "spearman")) %>%
 * Pattern matrix is 4*50, patterns by chemicals
 * Draw each pattern: number 1-2 if pattern is ON, 0.5-1 is the overlapping group, basically 0 otherwise
 ```{r}
+# replace runif 0-0.2 with rep 0
 create_patterns_over <- function (seed) {
   set.seed(seed)
   patterns_cor <-
-    rbind(c(runif(12, 1, 2),  runif(12, 0.5, 1), runif(13, 0, 0.3), runif(13, 0, 0.3)),
-          c(runif(12, 0, 0.3), runif(12, 1, 2),  runif(13, 0.5, 1), runif(13, 0, 0.3)),
-          c(runif(12, 0, 0.3), runif(12, 0, 0.3), runif(13, 1, 2), runif(13, 0.5, 1)),
-          c(runif(12, 0.5, 1), runif(12, 0, 0.3), runif(13, 0, 0.3), runif(13, 1, 2)))
+    rbind(c(runif(12, 1, 2),  rep(0, 38)),
+          c(rep(0, 12),       runif(12, 1, 2),  runif(13, 0.5, 1), rep(0, 13)),
+          c(rep(0, 24),                         runif(13, 1, 2), runif(13, 0.5, 1)),
+          c(runif(12, 0.5, 1), rep(0, 25), runif(13, 1, 2)))
   patterns_cor
 }
 
@@ -240,8 +241,8 @@ sim_over <- sim_over %>%
 ```{r}
 over <- sim_over$sim[[1]]
 
-min(apply(over, 2, sd))
-min(apply(over, 2, mean))
+(apply(over, 2, sd))
+(apply(over, 2, mean))
 summary(over)[1:6, 1:5]
 
 as_tibble(over) %>% 
@@ -272,11 +273,15 @@ melt(cor(over, method = "spearman")) %>%
 ## Save
 
 ```{r} 
-sim_dgp_sd1 <- rbind(sim_dist %>% mutate(data = "Distinct"),
+sim_dgp_local <- rbind(sim_dist %>% mutate(data = "Distinct"),
       sim_over %>% mutate(data = "Overlapping"))
   
-sim_dgp_sd1
+sim_dgp_local
 
-# save(sim_dgp_sd1, file = "./Sims/sim_dgp_sd1.RDA")
+# for (i in 1:nrow(sim_dgp_local)) {
+#   write_csv(as_tibble(sim_dgp_local$sim[[i]]), paste0("./Sims/dgp_local/sim_dgp_local_", i, ".csv"))
+# }
+
+# save(sim_dgp_local, file = "./Sims/sim_dgp_local.RDA")
 ```
 

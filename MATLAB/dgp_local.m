@@ -17,8 +17,7 @@ opts.ExtraColumnsRule = "ignore";
 opts.EmptyLineRule = "read";
 
 % Import the data
-simdata1 = readtable(strcat("/Users/lizzy/BN2MF/Sims/dgp_local/sim_dgp_local_", num2str(1), ".csv"), opts);
-%simdata1 = readtable("../R/Sims/Iterate/sim_cor_1.csv", opts);
+simdata1 = readtable(strcat("/Users/lizzy/BN2MF/Sims/dgp_local/sim_dgp_local_", num2str(i), ".csv"), opts);
 
 %% Convert to output type
 simdata1 = table2array(simdata1);
