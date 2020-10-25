@@ -5,9 +5,9 @@
 *.html
 *.rData
 *.csv
-Sims/*.mat
-Sims/*.RDA
-Resources/*.pdf
+*.mat
+*.RDA
+*.pdf
 R/*cache/**
 R/*cache-bkp/**
 R/*.html
