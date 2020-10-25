@@ -47,7 +47,7 @@ isee %>% select(seed, data)
 
 #####
 # Relative Error
-dgp_e <- all_unstand %>% 
+dgp_ee <- isee %>% 
   dplyr::select(seed, data, sim, chem, grep("pred", colnames(.))) %>% 
   pivot_longer(pca_pred:nmf_p_pred) %>% 
   mutate(l2_true = map2(chem, value, function (x,y) norm(x-y, "F")/norm(x, "F")),
@@ -56,7 +56,7 @@ dgp_e <- all_unstand %>%
   dplyr::select(seed, data, name, l2_true, l2_sim) %>% 
   unnest(c(l2_sim, l2_true))
 
-dgp_e %>%
+dgp_ee %>%
   ggplot(aes(x = name, y = l2_true, color = name, fill = name)) +
   geom_boxplot(alpha = 0.5) +
   facet_grid(. ~ data, scales = "free") + 
@@ -68,7 +68,7 @@ dgp_e %>%
 
 #####
 # Symmetric Subspace Distance
-dgp_s <- all_unstand %>% dplyr::select(seed, data, grep("_ssdist", colnames(.))) %>% 
+dgp_ss <- isee %>% dplyr::select(seed, data, grep("_ssdist", colnames(.))) %>% 
   unnest(cols = grep("_ssdist", colnames(.))) %>% 
   pivot_longer(grep("_ssdist", colnames(.)),
                names_to = "type",
@@ -81,7 +81,7 @@ dgp_s <- all_unstand %>% dplyr::select(seed, data, grep("_ssdist", colnames(.)))
          model = ifelse(str_detect(model, 'bnmf'), 'BNMF', model),
          type = ifelse(str_detect(type, 'scores'), 'Scores', "Loadings"))
 
-dgp_s %>% 
+dgp_ss %>% 
   ggplot(aes(x = model, y = value, color = model)) +
   geom_boxplot() +
   facet_grid(type ~ data) + 
@@ -92,7 +92,7 @@ dgp_s %>%
 
 #####
 # Rank
-all_unstand %>%
+isee %>%
   dplyr::select(seed, data, fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank) %>%
   unnest(c(fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank)) %>%
   pivot_longer(cols = fa_rank:nmf_p_rank) %>%
@@ -106,7 +106,7 @@ all_unstand %>%
               values_from = n) %>% 
   mutate_if(is.integer, replace_na, 0)
 
-all_unstand %>%
+isee %>%
   dplyr::select(seed, data, fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank) %>%
   unnest(c(fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank)) %>%
   pivot_longer(cols = fa_rank:nmf_p_rank) %>%
