@@ -69,7 +69,7 @@ patterns_dist_iter$true_patterns[[1]] %>% as_tibble() %>%
 create_scores_dist <- function (seed) {
   scores_dist <- matrix(nrow = 1000, ncol = 4)
   set.seed(seed)
-  scores_dist <- exp(mvrnorm(n = 1000, mu = rnorm(4, mean = 1), 
+  scores_dist <- exp(mvrnorm(n = 1000, mu = rep(1, 4), # mu = rnorm(4, mean = 1), 
                           Sigma = diag(rep(1, 4)))) # Independent log normal dist
   scores_dist
 }
@@ -273,15 +273,15 @@ melt(cor(over, method = "spearman")) %>%
 ## Save
 
 ```{r} 
-sim_dgp_local <- rbind(sim_dist %>% mutate(data = "Distinct"),
+sim_dgp_rep1 <- rbind(sim_dist %>% mutate(data = "Distinct"),
       sim_over %>% mutate(data = "Overlapping"))
   
-sim_dgp_local
+sim_dgp_rep1
 
-# for (i in 1:nrow(sim_dgp_local)) {
-#   write_csv(as_tibble(sim_dgp_local$sim[[i]]), paste0("./Sims/dgp_local/sim_dgp_local_", i, ".csv"))
+# for (i in 1:nrow(sim_dgp_rep1)) {
+#   write_csv(as_tibble(sim_dgp_local$sim[[i]]), paste0("./Sims/dgp_rep1/sim_dgp_rep1_", i, ".csv"))
 # }
 
-# save(sim_dgp_local, file = "./Sims/sim_dgp_local.RDA")
+# save(sim_dgp_rep1, file = "./Sims/sim_dgp_rep1.RDA")
 ```
 
