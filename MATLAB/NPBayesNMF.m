@@ -141,21 +141,4 @@ if i == 1 || (i > 1 && (end_score(i) >= max(end_score)))
     % final A2
 end
 
-% % LOWEST ELBO?
-% if i == 1 || (i > 1 && (end_score(i) < min(end_score)))
-%     EWA_low = (W1./W2)*diag(A1./A2);
-%     EH_low = H1./H2;
-%     varWA_low = (W1 .* A1) .* (W1 + A1 + 1) ./ (W2.^2 .* A2.^2);
-%     % e(w^2) * e(a^2) - e(w)^2 * e(a)^2
-%     %                  - EW^2 .* EA^2
-%     varH_low = H1 ./ H2.^2;
-%     
-%     alphaH_low = H1;
-%     betaH_low = H2;
-%     % final W1
-%     % final W2
-%     % final A1
-%     % final A2
-% end
-
 end
