@@ -237,16 +237,37 @@ output_all <- output_all %>%
 #####
                            
 dgp_all <- output_all %>% dplyr::select(-grep("_out", colnames(.)))
+# save(dgp_all, file = "./HPC/Rout/dgp_all.RDA")
 
-# save(output_all, file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/dgp_out/dgp_sims", job_num, ".RDA"))
+#####
+# Add MATLAB
+dgp_bnmf <- tibble()
+
+for (i in 1:200) {
+    eh <- readMat(here::here(paste0("/MATLAB/dgp_local/eh_dist_", i, ".mat")))[[1]]
+    eh <- as_tibble(eh) %>% nest(eh = everything()) %>% mutate(seed = i)
+    
+    ewa <- readMat(here::here(paste0("/MATLAB/dgp_local/ewa_dist_", i, ".mat")))[[1]]
+    ewa <- as_tibble(ewa) %>% nest(ewa = everything()) %>% mutate(seed = i)
+    both <- full_join(eh, ewa, by = "seed")
+    dgp_bnmf <- rbind(dgp_bnmf, both) %>% drop_na(seed)
+  }
+
+dgp_all <- left_join(dgp_all, dgp_bnmf, by = "seed") %>% 
+  mutate(bnmf_pred            = map2(ewa, eh, function(x,y) as.matrix(x) %*% as.matrix(y)),
+         bnmf_norm            = map2(sim, bnmf_pred,    function(x,y) norm(x-y, "F")/norm(x, "F")),
+         bnmf_loading_ssdist  = map2(true_patterns, eh,  symm_subspace_dist),
+         bnmf_scores_ssdist   = map2(true_scores,   ewa,    symm_subspace_dist),
+         bnmf_rank = map(eh, nrow))
 
 #####
 # Viz
+#####
 
 # Relative Error
 dgp_e <- dgp_all %>% 
   dplyr::select(seed, data, sim, chem, grep("pred", colnames(.))) %>% 
-  pivot_longer(c(pca_pred:nmf_p_pred, fa_pred)) %>% 
+  pivot_longer(c(pca_pred:bnmf_pred)) %>% 
   mutate(l2_true = map2(chem, value, function (x,y) norm(x-y, "F")/norm(x, "F")),
          l2_sim = map2(sim, value, function (x,y) norm(x-y, "F")/norm(x, "F")),
          name = str_remove(name, "_pred")) %>% 
@@ -299,38 +320,10 @@ dgp_s %>%
 # Rank
 #####
 
-dgp_data %>%
-  dplyr::select(seed, data, fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank, bnmf_rank) %>%
-  unnest(c(fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank, bnmf_rank)) %>%
-  pivot_longer(cols = fa_rank:bnmf_rank) %>%
-  mutate(value = ifelse(value > 5, "> 5", value)) %>% 
-  group_by(name, value, data) %>%
-  summarise(n = n()) %>% 
-  ungroup() %>% 
-  filter(data == "Distinct") %>% 
-  dplyr::select(-data) %>% 
-  pivot_wider(names_from = value,
-              values_from = n) %>% 
-  mutate_if(is.integer, replace_na, 0)
-
-dgp_data %>%
-  dplyr::select(seed, data, fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank, bnmf_rank) %>%
-  unnest(c(fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank, bnmf_rank)) %>%
-  pivot_longer(cols = fa_rank:bnmf_rank) %>%
-  mutate(value = ifelse(value > 5, "> 5", value)) %>% 
-  group_by(name, value, data) %>%
-  summarise(n = n()) %>% 
-  ungroup() %>% 
-  filter(data == "Overlapping") %>% 
-  dplyr::select(-data) %>% 
-  pivot_wider(names_from = value,
-              values_from = n) %>% 
-  mutate_if(is.integer, replace_na, 0)
-
 dgp_all %>%
-  dplyr::select(seed, data, fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank) %>%
-  unnest(c(fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank)) %>%
-  pivot_longer(cols = fa_rank:nmf_p_rank) %>%
+  dplyr::select(seed, data, grep("rank", colnames(.))) %>%
+  unnest(c(pca_rank:bnmf_rank)) %>%
+  pivot_longer(cols = pca_rank:bnmf_rank) %>%
   mutate(value = ifelse(value > 5, "> 5", value)) %>% 
   group_by(name, value, data) %>%
   summarise(n = n()) %>% 
@@ -344,9 +337,9 @@ dgp_all %>%
   knitr::kable(caption = "Distinct Simulations: Patterns Identified")
 
 dgp_all %>%
-  dplyr::select(seed, data, fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank) %>%
-  unnest(c(fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank)) %>%
-  pivot_longer(cols = fa_rank:nmf_p_rank) %>%
+  dplyr::select(seed, data, grep("rank", colnames(.))) %>%
+  unnest(c(pca_rank:bnmf_rank)) %>%
+  pivot_longer(cols = pca_rank:bnmf_rank) %>%
   mutate(value = ifelse(value > 5, "> 5", value)) %>% 
   group_by(name, value, data) %>%
   summarise(n = n()) %>% 
