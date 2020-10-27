@@ -44,6 +44,7 @@ isee <- rbind(dist_out_un, over_out_un, cor_out_un)
 load(file = "./HPC/Rout/isee.RDA")
 
 isee %>% select(seed, data)
+isee_hpc <- isee
 
 #####
 # Relative Error

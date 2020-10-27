@@ -11,6 +11,7 @@
 library(tidyverse)
 library(psych)
 library(NMF)
+library(R.matlab)
 
 # Read in Sims
 load("./Sims/sim_dgp_local.RDA")
@@ -195,9 +196,9 @@ output_all <- output_all %>%
          nmf_p_rank     = map(nmf_p_out, function(x) x[[4]]))
 
 
-###############################
+#####
 # Symmetric Subspace Distance #
-###############################
+#####
 
 symm_subspace_dist <- function(U, V) {
   
@@ -238,6 +239,7 @@ output_all <- output_all %>%
                            
 dgp_all <- output_all %>% dplyr::select(-grep("_out", colnames(.)))
 # save(dgp_all, file = "./HPC/Rout/dgp_all.RDA")
+load( "./HPC/Rout/dgp_all.RDA")
 
 #####
 # Add MATLAB
@@ -273,16 +275,6 @@ dgp_e <- dgp_all %>%
          name = str_remove(name, "_pred")) %>% 
   dplyr::select(seed, data, name, l2_true, l2_sim) %>% 
   unnest(c(l2_sim, l2_true))
-
-dgp_e %>%
-  ggplot(aes(x = name, y = l2_sim, color = name, fill = name)) +
-  geom_boxplot(alpha = 0.5) +
-  facet_grid(. ~ data, scales = "free") + 
-  geom_vline(xintercept = 0, color = "pink", linetype = "dashed", size = 0.5) +
-  scale_y_log10() +
-  theme(legend.position = "none") + 
-  labs(y = "Relative Predictive Error",
-       title = "vs SIMS")
 
 dgp_e %>%
   ggplot(aes(x = name, y = l2_true, color = name, fill = name)) +

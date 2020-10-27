@@ -195,9 +195,9 @@ output_all <- output_all %>%
          nmf_p_rank     = map(nmf_p_out, function(x) x[[4]]))
 
 
-###############################
+#####
 # Symmetric Subspace Distance #
-###############################
+#####
 
 symm_subspace_dist <- function(U, V) {
   
@@ -238,6 +238,7 @@ output_all <- output_all %>%
 
 dgp_rep1 <- output_all %>% dplyr::select(-grep("_out", colnames(.)))
 # save(dgp_rep1, file = "./HPC/Rout/dgp_rep1.RDA")
+load("./HPC/Code/dgp_rep1.RDA")
 
 #####
 # Viz
@@ -251,16 +252,6 @@ dgp_e1 <- dgp_rep1 %>%
          name = str_remove(name, "_pred")) %>% 
   dplyr::select(seed, data, name, l2_true, l2_sim) %>% 
   unnest(c(l2_sim, l2_true))
-
-dgp_e1 %>%
-  ggplot(aes(x = name, y = l2_sim, color = name, fill = name)) +
-  geom_boxplot(alpha = 0.5) +
-  facet_grid(. ~ data, scales = "free") + 
-  geom_vline(xintercept = 0, color = "pink", linetype = "dashed", size = 0.5) +
-  scale_y_log10() +
-  theme(legend.position = "none") + 
-  labs(y = "Relative Predictive Error",
-       title = "vs SIMS")
 
 dgp_e1 %>%
   ggplot(aes(x = name, y = l2_true, color = name, fill = name)) +
@@ -299,9 +290,9 @@ dgp_s1 %>%
 #####
 
 dgp_rep1 %>%
-  dplyr::select(seed, data, fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank, bnmf_rank) %>%
-  unnest(c(fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank, bnmf_rank)) %>%
-  pivot_longer(cols = fa_rank:bnmf_rank) %>%
+  dplyr::select(seed, data, fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank) %>% #, bnmf_rank) %>%
+  unnest(c(fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank)) %>% #, bnmf_rank)) %>%
+  pivot_longer(cols = fa_rank:nmf_p_rank) %>% # bnmf_rank) %>%
   mutate(value = ifelse(value > 5, "> 5", value)) %>% 
   group_by(name, value, data) %>%
   summarise(n = n()) %>% 
@@ -313,9 +304,9 @@ dgp_rep1 %>%
   mutate_if(is.integer, replace_na, 0)
 
 dgp_rep1 %>%
-  dplyr::select(seed, data, fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank, bnmf_rank) %>%
-  unnest(c(fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank, bnmf_rank)) %>%
-  pivot_longer(cols = fa_rank:bnmf_rank) %>%
+  dplyr::select(seed, data, fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank) %>% #, bnmf_rank) %>%
+  unnest(c(fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank)) %>% #, bnmf_rank)) %>%
+  pivot_longer(cols = fa_rank:nmf_p_rank) %>% # bnmf_rank) %>%
   mutate(value = ifelse(value > 5, "> 5", value)) %>% 
   group_by(name, value, data) %>%
   summarise(n = n()) %>% 
