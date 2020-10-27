@@ -82,6 +82,7 @@ create_patterns_cor <- function (seed) {
   colnames(patterns_cor) <- labels
   patterns_cor
 }
+
 patterns_cor_iter <- tibble(seed = 1:100) %>% 
   mutate(patterns = map(seed, create_patterns_cor))
 
@@ -128,67 +129,34 @@ sim_over1 <- sim_over0 %>%
 #####
 # Save
 #####
-isee_all <- rbind(sim_dist1 %>% mutate(data = "distinct"),
+sim_isee <- rbind(sim_dist1 %>% mutate(data = "distinct"),
       sim_over1 %>% mutate(data = "overlapping"),
       sim_cor1 %>% mutate(data = "correlated"))
 #####
 # Load
 #####
-# save(isee_all, file = "./Sims/sims_isee_all.RDA")
-load("./Sims/sims_isee_all.RDA")
+# save(sim_isee, file = "./Sims/sim_isee.RDA")
+load("./Sims/sim_isee.RDA")
 
 ## Compare
 load("./Sims/sim_dist_old_1012.RDA")
 load("./Sims/sim_over_old_1012.RDA")
 load("./Sims/sim_cor_old_1012.RDA")
 
-all_equal(sim_over, isee_all %>% filter(data == "overlapping") %>% select(-data))
-all_equal(sim_dist, isee_all %>% filter(data == "distinct") %>% select(-data))
-all_equal(sim_cor, isee_all %>% filter(data == "correlated") %>% select(-data))
-
-new_over <- isee_all %>% filter(data == "overlapping") %>% select(sim)
-old_over <- sim_over %>% select(sim)
-all.equal(new_over[1,1][[1]], old_over[1,1][[1]])
+all_equal(sim_over, isee_local %>% filter(data == "overlapping") %>% select(-data))
+all_equal(sim_dist, isee_local %>% filter(data == "distinct") %>% select(-data))
+all_equal(sim_cor, isee_local %>% filter(data == "correlated") %>% select(-data))
 
 #####
 # Run Models
 #####
 
+source("./R/compare_functions.R")
+
 #####
 # PCA
 #####
-
-## Function
-
-get_pca <- function (sim) {
-  # Run PCA centered, not scaled
-  pca_out <- prcomp(sim)
-  rot <- pca_out$rotation
-  ex <- pca_out$x
-  sv <- pca_out$sdev
-  
-  # Explain >=80% of var
-  pve <- sv^2/sum(sv^2)
-  rank <- 0
-  for (i in 1:length(sv)) {
-    if (sum(pve[1:i]) >= 0.8) {
-      rank <- i
-      break
-    }}
-  
-  # Cut scores and patterns to rank
-  rotations <- as_tibble(rot[, 1:rank])
-  scores <- if (rank == 1) {matrix(ex[, 1:rank], nrow = nrow(sim))} else {ex[, 1:rank]}
-  
-  # Predicted values
-  pred <- scores %*% t(rotations) + matrix(rep(apply(sim, 2, mean), each= nrow(scores)), nrow = nrow(scores))
-  
-  list(rotations = rotations, scores = scores, pred = pred, rank = rank)
-}
-
-## Run
-
-isee_all <- isee_all %>% 
+isee_local <- sim_isee %>% 
   mutate(pca_out       = map(sim, get_pca),
          pca_rotations = map(pca_out, function(x) x[[1]]),
          pca_scores    = map(pca_out, function(x) x[[2]]),
@@ -198,37 +166,7 @@ isee_all <- isee_all %>%
 #####
 # Factor Analysis
 #####
-
-## Function
-
-get_fa <- function (sim) {
-  # Run FA on 3, 4, and 5 factor models
-  set.seed(1988)
-  fa_3 <- fa(sim, 3, scores = "regression", rotate = "promax")
-  fa_4 <- fa(sim, 4, scores = "regression", rotate = "promax")
-  fa_5 <- fa(sim, 5, scores = "regression", rotate = "promax")
-  
-  # Choose the model with the lowest BIC
-  if (max(fa_5$BIC, fa_4$BIC, fa_3$BIC) == fa_5$BIC) {
-    fa_out <- fa_5
-    rank <- 5
-  } else if (max(fa_5$BIC, fa_4$BIC, fa_3$BIC) == fa_4$BIC) {
-    fa_out <- fa_4
-    rank <- 4
-  } else {
-    fa_out <- fa_3
-    rank <- 3
-  }
-  
-  loadings <- matrix(fa_out$loadings, ncol = ncol(fa_out$scores))
-  fa_scores <- fa_out$scores
-  pred <- fa_scores %*% t(loadings)
-  list(loadings = loadings, fa_scores = fa_scores, pred = pred, rank = rank)
-}
-
-## Run
-
-isee_all <- isee_all %>% 
+isee_local <- isee_local %>% 
   mutate(fa_out       = map(sim, get_fa),
          fa_rotations = map(fa_out, function(x) x[[1]]),
          fa_scores    = map(fa_out, function(x) x[[2]]),
@@ -238,46 +176,7 @@ isee_all <- isee_all %>%
 #####
 # L2 NMF
 #####
-
-## Function
-
-get_nmf_l2 <- function (sim) {
-  # Run NMF with l2 method 100 times each for 3, 4, and 5 factor models
-  set.seed(1988)
-  nmf_3 <- nmf(sim, 3, nrun = 100, method = "lee")
-  nmf_4 <- nmf(sim, 4, nrun = 100, method = "lee")
-  nmf_5 <- nmf(sim, 5, nrun = 100, method = "lee")
-  
-  # Calculate BIC for each
-  bic_3 <- sum((sim - (basis(nmf_3)%*%coef(nmf_3)))^2) + 
-    (1/2)*(nrow(sim) + ncol(sim)) * 3 * log(nrow(sim) * ncol(sim))
-  bic_4 <- sum((sim - (basis(nmf_4)%*%coef(nmf_4)))^2) + 
-    (1/2)*(nrow(sim) + ncol(sim)) * 4 * log(nrow(sim) * ncol(sim))
-  bic_5 <- sum((sim - (basis(nmf_5)%*%coef(nmf_5)))^2) +  
-    (1/2)*(nrow(sim) + ncol(sim)) * 5 * log(nrow(sim) * ncol(sim))
-  
-  # Choose model with lowest BIC
-  if (max(bic_3, bic_4, bic_5) == bic_3) {
-    nmf_out <- nmf_3
-    rank <- 3
-  } else if (max(bic_3, bic_4, bic_5) == bic_4) {
-    nmf_out <- nmf_4
-    rank <- 4
-  } else {
-    nmf_out <- nmf_5
-    rank <- 5
-  }
-  
-  basis <- basis(nmf_out)
-  coef <- coef(nmf_out)
-  pred <- basis %*% coef
-  
-  list(coef = coef, basis = basis, pred = pred, rank = rank)
-}
-
-## Run
-
-isee_all <- isee_all %>%
+isee_local <- isee_local %>%
   mutate(nmf_l2_out      = map(sim, get_nmf_l2),
          nmf_l2_loadings = map(nmf_l2_out, function(x) x[[1]]),
          nmf_l2_scores   = map(nmf_l2_out, function(x) x[[2]]),
@@ -287,39 +186,7 @@ isee_all <- isee_all %>%
 #####
 # Poisson NMF
 #####
-
-get_nmf_p <- function (sim) {
-  set.seed(1988)
-  nmf_3 <- nmf(sim, 3, nrun = 100, method = "brunet")
-  nmf_4 <- nmf(sim, 4, nrun = 100, method = "brunet")
-  nmf_5 <- nmf(sim, 5, nrun = 100, method = "brunet")
-  
-  bic_3 <- -sum((sim * log(basis(nmf_3) %*% coef(nmf_3))) - (basis(nmf_3) %*% coef(nmf_3))) + 
-    (1/2)*(nrow(sim) + ncol(sim)) * 3 * log(nrow(sim) * ncol(sim))
-  bic_4 <- -sum((sim * log(basis(nmf_4) %*% coef(nmf_4))) - (basis(nmf_4) %*% coef(nmf_4))) + 
-    (1/2)*(nrow(sim) + ncol(sim)) * 4 * log(nrow(sim) * ncol(sim))
-  bic_5 <- -sum((sim * log(basis(nmf_5) %*% coef(nmf_5))) - (basis(nmf_5) %*% coef(nmf_5))) + 
-    (1/2)*(nrow(sim) + ncol(sim)) * 5 * log(nrow(sim) * ncol(sim))
-  
-  if (max(bic_3, bic_4, bic_5) == bic_3) {
-    nmf_out <- nmf_3
-    rank <- 3
-  } else if (max(bic_3, bic_4, bic_5) == bic_4) {
-    nmf_out <- nmf_4
-    rank <- 4
-  } else {
-    nmf_out <- nmf_5
-    rank <- 5
-  }
-  
-  basis <- basis(nmf_out)
-  coef <- coef(nmf_out)
-  pred <- basis %*% coef
-  
-  list(coef = coef, basis = basis, pred = pred, rank = rank)
-}
-
-isee_all <- isee_all %>% 
+isee_local <- isee_local %>% 
   mutate(nmf_p_out      = map(sim, get_nmf_p),
          nmf_p_loadings = map(nmf_p_out, function(x) x[[1]]),
          nmf_p_scores   = map(nmf_p_out, function(x) x[[2]]),
@@ -327,29 +194,9 @@ isee_all <- isee_all %>%
          nmf_p_rank     = map(nmf_p_out, function(x) x[[4]]))
 
 #####
-# Symmetric Subspace Distance #
+# Symmetric Subspace Distance
 #####
-
-symm_subspace_dist <- function(U, V) {
-  
-  if (nrow(U) != max(nrow(U), ncol(U))) {U <- t(U)}
-  if (nrow(V) != max(nrow(V), ncol(V))) {V <- t(V)}
-  
-  qrU <- qr.Q(qr(U))
-  qrV <- qr.Q(qr(V))
-  
-  m <- ncol(U)
-  n <- ncol(V)
-  
-  dUV <- sqrt( max(m,n) - sum((t(qrU) %*% qrV)^2) )
-  
-  ratio <- dUV/sqrt( max(m,n))
-  
-  ratio
-  
-}
-
-isee_all <- isee_all %>% 
+isee_local <- isee_local %>% 
   mutate(pca_norm              = map2(sim, pca_pred,    function(x,y) norm(x-y, "F")/norm(x, "F")),
          fa_norm               = map2(sim, fa_pred,     function(x,y) norm(x-y, "F")/norm(x, "F")),
          nmf_l2_norm           = map2(sim, nmf_l2_pred, function(x,y) norm(x-y, "F")/norm(x, "F")),
@@ -366,10 +213,8 @@ isee_all <- isee_all %>%
 #####
 # Compare
 #####
-
-isee_local <- isee_all %>% select(-grep("_out", colnames(.)))
-
-# save(isee_local, file = "./HPC/Rout/isee_local.RDA")
+isee_local <- isee_local %>% select(-grep("_out", colnames(.)))
+save(isee_local, file = "./HPC/Rout/isee_local.RDA")
 load("./HPC/Rout/isee_local.RDA")
 
 load(file = "./HPC/Rout/isee.RDA")
@@ -403,7 +248,7 @@ all.equal(nmf_l2_hpc[,], nmf_l2_local[,])
 #####
 
 # Relative Error
-isee_e <- isee_all %>% 
+isee_e <- isee_local %>% 
   dplyr::select(seed, data, sim, chem, grep("pred", colnames(.))) %>% 
   pivot_longer(c(pca_pred:fa_pred)) %>% 
   mutate(l2_true = map2(chem, value, function (x,y) norm(x-y, "F")/norm(x, "F")),
@@ -422,7 +267,7 @@ isee_e %>%
   labs(y = "Relative Predictive Error",
        title = "vs PRE NOISE TRUTH")
 
-isee_s <- isee_all %>% dplyr::select(seed, data, grep("_ssdist", colnames(.))) %>% 
+isee_s <- isee_local %>% dplyr::select(seed, data, grep("_ssdist", colnames(.))) %>% 
   unnest(cols = grep("_ssdist", colnames(.))) %>% 
   pivot_longer(grep("_ssdist", colnames(.)),
                names_to = "type",
@@ -448,7 +293,7 @@ isee_s %>%
 # Rank
 #####
 
-isee_all %>%
+isee_local %>%
   dplyr::select(seed, data, grep("rank", colnames(.))) %>%
   unnest(c(pca_rank:fa_rank)) %>%
   pivot_longer(cols = pca_rank:fa_rank) %>%
@@ -464,7 +309,7 @@ isee_all %>%
   # dplyr::select(name, `1`,`2`,`3`,`4`, `5`) %>% 
   knitr::kable(caption = "Distinct Simulations: Patterns Identified")
 
-isee_all %>%
+isee_local %>%
   dplyr::select(seed, data, grep("rank", colnames(.))) %>%
   unnest(c(pca_rank:fa_rank)) %>%
   pivot_longer(cols = pca_rank:fa_rank) %>%

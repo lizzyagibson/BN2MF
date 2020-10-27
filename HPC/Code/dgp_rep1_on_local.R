@@ -12,6 +12,8 @@ library(tidyverse)
 library(psych)
 library(NMF)
 
+source("./R/compare_functions.R")
+
 # Read in Sims
 load("./Sims/sim_dgp_rep1.RDA")
 
@@ -20,38 +22,7 @@ load("./Sims/sim_dgp_rep1.RDA")
 #####
 # PCA
 #####
-
-## Function
-
-get_pca <- function (sim) {
-  # Run PCA centered, not scaled
-  pca_out <- prcomp(sim)
-  rot <- pca_out$rotation
-  ex <- pca_out$x
-  sv <- pca_out$sdev
-  
-  # Explain >=80% of var
-  pve <- sv^2/sum(sv^2)
-  rank <- 0
-  for (i in 1:length(sv)) {
-    if (sum(pve[1:i]) >= 0.8) {
-      rank <- i
-      break
-    }}
-  
-  # Cut scores and patterns to rank
-  rotations <- as_tibble(rot[, 1:rank])
-  scores <- if (rank == 1) {matrix(ex[, 1:rank], nrow = nrow(sim))} else {ex[, 1:rank]}
-  
-  # Predicted values
-  pred <- scores %*% t(rotations) + matrix(rep(apply(sim, 2, mean), each= nrow(scores)), nrow = nrow(scores))
-  
-  list(rotations = rotations, scores = scores, pred = pred, rank = rank)
-}
-
-## Run
-
-output_all <- sim_dgp_rep1 %>% 
+dgp_rep1 <- sim_dgp_rep1 %>% 
   mutate(pca_out       = map(sim, get_pca),
          pca_rotations = map(pca_out, function(x) x[[1]]),
          pca_scores    = map(pca_out, function(x) x[[2]]),
@@ -61,42 +32,7 @@ output_all <- sim_dgp_rep1 %>%
 #####
 # Factor Analysis
 #####
-
-## Function
-
-get_fa <- function (sim) {
-  # Run FA on 3, 4, and 5 factor models
-  set.seed(1988)
-  fa_3 <- fa(sim, 3, scores = "regression", rotate = "promax")
-  fa_4 <- fa(sim, 4, scores = "regression", rotate = "promax")
-  fa_5 <- fa(sim, 5, scores = "regression", rotate = "promax")
-  
-  # Choose the model with the lowest BIC
-  if (max(fa_5$BIC, fa_4$BIC, fa_3$BIC) == fa_5$BIC) {
-    fa_out <- fa_5
-    rank <- 5
-  } else if (max(fa_5$BIC, fa_4$BIC, fa_3$BIC) == fa_4$BIC) {
-    fa_out <- fa_4
-    rank <- 4
-  } else {
-    fa_out <- fa_3
-    rank <- 3
-  }
-  
-  loadings <- matrix(fa_out$loadings, ncol = ncol(fa_out$scores))
-  fa_scores <- fa_out$scores
-  pred <- fa_scores %*% t(loadings)
-  list(loadings = loadings, fa_scores = fa_scores, pred = pred, rank = rank)
-}
-
-## Run
-
-# output_all[136,] %>% 
-#   mutate(fa_out       = map(sim, get_fa))
-
-# 114, 136, 172, 196, 197: x system is computationally singular: reciprocal condition number
-
-output_all <- output_all %>% # [c(1:113, 115:135, 137:171, 173:195, 198:200),] %>% 
+dgp_rep1 <- dgp_rep1 %>%
   mutate(fa_out       = map(sim, get_fa),
          fa_rotations = map(fa_out, function(x) x[[1]]),
          fa_scores    = map(fa_out, function(x) x[[2]]),
@@ -106,46 +42,7 @@ output_all <- output_all %>% # [c(1:113, 115:135, 137:171, 173:195, 198:200),] %
 #####
 # L2 NMF
 #####
-
-## Function
-
-get_nmf_l2 <- function (sim) {
-  # Run NMF with l2 method 100 times each for 3, 4, and 5 factor models
-  set.seed(1988)
-  nmf_3 <- nmf(sim, 3, nrun = 100, method = "lee")
-  nmf_4 <- nmf(sim, 4, nrun = 100, method = "lee")
-  nmf_5 <- nmf(sim, 5, nrun = 100, method = "lee")
-  
-  # Calculate BIC for each
-  bic_3 <- sum((sim - (basis(nmf_3)%*%coef(nmf_3)))^2) + 
-    (1/2)*(nrow(sim) + ncol(sim)) * 3 * log(nrow(sim) * ncol(sim))
-  bic_4 <- sum((sim - (basis(nmf_4)%*%coef(nmf_4)))^2) + 
-    (1/2)*(nrow(sim) + ncol(sim)) * 4 * log(nrow(sim) * ncol(sim))
-  bic_5 <- sum((sim - (basis(nmf_5)%*%coef(nmf_5)))^2) +  
-    (1/2)*(nrow(sim) + ncol(sim)) * 5 * log(nrow(sim) * ncol(sim))
-  
-  # Choose model with lowest BIC
-  if (max(bic_3, bic_4, bic_5) == bic_3) {
-    nmf_out <- nmf_3
-    rank <- 3
-  } else if (max(bic_3, bic_4, bic_5) == bic_4) {
-    nmf_out <- nmf_4
-    rank <- 4
-  } else {
-    nmf_out <- nmf_5
-    rank <- 5
-  }
-  
-  basis <- basis(nmf_out)
-  coef <- coef(nmf_out)
-  pred <- basis %*% coef
-  
-  list(coef = coef, basis = basis, pred = pred, rank = rank)
-}
-
-## Run
-
-output_all <- output_all %>%
+dgp_rep1 <- dgp_rep1 %>%
   mutate(nmf_l2_out      = map(sim, get_nmf_l2),
          nmf_l2_loadings = map(nmf_l2_out, function(x) x[[1]]),
          nmf_l2_scores   = map(nmf_l2_out, function(x) x[[2]]),
@@ -155,70 +52,17 @@ output_all <- output_all %>%
 #####
 # Poisson NMF
 #####
-
-get_nmf_p <- function (sim) {
-  set.seed(1988)
-  nmf_3 <- nmf(sim, 3, nrun = 100, method = "brunet")
-  nmf_4 <- nmf(sim, 4, nrun = 100, method = "brunet")
-  nmf_5 <- nmf(sim, 5, nrun = 100, method = "brunet")
-  
-  bic_3 <- -sum((sim * log(basis(nmf_3) %*% coef(nmf_3))) - (basis(nmf_3) %*% coef(nmf_3))) + 
-    (1/2)*(nrow(sim) + ncol(sim)) * 3 * log(nrow(sim) * ncol(sim))
-  bic_4 <- -sum((sim * log(basis(nmf_4) %*% coef(nmf_4))) - (basis(nmf_4) %*% coef(nmf_4))) + 
-    (1/2)*(nrow(sim) + ncol(sim)) * 4 * log(nrow(sim) * ncol(sim))
-  bic_5 <- -sum((sim * log(basis(nmf_5) %*% coef(nmf_5))) - (basis(nmf_5) %*% coef(nmf_5))) + 
-    (1/2)*(nrow(sim) + ncol(sim)) * 5 * log(nrow(sim) * ncol(sim))
-  
-  if (max(bic_3, bic_4, bic_5) == bic_3) {
-    nmf_out <- nmf_3
-    rank <- 3
-  } else if (max(bic_3, bic_4, bic_5) == bic_4) {
-    nmf_out <- nmf_4
-    rank <- 4
-  } else {
-    nmf_out <- nmf_5
-    rank <- 5
-  }
-  
-  basis <- basis(nmf_out)
-  coef <- coef(nmf_out)
-  pred <- basis %*% coef
-  
-  list(coef = coef, basis = basis, pred = pred, rank = rank)
-}
-
-output_all <- output_all %>% 
+dgp_rep1 <- dgp_rep1 %>% 
   mutate(nmf_p_out      = map(sim, get_nmf_p),
          nmf_p_loadings = map(nmf_p_out, function(x) x[[1]]),
          nmf_p_scores   = map(nmf_p_out, function(x) x[[2]]),
          nmf_p_pred     = map(nmf_p_out, function(x) x[[3]]),
          nmf_p_rank     = map(nmf_p_out, function(x) x[[4]]))
 
-
 #####
-# Symmetric Subspace Distance #
+# Symmetric Subspace Distance
 #####
-
-symm_subspace_dist <- function(U, V) {
-  
-  if (nrow(U) != max(nrow(U), ncol(U))) {U <- t(U)}
-  if (nrow(V) != max(nrow(V), ncol(V))) {V <- t(V)}
-  
-  qrU <- qr.Q(qr(U))
-  qrV <- qr.Q(qr(V))
-  
-  m <- ncol(U)
-  n <- ncol(V)
-  
-  dUV <- sqrt( max(m,n) - sum((t(qrU) %*% qrV)^2) )
-  
-  ratio <- dUV/sqrt( max(m,n))
-  
-  ratio
-  
-}
-
-output_all <- output_all %>% 
+dgp_rep1 <- dgp_rep1 %>% 
   mutate(pca_norm              = map2(sim, pca_pred,    function(x,y) norm(x-y, "F")/norm(x, "F")),
          fa_norm               = map2(sim, fa_pred,     function(x,y) norm(x-y, "F")/norm(x, "F")),
          nmf_l2_norm           = map2(sim, nmf_l2_pred, function(x,y) norm(x-y, "F")/norm(x, "F")),
@@ -235,14 +79,13 @@ output_all <- output_all %>%
 #####
 # Save
 #####
-
-dgp_rep1 <- output_all %>% dplyr::select(-grep("_out", colnames(.)))
+dgp_rep1 <- dgp_rep1 %>% dplyr::select(-grep("_out", colnames(.)))
 # save(dgp_rep1, file = "./HPC/Rout/dgp_rep1.RDA")
-load("./HPC/Code/dgp_rep1.RDA")
+load("./HPC/Rout/dgp_rep1.RDA")
 
 #####
 # Viz
-
+#####
 # Relative Error
 dgp_e1 <- dgp_rep1 %>% 
   dplyr::select(seed, data, sim, chem, grep("pred", colnames(.))) %>% 
@@ -263,6 +106,7 @@ dgp_e1 %>%
   labs(y = "Relative Predictive Error",
        title = "vs PRE NOISE TRUTH")
 
+# Subspace Distance
 dgp_s1 <- dgp_rep1 %>% dplyr::select(seed, data, grep("_ssdist", colnames(.))) %>% 
   unnest(cols = grep("_ssdist", colnames(.))) %>% 
   pivot_longer(grep("_ssdist", colnames(.)),
@@ -285,10 +129,7 @@ dgp_s1 %>%
   # scale_y_log10() +
   labs(y = "Symmetric Subspace Distance")
 
-#####
 # Rank
-#####
-
 dgp_rep1 %>%
   dplyr::select(seed, data, fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank) %>% #, bnmf_rank) %>%
   unnest(c(fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank)) %>% #, bnmf_rank)) %>%
