@@ -214,7 +214,7 @@ isee_local <- isee_local %>%
 # Compare
 #####
 isee_local <- isee_local %>% select(-grep("_out", colnames(.)))
-save(isee_local, file = "./HPC/Rout/isee_local.RDA")
+# save(isee_local, file = "./HPC/Rout/isee_local.RDA")
 load("./HPC/Rout/isee_local.RDA")
 
 load(file = "./HPC/Rout/isee.RDA")
@@ -225,23 +225,18 @@ pca_local <- isee_local %>% select(seed, data, grep("pca", colnames(.)))
 pca_hpc <- isee_hpc %>% select(seed, data, grep("pca", colnames(.)))
 
 all.equal(pca_hpc[,], pca_local[,])
-all.equal(pca_local %>% unnest(pca_rank) %>% pull(pca_rank), pca_hpc %>% unnest(pca_rank) %>% pull(pca_rank))
 
 # FA -- DIFFERENT
 fa_local <- isee_local %>% select(seed, data, grep("fa", colnames(.)))
 fa_hpc <- isee_hpc %>% select(seed, data, grep("fa", colnames(.)))
 
 all.equal(fa_hpc[,], fa_local[,])
-(fa_local %>% unnest(fa_rank) %>% pull(fa_rank))
-(fa_hpc   %>% unnest(fa_rank) %>% pull(fa_rank))
 
 # NMF -- DIFFERENT
 nmf_l2_local <- isee_local %>% select(seed, data, grep("nmf_l2", colnames(.)))
 nmf_l2_hpc <- isee_hpc %>% select(seed, data, grep("nmf_l2", colnames(.)))
 
 all.equal(nmf_l2_hpc[,], nmf_l2_local[,])
-(nmf_l2_local %>% unnest(nmf_l2_rank) %>% pull(nmf_l2_rank))
-(nmf_l2_hpc   %>% unnest(nmf_l2_rank) %>% pull(nmf_l2_rank))
 
 #####
 # Viz
@@ -250,7 +245,7 @@ all.equal(nmf_l2_hpc[,], nmf_l2_local[,])
 # Relative Error
 isee_e <- isee_local %>% 
   dplyr::select(seed, data, sim, chem, grep("pred", colnames(.))) %>% 
-  pivot_longer(c(pca_pred:fa_pred)) %>% 
+  pivot_longer(c(pca_pred:nmf_p_pred)) %>% 
   mutate(l2_true = map2(chem, value, function (x,y) norm(x-y, "F")/norm(x, "F")),
          l2_sim = map2(sim, value, function (x,y) norm(x-y, "F")/norm(x, "F")),
          name = str_remove(name, "_pred")) %>% 
@@ -295,8 +290,8 @@ isee_s %>%
 
 isee_local %>%
   dplyr::select(seed, data, grep("rank", colnames(.))) %>%
-  unnest(c(pca_rank:fa_rank)) %>%
-  pivot_longer(cols = pca_rank:fa_rank) %>%
+  unnest(c(pca_rank:nmf_p_rank)) %>%
+  pivot_longer(cols = pca_rank:nmf_p_rank) %>%
   mutate(value = ifelse(value > 5, "> 5", value)) %>% 
   group_by(name, value, data) %>%
   summarise(n = n()) %>% 
@@ -311,8 +306,8 @@ isee_local %>%
 
 isee_local %>%
   dplyr::select(seed, data, grep("rank", colnames(.))) %>%
-  unnest(c(pca_rank:fa_rank)) %>%
-  pivot_longer(cols = pca_rank:fa_rank) %>%
+  unnest(c(pca_rank:nmf_p_rank)) %>%
+  pivot_longer(cols = pca_rank:nmf_p_rank) %>%
   mutate(value = ifelse(value > 5, "> 5", value)) %>% 
   group_by(name, value, data) %>%
   summarise(n = n()) %>% 
