@@ -70,17 +70,21 @@ dgp_local <- dgp_local %>%
 #####
 dgp_local <- dgp_local %>% 
   mutate(pca_norm              = map2(sim, pca_pred,    function(x,y) norm(x-y, "F")/norm(x, "F")),
-         fa_norm               = map2(sim, fa_pred,     function(x,y) norm(x-y, "F")/norm(x, "F")),
          nmf_l2_norm           = map2(sim, nmf_l2_pred, function(x,y) norm(x-y, "F")/norm(x, "F")),
          nmf_p_norm            = map2(sim, nmf_p_pred,  function(x,y) norm(x-y, "F")/norm(x, "F")),
          pca_rotation_ssdist   = map2(true_patterns, pca_rotations,   symm_subspace_dist),
          pca_scores_ssdist     = map2(true_scores,   pca_scores,      symm_subspace_dist),
-         fa_rotations_ssdist   = map2(true_patterns, fa_rotations,    symm_subspace_dist),
-         fa_scores_ssdist      = map2(true_scores,   fa_scores,       symm_subspace_dist),
          nmf_l2_loading_ssdist = map2(true_patterns, nmf_l2_loadings, symm_subspace_dist),
          nmf_l2_scores_ssdist  = map2(true_scores,   nmf_l2_scores,   symm_subspace_dist),
          nmf_p_loading_ssdist  = map2(true_patterns, nmf_p_loadings,  symm_subspace_dist),
          nmf_p_scores_ssdist   = map2(true_scores,   nmf_p_scores,    symm_subspace_dist))
+
+fa_metrics <- dgp_local[c(1:113, 115:135, 137:171, 173:195, 198:200),] %>% 
+  mutate(fa_norm               = map2(sim, fa_pred,     function(x,y) norm(x-y, "F")/norm(x, "F")),
+         fa_rotations_ssdist   = map2(true_patterns, fa_rotations,    symm_subspace_dist),
+         fa_scores_ssdist      = map2(true_scores,   fa_scores,       symm_subspace_dist))
+
+dgp_local <- left_join(dgp_local, fa_metrics)
 
 #####
 # Save
@@ -118,6 +122,7 @@ dgp_local <- left_join(dgp_local, dgp_bnmf, by = "seed") %>%
 dgp_e <- dgp_local %>% 
   dplyr::select(seed, data, sim, chem, grep("pred", colnames(.))) %>% 
   pivot_longer(c(pca_pred:bnmf_pred)) %>% 
+  drop_na(value) %>% 
   mutate(l2_true = map2(chem, value, function (x,y) norm(x-y, "F")/norm(x, "F")),
          l2_sim = map2(sim, value, function (x,y) norm(x-y, "F")/norm(x, "F")),
          name = str_remove(name, "_pred")) %>% 
@@ -140,6 +145,7 @@ dgp_s <- dgp_local %>% dplyr::select(seed, data, grep("_ssdist", colnames(.))) %
   pivot_longer(grep("_ssdist", colnames(.)),
                names_to = "type",
                values_to = "value") %>%
+  drop_na(value) %>% 
   mutate(model = str_sub(type, 1, 6),
          model = ifelse(str_detect(model, 'pca'), 'PCA', model),
          model = ifelse(str_detect(model, 'l2'), 'L2 NMF', model),
