@@ -29,7 +29,7 @@ betaH = [];
 % betaH_low = [];
 
 Kinit = N;
-for i = 1:10 % Switch back to 1:10
+for i = 1:100 % Switch back to 1:10
 
 K = Kinit;
     

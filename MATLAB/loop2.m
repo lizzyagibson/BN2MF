@@ -1,7 +1,7 @@
 function [EWA, EH, varWA, varH, alphaH, betaH] = loop2()
 %% Make this whole thing loop
 
-for i = 51:100
+for i = 101:200
 
 %% Setup the Import Options and import the data
 opts = delimitedTextImportOptions("NumVariables", 50);
@@ -28,8 +28,8 @@ clear opts
 
 [EWA, EH, varWA, varH, alphaH, betaH] = NPBayesNMF(simdata1);
 
-save(strcat("/Users/lizzy/BN2MF/MATLAB/dgp_rep1/rep1_ewa_dist_", num2str(i), ".mat"), 'EWA');
-save(strcat("/Users/lizzy/BN2MF/MATLAB/dgp_rep1/rep1_eh_dist_",  num2str(i), ".mat"), 'EH');
+save(strcat("/Users/lizzy/BN2MF/MATLAB/dgp_rep1_100/rep1_ewa_dist_", num2str(i), ".mat"), 'EWA');
+save(strcat("/Users/lizzy/BN2MF/MATLAB/dgp_rep1_100/rep1_eh_dist_",  num2str(i), ".mat"), 'EH');
 
 end
 
