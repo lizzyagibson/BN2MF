@@ -19,6 +19,15 @@ source("./R/compare_functions.R")
 load("./Sims/sim_dgp_local.RDA")
 
 # Run everything
+dist <- sim_dgp_local$sim[[1]]
+as_tibble(dist) %>% 
+  select(1:5) %>% 
+  pivot_longer(1:5) %>%
+  ggplot(aes(x = value)) + geom_histogram() + facet_wrap(~name)
+
+summary(apply(dist, 2, mean))
+summary(apply(dist, 2, median))
+summary(apply(dist, 2, sd))
 
 #####
 # PCA

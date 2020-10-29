@@ -11,6 +11,7 @@
 library(tidyverse)
 library(psych)
 library(NMF)
+library(R.matlab)
 
 source("./R/compare_functions.R")
 
@@ -18,6 +19,15 @@ source("./R/compare_functions.R")
 load("./Sims/sim_dgp_rep1.RDA")
 
 # Run everything
+dist <- sim_dgp_rep1$sim[[1]]
+as_tibble(dist) %>% 
+  select(1:5) %>% 
+  pivot_longer(1:5) %>%
+  ggplot(aes(x = value)) + geom_histogram() + facet_wrap(~name)
+
+summary(apply(dist, 2, mean))
+summary(apply(dist, 2, median))
+summary(apply(dist, 2, sd))
 
 #####
 # PCA
@@ -84,12 +94,33 @@ dgp_rep1 <- dgp_rep1 %>% dplyr::select(-grep("_out", colnames(.)))
 load("./HPC/Rout/dgp_rep1.RDA")
 
 #####
+# Add MATLAB
+dgp_bnmf_rep1 <- tibble()
+
+for (i in 1:200) {
+  eh <- readMat(here::here(paste0("/MATLAB/dgp_rep1/rep1_eh_dist_", i, ".mat")))[[1]]
+  eh <- as_tibble(eh) %>% nest(eh = everything()) %>% mutate(seed = i)
+  
+  ewa <- readMat(here::here(paste0("/MATLAB/dgp_rep1/rep1_ewa_dist_", i, ".mat")))[[1]]
+  ewa <- as_tibble(ewa) %>% nest(ewa = everything()) %>% mutate(seed = i)
+  both <- full_join(eh, ewa, by = "seed")
+  dgp_bnmf_rep1 <- rbind(dgp_bnmf_rep1, both) %>% drop_na(seed)
+}
+
+dgp_rep1 <- left_join(dgp_rep1, dgp_bnmf_rep1, by = "seed") %>% 
+  mutate(bnmf_pred            = map2(ewa, eh, function(x,y) as.matrix(x) %*% as.matrix(y)),
+         bnmf_norm            = map2(sim, bnmf_pred,    function(x,y) norm(x-y, "F")/norm(x, "F")),
+         bnmf_loading_ssdist  = map2(true_patterns, eh,  symm_subspace_dist),
+         bnmf_scores_ssdist   = map2(true_scores,   ewa,    symm_subspace_dist),
+         bnmf_rank = map(eh, nrow))
+
+#####
 # Viz
 #####
 # Relative Error
 dgp_e1 <- dgp_rep1 %>% 
   dplyr::select(seed, data, sim, chem, grep("pred", colnames(.))) %>% 
-  pivot_longer(c(pca_pred:nmf_p_pred, fa_pred)) %>% 
+  pivot_longer(c(pca_pred:bnmf_pred)) %>% 
   mutate(l2_true = map2(chem, value, function (x,y) norm(x-y, "F")/norm(x, "F")),
          l2_sim = map2(sim, value, function (x,y) norm(x-y, "F")/norm(x, "F")),
          name = str_remove(name, "_pred")) %>% 
@@ -131,9 +162,9 @@ dgp_s1 %>%
 
 # Rank
 dgp_rep1 %>%
-  dplyr::select(seed, data, fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank) %>% #, bnmf_rank) %>%
-  unnest(c(fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank)) %>% #, bnmf_rank)) %>%
-  pivot_longer(cols = fa_rank:nmf_p_rank) %>% # bnmf_rank) %>%
+  dplyr::select(seed, data, fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank, bnmf_rank) %>%
+  unnest(c(fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank, bnmf_rank)) %>%
+  pivot_longer(cols = fa_rank:bnmf_rank) %>%
   mutate(value = ifelse(value > 5, "> 5", value)) %>% 
   group_by(name, value, data) %>%
   summarise(n = n()) %>% 
@@ -145,9 +176,9 @@ dgp_rep1 %>%
   mutate_if(is.integer, replace_na, 0)
 
 dgp_rep1 %>%
-  dplyr::select(seed, data, fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank) %>% #, bnmf_rank) %>%
-  unnest(c(fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank)) %>% #, bnmf_rank)) %>%
-  pivot_longer(cols = fa_rank:nmf_p_rank) %>% # bnmf_rank) %>%
+  dplyr::select(seed, data, fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank, bnmf_rank) %>%
+  unnest(c(fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank, bnmf_rank)) %>%
+  pivot_longer(cols = fa_rank:bnmf_rank) %>%
   mutate(value = ifelse(value > 5, "> 5", value)) %>% 
   group_by(name, value, data) %>%
   summarise(n = n()) %>% 
