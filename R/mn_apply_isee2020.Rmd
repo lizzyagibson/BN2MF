@@ -70,7 +70,7 @@ sum( prcomp(edc_std)$sdev[1:11]/sum(prcomp(edc_std)$sdev) )
 # 11 > 80% var
 # no obvious elbow
 
-plot(prcomp(edc_std)$sdev)
+plot(prcomp(edc_std))
 
 as_tibble(prcomp(edc_std)$rotation) %>% 
   mutate(edc = colnames(edc_cc)) %>% 
@@ -90,14 +90,18 @@ as_tibble(prcomp(edc_std)$rotation) %>%
 ## NMF
 
 ```{r}
-nmf_2 <- nmf(edc_std, rank = 2, nrun = 10)
-nmf_3 <- nmf(edc_std, rank = 3, nrun = 10)
-nmf_4 <- nmf(edc_std, rank = 4, nrun = 10)
-nmf_5 <- nmf(edc_std, rank = 5, nrun = 10)
-nmf_6 <- nmf(edc_std, rank = 6, nrun = 10)
+nmf_1 <- nmf(edc_std, rank = 1, nrun = 10, method = "lee")
+nmf_2 <- nmf(edc_std, rank = 2, nrun = 10, method = "lee")
+nmf_3 <- nmf(edc_std, rank = 3, nrun = 10, method = "lee")
+nmf_4 <- nmf(edc_std, rank = 4, nrun = 10, method = "lee")
+nmf_5 <- nmf(edc_std, rank = 5, nrun = 10, method = "lee")
+nmf_6 <- nmf(edc_std, rank = 6, nrun = 10, method = "lee")
+# Factory fresh default value is ‘brunet’ == KL
 
+  bic_1 <- sum((edc_std - (basis(nmf_1)%*%coef(nmf_1)))^2) + 
+    (1/2)*(nrow(edc_std) + ncol(edc_std)) * 1 * log(nrow(edc_std) * ncol(edc_std))
   bic_2 <- sum((edc_std - (basis(nmf_2)%*%coef(nmf_2)))^2) + 
-    (1/2)*(nrow(edc_std) + ncol(edc_std)) * 3 * log(nrow(edc_std) * ncol(edc_std))
+    (1/2)*(nrow(edc_std) + ncol(edc_std)) * 2 * log(nrow(edc_std) * ncol(edc_std))
   bic_3 <- sum((edc_std - (basis(nmf_3)%*%coef(nmf_3)))^2) + 
     (1/2)*(nrow(edc_std) + ncol(edc_std)) * 3 * log(nrow(edc_std) * ncol(edc_std))
   bic_4 <- sum((edc_std - (basis(nmf_4)%*%coef(nmf_4)))^2) + 
@@ -107,13 +111,14 @@ nmf_6 <- nmf(edc_std, rank = 6, nrun = 10)
   bic_6 <- sum((edc_std - (basis(nmf_6)%*%coef(nmf_6)))^2) +  
     (1/2)*(nrow(edc_std) + ncol(edc_std)) * 5 * log(nrow(edc_std) * ncol(edc_std))
   
+bic_1
 bic_2
 bic_3
 bic_4
 bic_5
 bic_6
   
-coef(nmf_3) %>% 
+coef(nmf_1) %>% 
   as_tibble() %>% 
   mutate(pattern = 1:nrow(.)) %>% 
   pivot_longer(1:17) %>% 
@@ -121,6 +126,6 @@ coef(nmf_3) %>%
   ggplot(aes(x = name, y = value)) + 
   geom_col() +
   facet_wrap(.~ pattern) + 
-  theme(axis.text.x = element_text(angle = 90))
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
