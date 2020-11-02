@@ -1,6 +1,6 @@
 #!/bin/bash
 #$ -cwd -S /bin/bash
-#$ -o /dev/hull
+#$ -o /dev/null
 #$ -e /dev/null
 #$ -l mem=12G
 #$ -l time=:10000:

@@ -1,7 +1,5 @@
-function [EWA, EH, varWA, varH, alphaH, betaH] = loop1()
-%% Make this whole thing loop
-
-for i = 134
+% Get job number
+i = getenv('SGE_TASK_ID')
 
 %% Setup the Import Options and import the data
 opts = delimitedTextImportOptions("NumVariables", 50);
@@ -18,7 +16,8 @@ opts.ExtraColumnsRule = "ignore";
 opts.EmptyLineRule = "read";
 
 % Import the data
-simdata1 = readtable(strcat("/Users/lizzy/BN2MF/Sims/dgp_rep1/sim_dgp_rep1_", num2str(i), ".csv"), opts);
+simdata1 = readtable(strcat("/ifs/scratch/msph/ehs/eag2186/Data/dgp_rep1/sim_dgp_rep1_", num2str(i), ".csv"), opts);
+% /ifs/scratch/msph/ehs/eag2186/Data/
 
 %% Convert to output type
 simdata1 = table2array(simdata1);
@@ -26,13 +25,8 @@ simdata1 = table2array(simdata1);
 %% Clear temporary variables
 clear opts
 
-[EWA, EH, varWA, varH, alphaH, betaH] = NPBayesNMF(simdata1);
+[EWA, EH] = NPBayesNMF(simdata1);
 
-save(strcat("/Users/lizzy/BN2MF/MATLAB/dgp_rep1_100/rep1_ewa_dist_", num2str(i), ".mat"), 'EWA');
-save(strcat("/Users/lizzy/BN2MF/MATLAB/dgp_rep1_100/rep1_eh_dist_",  num2str(i), ".mat"), 'EH');
-
-end
-
-end
-
+save(strcat("/ifs/scratch/msph/ehs/eag2186/Data/npbnmf/dgp_rep1_100/rep1_ewa_dist_", num2str(i), ".mat"), 'EWA');
+save(strcat("/ifs/scratch/msph/ehs/eag2186/Data/npbnmf/dgp_rep1_100/rep1_eh_dist_",  num2str(i), ".mat"), 'EH');
 
