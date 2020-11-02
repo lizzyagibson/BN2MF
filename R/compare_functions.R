@@ -1,4 +1,4 @@
-# functions to compare models with BN2MF
+# functions to compare other models with BN2MF
 
 # PCA
 get_pca <- function (sim) {
