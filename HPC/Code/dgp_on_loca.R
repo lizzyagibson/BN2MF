@@ -14,6 +14,7 @@ library(NMF)
 library(R.matlab)
 
 source("./R/compare_functions.R")
+source("./R/fig_set.R")
 
 # Read in Sims
 load("./Sims/sim_dgp_local.RDA")
@@ -101,27 +102,28 @@ dgp_local <- left_join(dgp_local, fa_metrics)
 dgp_local <- dgp_local %>% dplyr::select(-grep("_out", colnames(.)))
 # save(dgp_local, file = "./HPC/Rout/dgp_local.RDA")
 load( "./HPC/Rout/dgp_local.RDA")
+dgp_local
 
 #####
 # Add MATLAB
-dgp_bnmf <- tibble()
+# dgp_bnmf <- tibble()
+# 
+# for (i in 1:200) {
+#     eh <- readMat(here::here(paste0("/MATLAB/dgp_local/eh_dist_", i, ".mat")))[[1]]
+#     eh <- as_tibble(eh) %>% nest(eh = everything()) %>% mutate(seed = i)
+#     
+#     ewa <- readMat(here::here(paste0("/MATLAB/dgp_local/ewa_dist_", i, ".mat")))[[1]]
+#     ewa <- as_tibble(ewa) %>% nest(ewa = everything()) %>% mutate(seed = i)
+#     both <- full_join(eh, ewa, by = "seed")
+#     dgp_bnmf <- rbind(dgp_bnmf, both) %>% drop_na(seed)
+#   }
 
-for (i in 1:200) {
-    eh <- readMat(here::here(paste0("/MATLAB/dgp_local/eh_dist_", i, ".mat")))[[1]]
-    eh <- as_tibble(eh) %>% nest(eh = everything()) %>% mutate(seed = i)
-    
-    ewa <- readMat(here::here(paste0("/MATLAB/dgp_local/ewa_dist_", i, ".mat")))[[1]]
-    ewa <- as_tibble(ewa) %>% nest(ewa = everything()) %>% mutate(seed = i)
-    both <- full_join(eh, ewa, by = "seed")
-    dgp_bnmf <- rbind(dgp_bnmf, both) %>% drop_na(seed)
-  }
-
-dgp_local <- left_join(dgp_local, dgp_bnmf, by = "seed") %>% 
-  mutate(bnmf_pred            = map2(ewa, eh, function(x,y) as.matrix(x) %*% as.matrix(y)),
-         bnmf_norm            = map2(sim, bnmf_pred,    function(x,y) norm(x-y, "F")/norm(x, "F")),
-         bnmf_loading_ssdist  = map2(true_patterns, eh,  symm_subspace_dist),
-         bnmf_scores_ssdist   = map2(true_scores,   ewa,    symm_subspace_dist),
-         bnmf_rank = map(eh, nrow))
+# dgp_local <- left_join(dgp_local, dgp_bnmf, by = "seed") %>% 
+#   mutate(bnmf_pred            = map2(ewa, eh, function(x,y) as.matrix(x) %*% as.matrix(y)),
+#          bnmf_norm            = map2(sim, bnmf_pred,    function(x,y) norm(x-y, "F")/norm(x, "F")),
+#          bnmf_loading_ssdist  = map2(true_patterns, eh,  symm_subspace_dist),
+#          bnmf_scores_ssdist   = map2(true_scores,   ewa,    symm_subspace_dist),
+#          bnmf_rank = map(eh, nrow))
 
 #####
 # Viz
@@ -138,16 +140,6 @@ dgp_e <- dgp_local %>%
   dplyr::select(seed, data, name, l2_true, l2_sim) %>% 
   unnest(c(l2_sim, l2_true))
 
-dgp_e %>%
-  ggplot(aes(x = name, y = l2_true, color = name, fill = name)) +
-  geom_boxplot(alpha = 0.5) +
-  facet_grid(. ~ data, scales = "free") + 
-  geom_vline(xintercept = 0, color = "pink", linetype = "dashed", size = 0.5) +
-  scale_y_log10() +
-  theme(legend.position = "none") + 
-  labs(y = "Relative Predictive Error",
-       title = "vs PRE NOISE TRUTH")
-
 # Subspace Distance
 dgp_s <- dgp_local %>% dplyr::select(seed, data, grep("_ssdist", colnames(.))) %>% 
   unnest(cols = grep("_ssdist", colnames(.))) %>% 
@@ -163,17 +155,8 @@ dgp_s <- dgp_local %>% dplyr::select(seed, data, grep("_ssdist", colnames(.))) %
          model = ifelse(str_detect(model, 'bnmf'), 'BNMF', model),
          type = ifelse(str_detect(type, 'scores'), 'Scores', "Loadings"))
 
-dgp_s %>% 
-  ggplot(aes(x = model, y = value, color = model)) +
-  geom_boxplot() +
-  facet_grid(data ~ type) + 
-  geom_hline(yintercept = 0.5, color = "pink", linetype = "dashed", size = 0.5) +
-  theme(legend.position = "none") + 
-  # scale_y_log10() +
-  labs(y = "Symmetric Subspace Distance")
-
 # Rank
-dgp_local %>%
+rank_dist <- dgp_local %>%
   dplyr::select(seed, data, grep("rank", colnames(.))) %>%
   unnest(c(pca_rank:bnmf_rank)) %>%
   pivot_longer(cols = pca_rank:bnmf_rank) %>%
@@ -189,7 +172,7 @@ dgp_local %>%
   # dplyr::select(name, `1`,`2`,`3`,`4`, `5`) %>% 
   knitr::kable(caption = "Distinct Simulations: Patterns Identified")
 
-dgp_local %>%
+rank_over <- dgp_local %>%
   dplyr::select(seed, data, grep("rank", colnames(.))) %>%
   unnest(c(pca_rank:bnmf_rank)) %>%
   pivot_longer(cols = pca_rank:bnmf_rank) %>%
@@ -204,3 +187,73 @@ dgp_local %>%
   mutate_if(is.integer, replace_na, 0) %>% 
   # dplyr::select(name, `1`, `2`, `3`, `4`, `5`) %>% 
   knitr::kable(caption = "Overlapping Simulations: Patterns Identified")
+
+# Loading & Score Norms
+dgp_matrix_norms <- 
+  dgp_local %>% 
+  dplyr::select(seed, data, true_patterns, true_scores, pca_rotations, pca_scores,
+         fa_rotations, fa_scores, nmf_l2_loadings, nmf_l2_scores,
+         nmf_p_loadings, nmf_p_scores, eh, ewa) %>% 
+  mutate(true_patterns = map(true_patterns, t)) %>% 
+  pivot_longer(starts_with("true"),
+               names_to = "matrix",
+               values_to = "truth") %>% 
+  pivot_longer(pca_rotations:ewa,
+               names_to = "results") %>% 
+  drop_na(value) %>% 
+  filter( (grepl("rotations|loadings|eh", results) & matrix == "true_patterns") |
+          (grepl("scores|ewa", results) & matrix == "true_scores") ) %>% 
+  mutate(value = case_when(grepl("load|eh", results) ~ map(value, t),
+                            TRUE ~ map(value, as.matrix))) %>% 
+  mutate(rank = map(value, ncol)) %>% 
+  unnest(rank) %>% 
+  filter(rank == 4) %>% 
+  mutate(l2 = map2(truth, value, function (x,y) norm(x-y, "F")/norm(x, "F")),
+         l1 = map2(truth, value, function (x,y) sum(abs(x-y))/sum(abs(x)))) %>% 
+  unnest(c(l1, l2)) %>% 
+  mutate(matrix = str_sub(matrix, 6, -1),
+         matrix = str_to_title(matrix),
+         results = case_when(grepl("fa", results) ~ "FA",
+                         grepl("nmf_p", results) ~ "NMF P",
+                         grepl("nmf_l2", results) ~ "NMF L2",
+                         grepl("ewa|eh", results) ~ "BN2MF",
+                         grepl("pca", results) ~ "PCA"))
+
+#####
+# Look
+#####
+source("./R/fig_set.R")
+
+# Relative Error
+dgp_e %>%
+  ggplot(aes(x = name, y = l2_true, color = name, fill = name)) +
+  geom_boxplot(alpha = 0.75, notch = TRUE) +
+  facet_grid(. ~ data, scales = "free") + 
+  geom_vline(xintercept = 0, color = "pink", linetype = "dashed", size = 0.5) +
+  scale_y_log10() +
+  labs(y = "Relative Predictive Error",
+       title = "vs PRE NOISE TRUTH")
+
+# Subspace Distance
+dgp_s %>% 
+  ggplot(aes(x = model, y = value, fill = model)) +
+  geom_boxplot(alpha = 0.5) +
+  facet_grid(data ~ type) + 
+  geom_hline(yintercept = 0.5, color = "pink", linetype = "dashed", size = 0.5) +
+  # scale_y_log10() +
+  labs(y = "Symmetric Subspace Distance")
+
+dgp_matrix_norms %>%
+  #filter(!grepl(" P|L2", results)) %>% 
+  ggplot(aes(x = results, y = l2)) +
+  geom_jitter(alpha = 0.5, height = 0, width = .3) +
+  geom_boxplot(aes(color = results, fill = results), 
+               alpha = 0.75, notch = TRUE, outlier.size = 0, varwidth = TRUE) +
+  facet_grid(matrix ~ data, scales = "free") + 
+  geom_vline(xintercept = 0, color = "pink", linetype = "dashed", size = 0.5) +
+  scale_y_log10() +
+  labs(y = "Relative Predictive Error",
+       title = "")
+
+rank_dist
+rank_over
