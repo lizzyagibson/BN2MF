@@ -14,14 +14,34 @@ library(NMF)
 library(R.matlab)
 
 source("./R/compare_functions.R")
+source("./R/fig_set.R")
 
 # Read in Sims
 load("./Sims/sim_dgp_rep1.RDA")
+check_r <- sim_dgp_rep1 %>% 
+  dplyr::select(sim) %>% mutate(row = 1:nrow(.),
+                                sim = map(sim, as_tibble))
+check_r
 
+# Read MATLAB sims
+check_mat <- tibble()
+for (i in 1:nrow(sim_dgp_rep1)) {
+
+  check_data <- read_csv(paste0("./Sims/dgp_rep1/sim_dgp_rep1_", i, ".csv")) %>% 
+    nest(sim = everything()) %>% mutate(row = i)
+  check_mat <- rbind(check_mat, check_data)
+}
+check_mat
+
+all.equal(check_r %>% dplyr::select(sim), check_mat %>% dplyr::select(sim))
+# GOOD
+
+#####
 # Run everything
+#####
 dist <- sim_dgp_rep1$sim[[1]]
 as_tibble(dist) %>% 
-  select(1:5) %>% 
+  dplyr::select(1:5) %>% 
   pivot_longer(1:5) %>%
   ggplot(aes(x = value)) + geom_histogram() + facet_wrap(~name)
 
@@ -73,11 +93,7 @@ dgp_rep1 <- dgp_rep1 %>%
 # Symmetric Subspace Distance
 #####
 dgp_rep1 <- dgp_rep1 %>% 
-  mutate(pca_norm              = map2(sim, pca_pred,    function(x,y) norm(x-y, "F")/norm(x, "F")),
-         fa_norm               = map2(sim, fa_pred,     function(x,y) norm(x-y, "F")/norm(x, "F")),
-         nmf_l2_norm           = map2(sim, nmf_l2_pred, function(x,y) norm(x-y, "F")/norm(x, "F")),
-         nmf_p_norm            = map2(sim, nmf_p_pred,  function(x,y) norm(x-y, "F")/norm(x, "F")),
-         pca_rotation_ssdist   = map2(true_patterns, pca_rotations,   symm_subspace_dist),
+  mutate(pca_rotation_ssdist   = map2(true_patterns, pca_rotations,   symm_subspace_dist),
          pca_scores_ssdist     = map2(true_scores,   pca_scores,      symm_subspace_dist),
          fa_rotations_ssdist   = map2(true_patterns, fa_rotations,    symm_subspace_dist),
          fa_scores_ssdist      = map2(true_scores,   fa_scores,       symm_subspace_dist),
@@ -90,29 +106,39 @@ dgp_rep1 <- dgp_rep1 %>%
 # Save
 #####
 dgp_rep1 <- dgp_rep1 %>% dplyr::select(-grep("_out", colnames(.)))
-# save(dgp_rep1, file = "./HPC/Rout/dgp_rep1.RDA")
+save(dgp_rep1, file = "./HPC/Rout/dgp_rep1.RDA")
 load("./HPC/Rout/dgp_rep1.RDA")
+dgp_rep1
 
+dgp_rep1 %>% filter(data == "Overlapping")
+# seed = 1:100
 #####
+
 # Add MATLAB
 dgp_bnmf_rep1 <- tibble()
 
 for (i in 1:200) {
-  eh <- readMat(here::here(paste0("/MATLAB/dgp_rep1/rep1_eh_dist_", i, ".mat")))[[1]]
-  eh <- as_tibble(eh) %>% nest(eh = everything()) %>% mutate(seed = i)
+  eh <- readMat(here::here(paste0("./MATLAB/loop_dgp_rep1/rep1_eh_dist_", i, ".mat")))[[1]]
+  eh <- as_tibble(eh) %>% nest(eh = everything()) %>% mutate(row = i)
   
-  ewa <- readMat(here::here(paste0("/MATLAB/dgp_rep1/rep1_ewa_dist_", i, ".mat")))[[1]]
-  ewa <- as_tibble(ewa) %>% nest(ewa = everything()) %>% mutate(seed = i)
-  both <- full_join(eh, ewa, by = "seed")
-  dgp_bnmf_rep1 <- rbind(dgp_bnmf_rep1, both) %>% drop_na(seed)
+  ewa <- readMat(here::here(paste0("/MATLAB/loop_dgp_rep1/rep1_ewa_dist_", i, ".mat")))[[1]]
+  ewa <- as_tibble(ewa) %>% nest(ewa = everything()) %>% mutate(row = i)
+  both <- full_join(eh, ewa, by = "row")
+  dgp_bnmf_rep1 <- rbind(dgp_bnmf_rep1, both)
 }
 
-dgp_rep1 <- left_join(dgp_rep1, dgp_bnmf_rep1, by = "seed") %>% 
+dgp_bnmf_rep1 <- dgp_bnmf_rep1 %>% 
+  mutate(seed = rep(1:100, 2),
+         data = c(rep("Distinct", 100), rep("Overlapping", 100)))
+dgp_bnmf_rep1
+
+dgp_rep1 <- full_join(dgp_rep1, dgp_bnmf_rep1, by = c("seed", "data")) %>% 
   mutate(bnmf_pred            = map2(ewa, eh, function(x,y) as.matrix(x) %*% as.matrix(y)),
-         bnmf_norm            = map2(sim, bnmf_pred,    function(x,y) norm(x-y, "F")/norm(x, "F")),
          bnmf_loading_ssdist  = map2(true_patterns, eh,  symm_subspace_dist),
          bnmf_scores_ssdist   = map2(true_scores,   ewa,    symm_subspace_dist),
          bnmf_rank = map(eh, nrow))
+
+dgp_rep1
 
 #####
 # Viz
@@ -127,15 +153,12 @@ dgp_e1 <- dgp_rep1 %>%
   dplyr::select(seed, data, name, l2_true, l2_sim) %>% 
   unnest(c(l2_sim, l2_true))
 
-dgp_e1 %>%
-  ggplot(aes(x = name, y = l2_true, color = name, fill = name)) +
-  geom_boxplot(alpha = 0.5) +
-  facet_grid(. ~ data, scales = "free") + 
-  geom_vline(xintercept = 0, color = "pink", linetype = "dashed", size = 0.5) +
-  scale_y_log10() +
-  theme(legend.position = "none") + 
-  labs(y = "Relative Predictive Error",
-       title = "vs PRE NOISE TRUTH")
+dat <- dgp_rep1 %>% filter(seed == 34 & data == "Overlapping")
+chem <- dat$chem[[1]]
+eh <- dat$eh[[1]]
+ewa <- dat$ewa[[1]]
+pred <- as.matrix(ewa) %*% as.matrix(eh)
+norm(chem - pred, "F")/norm(chem, "F")
 
 # Subspace Distance
 dgp_s1 <- dgp_rep1 %>% dplyr::select(seed, data, grep("_ssdist", colnames(.))) %>% 
@@ -151,14 +174,26 @@ dgp_s1 <- dgp_rep1 %>% dplyr::select(seed, data, grep("_ssdist", colnames(.))) %
          model = ifelse(str_detect(model, 'bnmf'), 'BNMF', model),
          type = ifelse(str_detect(type, 'scores'), 'Scores', "Loadings"))
 
+# Viz
+# SSD
 dgp_s1 %>% 
   ggplot(aes(x = model, y = value, color = model)) +
   geom_boxplot() +
   facet_grid(data ~ type) + 
   geom_hline(yintercept = 0.5, color = "pink", linetype = "dashed", size = 0.5) +
-  theme(legend.position = "none") + 
   # scale_y_log10() +
   labs(y = "Symmetric Subspace Distance")
+
+# Pred error
+dgp_e1 %>%
+  ggplot(aes(x = name, y = l2_true, color = name, fill = name)) +
+  geom_boxplot(alpha = 0.5) +
+  facet_grid(. ~ data, scales = "free") + 
+  geom_vline(xintercept = 0, color = "pink", linetype = "dashed", size = 0.5) +
+  scale_y_log10() +
+  theme(legend.position = "none") + 
+  labs(y = "Relative Predictive Error",
+       title = "vs PRE NOISE TRUTH")
 
 # Rank
 dgp_rep1 %>%
