@@ -20,9 +20,8 @@ load(file = "./HPC/Rout/dgp.RDA")
 
 
 #####
-
 # What does this data look like
-
+#####
 # distinct
 sim <- dgp_data$sim[1][[1]]
 
@@ -80,16 +79,6 @@ dgp_e <- dgp_data %>%
          name = str_remove(name, "_pred")) %>% 
   dplyr::select(seed, data, name, l2_true, l2_sim) %>% 
   unnest(c(l2_sim, l2_true))
-
-dgp_e %>%
-  ggplot(aes(x = name, y = l2_sim, color = name, fill = name)) +
-  geom_boxplot(alpha = 0.5) +
-  facet_grid(. ~ data, scales = "free") + 
-  geom_vline(xintercept = 0, color = "pink", linetype = "dashed", size = 0.5) +
-  scale_y_log10() +
-  theme(legend.position = "none") + 
-  labs(y = "Relative Predictive Error",
-       title = "vs SIMS")
 
 dgp_e %>%
   ggplot(aes(x = name, y = l2_true, color = name, fill = name)) +
