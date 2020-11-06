@@ -1,4 +1,4 @@
-function [EWA, EH, varWA, varH, alphaH, betaH] = loop2()
+function [EWA, EH] = loop2()
 %% Make this whole thing loop
 
 for i = 101:200
@@ -26,10 +26,10 @@ simdata1 = table2array(simdata1);
 %% Clear temporary variables
 clear opts
 
-[EWA, EH, varWA, varH, alphaH, betaH] = NPBayesNMF(simdata1);
+[EWA, EH] = NPBayesNMF(repmat(simdata1, 1));
 
-save(strcat("/Users/lizzy/BN2MF/MATLAB/dgp_rep1_100/rep1_ewa_dist_", num2str(i), ".mat"), 'EWA');
-save(strcat("/Users/lizzy/BN2MF/MATLAB/dgp_rep1_100/rep1_eh_dist_",  num2str(i), ".mat"), 'EH');
+save(strcat("/Users/lizzy/BN2MF/MATLAB/loop_dgp_rep1/rep1_ewa_dist_", num2str(i), ".mat"), 'EWA');
+save(strcat("/Users/lizzy/BN2MF/MATLAB/loop_dgp_rep1/rep1_eh_dist_",  num2str(i), ".mat"), 'EH');
 
 end
 

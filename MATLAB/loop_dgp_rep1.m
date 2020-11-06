@@ -1,7 +1,5 @@
-function [EWA, EH] = loop1()
-%% Make this whole thing loop
-
-for i = 1:100
+% Make this whole thing loop
+for i = 1:200
 
 %% Setup the Import Options and import the data
 opts = delimitedTextImportOptions("NumVariables", 50);
@@ -28,10 +26,9 @@ clear opts
 
 [EWA, EH] = NPBayesNMF(simdata1);
 
+save(strcat("/Users/lizzy/BN2MF/MATLAB/loop_dgp_rep1/sim_dgp_rep1_", num2str(i), ".mat"), 'simdata1');
 save(strcat("/Users/lizzy/BN2MF/MATLAB/loop_dgp_rep1/rep1_ewa_dist_", num2str(i), ".mat"), 'EWA');
 save(strcat("/Users/lizzy/BN2MF/MATLAB/loop_dgp_rep1/rep1_eh_dist_",  num2str(i), ".mat"), 'EH');
-
-end
 
 end
 

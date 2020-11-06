@@ -1,4 +1,4 @@
-function [EWA, EH, varWA, varH, alphaH, betaH] = NPBayesNMF(X)
+function [EWA, EH] = NPBayesNMF(X)
     %EWA_low, EH_low, varWA_low, varH_low, alphaH_low, betaH_low] = NPBayesNMF(X)
 % X is the data matrix of non-negative values
 % Kinit is the maximum allowable factorization (initial). The algorithm tries to reduce this number.
@@ -11,30 +11,23 @@ bnp_switch = 1;  % this turns on/off the Bayesian nonparametric part. On now.
 
 [dim,N] = size(X);
 
-end_score = zeros(100, 1);
+end_score = zeros(10, 1);
 
 %Not sure if i need this
 EWA = [];
 EH = [];
-varWA = [];
-varH = [];
-alphaH = [];
-betaH = [];
-
-% EWA_low = [];
-% EH_low = [];
-% varWA_low = [];
-% varH_low = [];
-% alphaH_low = [];
-% betaH_low = [];
+%varWA = [];
+%varH = [];
+%alphaH = [];
+%betaH = [];
 
 Kinit = N;
-for i = 1:100 % Switch back to 1:10
+
+for i = 1:10 % Switch back to 1:10
 
 K = Kinit;
     
 h01 = 1; % Try h with non-sparse prior, yes!
-%h01 = 1/Kinit; % sparse prior
 h02 = 1;
 
 w01 = 1;
@@ -108,37 +101,24 @@ for iter = 1:num_iter
     
     score(iter) = sum(sum(abs(X-(W1./W2)*diag(A1./A2)*(H1./H2))));
     
-    % disp(['Run Number: ' num2str(i) '. Iter Number: ' num2str(iter) '. Iter Score: ' num2str(sum(sum(abs(X-(W1./W2)*diag(A1./A2)*(H1./H2)))))]); 
- 
  if iter > 1 && abs(score(iter-1)-score(iter)) < 1e-5  
      break
  end
   
 end
 
-% EA = A1./A2;
-% EWA = (W1./W2)*diag(A1./A2);
-% EH = H1./H2;
-% EW = (W1./W2); 
-
 end_score(i) = score(find(score,1,'last'));  
 disp(['Run Number: ' num2str(i) '. Iter Number: ' num2str(iter) '. Iter Score: ' num2str(end_score(i))]); 
  
-% Among the results, use the fitted variational parameters that achieve the highest ELBO
+% Among the results, use the fitted variational parameters that achieve the HIGHEST ELBO
 if i == 1 || (i > 1 && (end_score(i) >= max(end_score)))
     EWA = (W1./W2)*diag(A1./A2);
     EH = H1./H2;
-    varWA = (W1 .* A1) .* (W1 + A1 + 1) ./ (W2.^2 .* A2.^2);
-    % e(w^2) * e(a^2) - e(w)^2 * e(a)^2
-    %                  - EW^2 .* EA^2
-    varH = H1 ./ H2.^2;
-    
-    alphaH = H1;
-    betaH = H2;
-    % final W1
-    % final W2
-    % final A1
-    % final A2
+    %varWA = (W1 .* A1) .* (W1 + A1 + 1) ./ (W2.^2 .* A2.^2);
+    %varH = H1 ./ H2.^2;
+    %alphaH = H1;
+    %betaH = H2;
+
 end
 
 end
