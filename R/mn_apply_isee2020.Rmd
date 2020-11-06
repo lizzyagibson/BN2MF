@@ -90,12 +90,12 @@ as_tibble(prcomp(edc_std)$rotation) %>%
 ## NMF
 
 ```{r}
-nmf_1 <- nmf(edc_std, rank = 1, nrun = 10, method = "lee")
-nmf_2 <- nmf(edc_std, rank = 2, nrun = 10, method = "lee")
-nmf_3 <- nmf(edc_std, rank = 3, nrun = 10, method = "lee")
-nmf_4 <- nmf(edc_std, rank = 4, nrun = 10, method = "lee")
-nmf_5 <- nmf(edc_std, rank = 5, nrun = 10, method = "lee")
-nmf_6 <- nmf(edc_std, rank = 6, nrun = 10, method = "lee")
+nmf_1 <- nmf(edc_cc, rank = 1, nrun = 100, method = "lee")
+nmf_2 <- nmf(edc_cc, rank = 2, nrun = 100, method = "lee")
+nmf_3 <- nmf(edc_cc, rank = 3, nrun = 100, method = "lee")
+nmf_4 <- nmf(edc_cc, rank = 4, nrun = 100, method = "lee")
+nmf_5 <- nmf(edc_cc, rank = 5, nrun = 100, method = "lee")
+nmf_6 <- nmf(edc_cc, rank = 6, nrun = 100, method = "lee")
 # Factory fresh default value is ‘brunet’ == KL
 
   bic_1 <- sum((edc_std - (basis(nmf_1)%*%coef(nmf_1)))^2) + 
