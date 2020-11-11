@@ -92,7 +92,7 @@ as_tibble(prcomp(edc_std)$rotation) %>%
 ```{r}
 nmf_1 <- nmf(edc_cc, rank = 1, nrun = 100, method = "lee")
 nmf_2 <- nmf(edc_cc, rank = 2, nrun = 100, method = "lee")
-nmf_3 <- nmf(edc_cc, rank = 3, nrun = 100, method = "lee")
+nmf_3 <- nmf(edc_std, rank = 3, nrun = 100, method = "brunet")
 nmf_4 <- nmf(edc_cc, rank = 4, nrun = 100, method = "lee")
 nmf_5 <- nmf(edc_cc, rank = 5, nrun = 100, method = "lee")
 nmf_6 <- nmf(edc_cc, rank = 6, nrun = 100, method = "lee")
@@ -117,8 +117,11 @@ bic_3
 bic_4
 bic_5
 bic_6
-  
-coef(nmf_1) %>% 
+ 
+lee_3 <- nmf(edc_std, rank = 3, nrun = 100, method = "lee")
+brunet_3 <- nmf(edc_std, rank = 3, nrun = 100, method = "brunet")
+
+coef(nmf_3) %>% 
   as_tibble() %>% 
   mutate(pattern = 1:nrow(.)) %>% 
   pivot_longer(1:17) %>% 
@@ -127,5 +130,20 @@ coef(nmf_1) %>%
   geom_col() +
   facet_wrap(.~ pattern) + 
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+coef(brunet_3) %>% 
+  as_tibble() %>% 
+  mutate(Pattern = 1:3) %>% 
+  gather(key = Chemicals, value = Loadings, -Pattern) %>%
+  mutate(Group = ifelse(str_detect(Chemicals, "PB"), "Parabens",
+                        ifelse(str_detect(Chemicals, "^M"), "Phthalates", "Phenols"))) %>% 
+  arrange(Group) %>% 
+  mutate(Chemicals = fct_inorder(Chemicals)) %>% 
+  ggplot(aes(x = Chemicals, y = Loadings)) + geom_col(aes(fill = Group)) +
+  facet_wrap(.~Pattern) + theme_bw() +
+  theme(legend.position = "bottom",
+        strip.background = element_blank(),
+        axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
