@@ -46,9 +46,9 @@ loop_patterns <- expand_grid(seed, participants, chemicals)
 create_scores_dist <- function (seed, participants, patterns) {
   scores_dist <- matrix(nrow = participants, ncol = patterns)
   set.seed(seed)
-  scores_dist <- exp(mvrnorm(n = participants, mu = rep(0, patterns), 
+  scores_dist <- exp(mvrnorm(n = participants, mu = rep(1, patterns), 
                           Sigma = diag(rep(1, patterns)))) # independent log normal dist
-  scores_dist <- apply(scores_dist, 2, function (x) x/sd(x)) # divide columns by standard dev 
+
   scores_dist
   }
 
@@ -63,9 +63,9 @@ scores_iter <- loop_scores %>%
 ```{r}
 # noise = 1000x50
 add_noise <- function (seed, chem_matrix) {
-  noise <- list(sd = apply(chem_matrix, 2, sd)/2)
   n = nrow(chem_matrix)
   p = ncol(chem_matrix)
+  noise <- list(sd = rep(1, p))
   set.seed(seed)
   chem_dist <- pmax(chem_matrix + mvrnorm(n = n, mu = rep(0, p), 
                                              Sigma = diag(noise$sd)), 0)	
@@ -81,7 +81,7 @@ add_noise <- function (seed, chem_matrix) {
 ## Construct a matrix for 1,4,10 TRUE exposure patterns
 create_1pattern <- function (seed, chemicals) {
   set.seed(seed)
-  patterns <- matrix(rdirichlet(1, c(rep(10,  chemicals))), nrow = 1)
+  patterns <- matrix(c(runif(chemicals/2, 1, 2), rep(0, chemicals/2)), nrow = 1)
   patterns
 }
 
@@ -90,29 +90,31 @@ create_4patterns <- function (seed, chemicals) {
   group_1 <- chemicals %/% 4
   group_2 <- (chemicals - 2*group_1)/2
   
-  patterns <- rbind( 
-    rdirichlet(1, c(rep(10,  group_1), rep(5,  group_1),          rep(0.1, group_2*2))),
-    rdirichlet(1, c(rep(0.1, group_1), rep(10, group_1),          rep(5,   group_2),    rep(0.1, group_2))),
-    rdirichlet(1, c(rep(0.1, group_1), rep(5,  group_1),          rep(10,  group_2),    rep(0.1, group_2))),
-    rdirichlet(1, c(rep(5,   group_1), rep(0.1, group_1+group_2), rep(10,  group_2))))
+  patterns <-
+    rbind(c(runif(group_1, 1, 2),   runif(group_1, 0.5, 1), rep(0, 2*group_2)),
+          c(rep(0, group_1),        runif(group_1, 1, 2), runif(group_2, 0.5, 1), rep(0, group_2)),
+          c(rep(0, 2*group_1),                            runif(group_2, 1, 2),   runif(group_2, 0.5, 1)),
+          c(runif(group_1, 0.5, 1), rep(0, group_1 + group_2), runif(group_2, 1, 2)))
+  
   patterns
 }
 
 create_10patterns <- function (seed, chemicals) {
   set.seed(seed)
-  group <- chemicals / 5
+  group <- chemicals / 10
   
-  patterns <- rbind( 
-    rdirichlet(1, c(rep(10,  group),  rep(5,   group), rep(.1,  group), rep(.1, group), rep(.1, group))), 
-    rdirichlet(1, c(rep(0.1, group),  rep(10,  group), rep(5,   group), rep(.1, group), rep(.1, group))), 
-    rdirichlet(1, c(rep(0.1, group),  rep(.1,  group), rep(10,  group), rep(5,  group), rep(.1, group))), 
-    rdirichlet(1, c(rep(.1,  group),  rep(0.1, group), rep(0.1, group), rep(10, group), rep(5,  group))), 
-    rdirichlet(1, c(rep(5,   group),  rep(.1,  group), rep(.1,  group), rep(.1, group), rep(10, group))),
-    rdirichlet(1, c(rep(10,  group),  rep(.1,  group), rep(5,  group), rep(.1, group), rep(.1,  group))), 
-    rdirichlet(1, c(rep(.1,  group),  rep(10,  group), rep(.1, group), rep(5,  group), rep(0.1, group))), 
-    rdirichlet(1, c(rep(0.1, group),  rep(.1,  group), rep(10, group), rep(.1, group), rep(5,   group))), 
-    rdirichlet(1, c(rep(5,   group),  rep(.1,  group), rep(.1, group), rep(10, group), rep(.1,  group))),
-    rdirichlet(1, c(rep(.1,  group),  rep(5,   group), rep(.1, group), rep(.1, group), rep(10,  group))))
+  patterns <-
+    rbind(c(runif(group, 1, 2),   runif(group, 0.5, 1), rep(0, 8*group)),
+          c(rep(0, group),        runif(group, 1, 2), runif(group, 0.5, 1),   rep(0, group*7)),
+          c(rep(0, group*2),      runif(group, 1, 2), runif(group, 0.5, 1),   rep(0, group*6)),
+          c(rep(0, group*3),      runif(group, 1, 2), runif(group, 0.5, 1),   rep(0, group*5)),
+          c(rep(0, group*4),      runif(group, 1, 2), runif(group, 0.5, 1),   rep(0, group*4)),
+          c(rep(0, group*5),      runif(group, 1, 2), runif(group, 0.5, 1),   rep(0, group*3)),
+          c(rep(0, group*6),      runif(group, 1, 2), runif(group, 0.5, 1),   rep(0, group*2)),
+          c(rep(0, group*7),      runif(group, 1, 2), runif(group, 0.5, 1),   rep(0, group)),
+          c(rep(0, group*8),      runif(group, 1, 2), runif(group, 0.5, 1)),
+          c(runif(group, 0.5, 1), rep(0, 8*group), runif(group, 1, 2)))
+          
   patterns
 }
 
@@ -147,41 +149,33 @@ patterns_iter[3,5][[1]][[1]] %>% as_tibble() %>%
 Multiple scores and vectors, and add to get the mixture.
 
 ```{r}
-sim_over <- left_join(patterns_iter, scores_iter) %>% 
-  mutate(chem_1 = map2(true_scores, true_patterns, `%*%`),
-         chem_10 = map(chem_1, function(x) x*10),
-         chem_100 = map(chem_1, function(x) x*100))
+sim_over <- 
+  left_join(patterns_iter, scores_iter) %>% 
+  mutate(chem = map2(true_scores, true_patterns, `%*%`))
 
-chem <- sim_over[1,7][[1]][[1]]
-chem10 <- sim_over[1,8][[1]][[1]]
-chem100 <- sim_over[1,9][[1]][[1]]
+chem <- sim_over$chem[[1]]
 
 # St dev of chemicals
-apply(chem100, 2, sd)
-summary(chem100)
+apply(chem, 2, mean)
+apply(chem, 2, sd)
 ```
 
 ### Simulate Noise
 
 ```{r}
 sim_over <- sim_over %>% 
- mutate(sim_1 = map2(seed, chem_1, add_noise),
-        sim_10 = map2(seed, chem_10, add_noise),
-        sim_100 = map2(seed, chem_100, add_noise))
+ mutate(sim = map2(seed, chem, add_noise))
 
 # St dev of chemicals
-sm <- sim_over[1,10][[1]][[1]]
-sm10 <- sim_over[1,11][[1]][[1]]
-sm100 <- sim_over[1,12][[1]][[1]]
+sm <- sim_over$sim[[1]]
 
 # St dev of chemicals
 apply(sm, 2, sd)
-apply(sm10, 2, sd)
-apply(sm100, 2, sd)
+apply(sm, 2, mean)
 ```  
 
 ```{r}
-cormat3 <- cor(sim_over[100,12][[1]][[1]])
+cormat3 <- cor(sim_over$sim[[1]])
 
 melt(cormat3) %>% rename(Correlation = value) %>% 
   ggplot(aes(x = Var1, y = Var2)) +
@@ -202,15 +196,12 @@ melt(cormat3) %>% rename(Correlation = value) %>%
 ## Save
 
 ```{r} 
-sim_dim <- sim_over %>% 
-      pivot_longer(c(chem_1:sim_100),
-                   names_to = c("chem_sim", "sim_factor"),
-                   names_sep = "_",
-                   values_to = "sim_chem_matrix") %>% 
-      pivot_wider(names_from = "chem_sim",
-                  values_from = "sim_chem_matrix")
+# save(sim_over, file = "./Sims/sim_dim.RDA")
 
-sim_dim
-object.size(sim_dim)
-# save(sim_dim, file = "./Sims/sim_dim.RDA")
+for (i in 1:nrow(sim_over)) {
+  to_save = sim_over[i,]
+  save(to_save, file = paste0("./Sims/sim_dim/sim_dim", i, ".RDA"))
+}
+
 ```
+
