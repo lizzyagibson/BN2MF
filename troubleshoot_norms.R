@@ -1,11 +1,55 @@
 dgp_local <- dgp_local %>% mutate(row = 1:nrow(.))
 
+results <- 
+  dgp_local %>% 
+  dplyr::select(seed, data, row, true_patterns, true_scores, pca_rotations, pca_scores,
+                fa_rotations, fa_scores, nmf_l2_loadings, nmf_l2_scores,
+                nmf_p_loadings, nmf_p_scores, eh, ewa) %>% 
+  mutate(true_patterns = map(true_patterns, t)) %>% 
+  pivot_longer(true_patterns:ewa,
+               values_to = "results") %>% 
+  filter(!grepl("true", name)) %>% 
+  mutate(side = case_when(grepl("load|rot|eh", name) ~ "Loadings",
+                          grepl("score|ewa", name) ~ "Scores"),
+         model = case_when(grepl("pca", name) ~ "PCA",
+                           grepl("fa", name) ~ "FA",
+                           grepl("l2", name) ~ "NMF L2",
+                           grepl("nmf_p", name) ~ "NMF P",
+                           grepl("eh|ewa", name) ~ "BN2MF")) %>% 
+  dplyr::select(-name)
+  
+truth <- dgp_local %>% 
+  dplyr::select(seed, data, row, true_patterns, true_scores, pca_rotations, pca_scores,
+                fa_rotations, fa_scores, nmf_l2_loadings, nmf_l2_scores,
+                nmf_p_loadings, nmf_p_scores, eh, ewa) %>% 
+  mutate(true_patterns = map(true_patterns, t)) %>% 
+  pivot_longer(true_patterns:ewa,
+               values_to = "truth") %>% 
+  filter(grepl("true", name)) %>% 
+  mutate(side = case_when(grepl("patterns", name) ~ "Loadings",
+                          grepl("score", name) ~ "Scores")) %>% 
+  dplyr::select(-name)
+
+new_norm <- 
+  left_join(results, truth) %>% 
+  mutate(rank = map(results, ncol)) %>% unnest(rank) %>% 
+  mutate(results = case_when(grepl("NMF|2", model) & side == "Loadings" ~ map(results, t),
+                             TRUE ~ map(results, as.matrix)
+                             )) %>% 
+  mutate(rank = map(results, ncol)) %>% unnest(rank) %>%
+  filter(rank == 4) %>% 
+  mutate(results = map(results, as.matrix),
+          l2 = map2(truth, results, function (x,y) norm(x-y, "F")/norm(x, "F")),
+         l1 = map2(truth, results, function (x,y) sum(abs(x-y))/sum(abs(x)))) %>% 
+  unnest(c(l1, l2)) %>% 
+  dplyr::select(seed, data, side, model, row, results, l2, l1) 
+
 dgp_matrix_norms <- 
   dgp_local %>% 
   dplyr::select(seed, data, row, true_patterns, true_scores, pca_rotations, pca_scores,
                 fa_rotations, fa_scores, nmf_l2_loadings, nmf_l2_scores,
                 nmf_p_loadings, nmf_p_scores, eh, ewa) %>% 
-  #mutate(true_patterns = map(true_patterns, t)) %>% 
+  mutate(true_patterns = map(true_patterns, t)) %>% 
   pivot_longer(starts_with("true"),
                names_to = "matrix",
                values_to = "truth") %>% 
@@ -21,9 +65,12 @@ dgp_matrix_norms <-
   filter(rank == 4) %>% 
   mutate(l2 = map2(truth, value, function (x,y) norm(x-y, "F")/norm(x, "F")),
          l1 = map2(truth, value, function (x,y) sum(abs(x-y))/sum(abs(x)))) %>% 
-  unnest(c(l1, l2))
-  dplyr::select(seed, data, row, matrix, results, l2) 
+  unnest(c(l1, l2)) %>% 
+  dplyr::select(seed, data, row, matrix, results, l2, l1) 
 
+#####
+#
+#####
 pca_4 <- dgp_local %>% 
   dplyr::select(seed, data, row, true_patterns, true_scores, 
                 pca_rotations, pca_scores, pca_rank) %>% 
@@ -64,28 +111,29 @@ norm_plot <- rbind(pca_4, fa_4, nmf_l2_4, nmf_p_4, bnmf_4) %>%
   filter(rank == 4) %>%
   mutate(pred_load = map(pred_load, function(x) if (nrow(x) != 50) {t(x)} else{x}),
          norm_load = map2(true_patterns, pred_load, 
-                          function(x,y) norm(as.matrix(x)-as.matrix(y), "F")/norm(as.matrix(x))),
+                          function(x,y) norm(as.matrix(x)-as.matrix(y), "F")/norm(as.matrix(x), "F")),
          pred_score = map(pred_score, function(x) if (nrow(x) != 1000) {t(x)} else{x}),
          norm_score = map2(true_scores, pred_score, 
-                           function(x,y) norm(as.matrix(x)-as.matrix(y), "F")/norm(as.matrix(x)))) %>% 
+                           function(x,y) norm(as.matrix(x)-as.matrix(y), "F")/norm(as.matrix(x), "F"))) %>% 
   unnest(c(norm_load, norm_score)) %>% 
   dplyr::select(seed, data, row, model, norm_load, norm_score) %>% 
   pivot_longer(norm_load:norm_score)
 
+#####
+# Viz
+#####
 norm_plot %>% 
   arrange(seed, data, name)
-dgp_matrix_norms
+# Right
 
-dgp_local %>% 
-  filter(row == 1) %>% 
-  unnest(grep("rank", colnames(.))) %>% 
-  mutate(true_patterns = map(true_patterns, t)) %>%
-  mutate(pred_load = map(eh, function(x) if (nrow(x) != 50) {t(x)} else{x}),
-         norm_load = map2(true_patterns, pred_load, 
-                          function(x,y) norm(as.matrix(x)-as.matrix(y), "F")/norm(as.matrix(x))),
-         pred_score = map(ewa, function(x) if (nrow(x) != 1000) {t(x)} else{x}),
-         norm_score = map2(true_scores, pred_score, 
-                           function(x,y) norm(as.matrix(x)-as.matrix(y), "F")/norm(as.matrix(x)))) %>% 
-  dplyr::select(seed, norm_load, norm_score) %>% 
-  unnest(c(norm_load, norm_score))
-  
+dgp_matrix_norms
+# RIGHT
+
+# TRUTH
+fa_load <- dgp_local$fa_rotations[[1]]
+fa_scor <- dgp_local$fa_scores[[1]]  
+true_load <- dgp_local$true_patterns[[1]]
+true_score <- dgp_local$true_scores[[1]]
+
+norm(true_load-t(fa_load), "F")/norm(true_load, "F")
+norm(true_score-fa_scor, "F")/norm(true_score, "F")
