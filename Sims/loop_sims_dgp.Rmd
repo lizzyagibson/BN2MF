@@ -60,8 +60,7 @@ patterns_dist_iter$true_patterns[[1]] %>% as_tibble() %>%
 * Individual distributions are independent
 * Patterns (columns) are NOT standardized
 * Each pattern = log-normal distribution 
-    * Mean drawn from normal (`rnorm(4, mean = 2)`)
-        * e.g., `1.5258908 0.5124556 2.1382508 2.2151344`
+    * Mean = 1
     * Var approx 1
     * Cov = 0
    
@@ -178,10 +177,10 @@ melt(cor(dist, method = "spearman")) %>%
 create_patterns_over <- function (seed) {
   set.seed(seed)
   patterns_cor <-
-    rbind(c(runif(12, 1, 2),  rep(0, 38)),
-          c(rep(0, 12),       runif(12, 1, 2),  runif(13, 0.5, 1), rep(0, 13)),
-          c(rep(0, 24),                         runif(13, 1, 2), runif(13, 0.5, 1)),
-          c(runif(12, 0.5, 1), rep(0, 25), runif(13, 1, 2)))
+    rbind(c(runif(12, 1, 2),   runif(12, 0.5, 1), rep(0, 26)),
+          c(rep(0, 12),        runif(12, 1, 2),   runif(13, 0.5, 1), rep(0, 13)),
+          c(rep(0, 24),                           runif(13, 1, 2),   runif(13, 0.5, 1)),
+          c(runif(12, 0.5, 1), rep(0, 25),        runif(13, 1, 2)))
   patterns_cor
 }
 
@@ -211,9 +210,8 @@ Use distinct scores.
 * Individual distributions are independent
 * Patterns (columns) are NOT standardized
 * Each pattern = log-normal distribution 
-    * Mean drawn from normal (`rnorm(4, mean = 2)`)
-        * e.g., `1.5258908 0.5124556 2.1382508 2.2151344`
-    * Var approx 1
+    * Mean = 1
+    * Var = 1
     * Cov = 0
 
 ### Simulate Chemical Exposures
@@ -270,11 +268,70 @@ melt(cor(over, method = "spearman")) %>%
   ggtitle("Correlation w/ Overlapping Underlying Patterns")
 ```
 
+## 3. Correlated Scores
+
+### Simulate Scores
+
+```{r}
+create_scores_cor <- function (seed) {
+  scores_cor <- matrix(nrow = 1000, ncol = 4)
+  cov <- matrix( c(1,    0.25, 0.15, 0.15,
+                  0.25, 1,    0.15, 0.15,
+                  0.15, 0.15, 1,    0.25,
+                  0.15, 0.15, 0.25, 1), nrow = 4)
+  
+  set.seed(seed)
+  scores_cor <- exp(mvrnorm(n = 1000, mu = rep(1, 4), 
+                          Sigma = cov)) # dists are kind of DEPENDENT
+  }
+
+scores_cor_iter <- patterns_over_iter %>% 
+ mutate(true_scores = map(seed, create_scores_cor))
+```
+
+### Simulate Chemical Exposures
+
+Multiple scores and vectors, and add to get the mixture. Use simulated overlapping patterns.
+
+```{r}
+sim_cor <- scores_cor_iter %>% 
+  dplyr::select(seed, true_scores) %>% 
+  full_join(., patterns_over_iter) %>% 
+  mutate(chem = map2(true_scores, true_patterns, `%*%`))
+```
+
+### Simulate Noise
+
+```{r}
+sim_cor <- sim_cor %>% 
+ mutate(sim = map2(seed, chem, add_noise))
+```  
+
+```{r}
+simm <- sim_cor$sim[[1]]
+
+as_tibble(simm) %>% 
+  pivot_longer(V1:V50) %>% 
+  ggplot(aes(x = value)) + 
+  geom_histogram(bins = 100) + 
+  labs(x = "Distinct Simulations",
+       y = "Count")
+
+apply(simm, 2, mean)
+apply(simm, 2, sd)
+
+ggcorr(as_tibble(simm), limits = FALSE,
+       hjust = 0.85, size = 2, layout.exp = 1) +
+  labs(x = "Simulated Correlation Matrix") +
+  theme_minimal(base_size = 10)
+```
+
 ## Save
 
 ```{r} 
 sim_dgp_rep1 <- rbind(sim_dist %>% mutate(data = "Distinct"),
-      sim_over %>% mutate(data = "Overlapping"))
+      sim_over %>% mutate(data = "Overlapping"),
+      sim_cor %>% mutate(data = "Correlated"))
   
 sim_dgp_rep1
 
