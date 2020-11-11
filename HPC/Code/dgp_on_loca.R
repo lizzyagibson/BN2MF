@@ -228,53 +228,6 @@ dgp_matrix_norms <-
                          grepl("ewa|eh", results) ~ "BN2MF",
                          grepl("pca", results) ~ "PCA"))
 
-pca_4 <- dgp_local %>% 
-  dplyr::select(seed, data, true_patterns, true_scores, 
-                pca_rotations, pca_scores, pca_rank) %>% 
-  mutate(true_patterns = map(true_patterns, t),
-         model = "PCA") %>% 
-  rename(pred_load = 5, pred_score = 6, rank = 7)
-
-fa_4 <- dgp_local %>% 
-  dplyr::select(seed, data, true_patterns, true_scores, 
-                fa_rotations, fa_scores, fa_rank) %>% 
-  mutate(true_patterns = map(true_patterns, t),
-         model = "FA") %>% 
-  rename(pred_load = 5, pred_score = 6, rank = 7)
-  
-nmf_l2_4 <- dgp_local %>% 
-  dplyr::select(seed, data, true_patterns, true_scores,
-                nmf_l2_loadings, nmf_l2_scores, nmf_l2_rank) %>% 
-  mutate(true_patterns = map(true_patterns, t),
-         model = "NMF L2") %>% 
-  rename(pred_load = 5, pred_score = 6, rank = 7)
-
-nmf_p_4 <- dgp_local %>% 
-  dplyr::select(seed, data, true_patterns, true_scores, 
-                nmf_p_loadings, nmf_p_scores, nmf_p_rank) %>% 
-  mutate(true_patterns = map(true_patterns, t),
-         model = "NMF P") %>% 
-  rename(pred_load = 5, pred_score = 6, rank = 7)
-
-bnmf_4 <- dgp_local %>% 
-  dplyr::select(seed, data, true_patterns, true_scores, 
-                eh, ewa, bnmf_rank) %>% 
-  mutate(true_patterns = map(true_patterns, t),
-         model = "BN2MF") %>% 
-  rename(pred_load = 5, pred_score = 6, rank = 7)
-
-norm_plot <- rbind(pca_4, fa_4, nmf_l2_4, nmf_p_4, bnmf_4) %>% 
-  unnest(rank) %>% 
-  filter(rank == 4) %>%
-  mutate(pred_load = map(pred_load, function(x) if (nrow(x) != 50) {t(x)} else{x}),
-         norm_load = map2(true_patterns, pred_load, 
-                           function(x,y) norm(as.matrix(x)-as.matrix(y), "F")/norm(as.matrix(x))),
-         pred_score = map(pred_score, function(x) if (nrow(x) != 1000) {t(x)} else{x}),
-         norm_score = map2(true_scores, pred_score, 
-                           function(x,y) norm(as.matrix(x)-as.matrix(y), "F")/norm(as.matrix(x)))) %>% 
-  unnest(c(norm_load, norm_score)) %>% 
-  dplyr::select(seed, data, model, norm_load, norm_score)
-
 #####
 # Look
 #####
@@ -311,12 +264,25 @@ dgp_matrix_norms %>%
        title = "")
 
 norm_plot %>% 
-  filter(model != "NMF L2") %>%
+  #filter(model != "NMF L2") %>%
   # filter(model != "NMF P") %>% 
   ggplot(aes(x = model, y = value, color = model, fill = model)) +
-  geom_jitter(alpha = 0.5, height = 0, width = .3) +
+  geom_jitter(alpha = 0.5, height = 0, width = .3) + scale_y_log10() +
   geom_boxplot(alpha = 0.75, notch = TRUE, outlier.size = 0, varwidth = TRUE) +
   facet_grid(name ~ data)
+
+norm_plot %>% 
+  #filter(model != "NMF L2") %>%
+  # filter(model != "NMF P") %>% 
+  ggplot(aes(x = model, y = value)) +
+  geom_jitter(alpha = 0.5, height = 0, width = .3) +
+  geom_boxplot(aes(color = model, fill = model), 
+               alpha = 0.75, notch = TRUE, outlier.size = 0, varwidth = TRUE) +
+  facet_grid(name ~ data, scales = "free") + 
+  geom_vline(xintercept = 0, color = "pink", linetype = "dashed", size = 0.5) +
+  scale_y_log10() +
+  labs(y = "Relative Predictive Error",
+       title = "")
 
 rank_dist
 rank_over
