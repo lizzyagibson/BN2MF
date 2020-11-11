@@ -31,7 +31,7 @@ pve <- sv$V1^2/sum(sv$V1^2)
 
 sim_dgp_local %>% 
   mutate(sv = map(sim, get_scree)) %>% 
-  select(seed, data, sv) %>% 
+  dplyr::select(seed, data, sv) %>% 
   unnest(sv) %>% 
   filter(Comp %in% 1:6) %>% 
   mutate(seed = as.factor(seed)) %>% 
@@ -42,15 +42,24 @@ sim_dgp_local %>%
 
 sim_dgp_local %>% 
   mutate(sv = map(sim, get_scree)) %>% 
-  select(seed, data, sv) %>% 
+  dplyr::select(seed, data, sv) %>% 
   unnest(sv) %>% 
   group_by(seed, data) %>% 
   mutate(denom = sum(V1^2),
-            percent = V1^2 / denom) %>%
+            Percent = V1^2 / denom) %>%
   filter(Comp %in% 1:6) %>% 
   mutate(seed = as.factor(seed)) %>% 
-  ggplot(aes(x = Comp, y = percent, color = seed, group = interaction(seed, data))) +
+  ggplot(aes(x = Comp, y = Percent, color = seed, group = interaction(seed, data))) +
   geom_point(alpha = 0.5) + geom_line(alpha = 0.5) +
-  theme_bw() + 
+  # theme_bw() + 
   theme(legend.position = "none")
+
+sim_dgp_local %>% 
+  mutate(sv = map(sim, get_scree)) %>% 
+  dplyr::select(seed, data, sv) %>% 
+  unnest(sv) %>% 
+  group_by(seed, data) %>% 
+  mutate(denom = sum(V1^2),
+         Percent = V1^2 / denom) %>%
+  filter(Comp %in% 1:6)
 
