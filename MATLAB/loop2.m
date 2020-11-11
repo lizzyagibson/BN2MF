@@ -1,7 +1,7 @@
 function [EWA, EH] = loop2()
 %% Make this whole thing loop
 
-for i = 101:200
+for i = 201:300
 
 %% Setup the Import Options and import the data
 opts = delimitedTextImportOptions("NumVariables", 50);
