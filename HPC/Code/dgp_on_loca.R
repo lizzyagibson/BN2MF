@@ -15,6 +15,7 @@ library(R.matlab)
 
 source("./R/compare_functions.R")
 source("./R/fig_set.R")
+source("./R/factor_correspondence.R")
 
 # Read in Sims
 load("./Sims/sim_dgp_local.RDA")
@@ -104,7 +105,7 @@ summary(apply(dist, 2, sd))
 load( "./HPC/Rout/dgp_local.RDA")
 dgp_local
 
-all_equal(dgp_local$sim[[1]], sim_dgp_local$sim[[1]])
+# all_equal(dgp_local$sim[[1]], sim_dgp_local$sim[[1]])
 
 #####
 # Add MATLAB
@@ -199,7 +200,7 @@ rank_over <- dgp %>%
 
 # Loading & Score Norms
 dgp_matrix_norms <- 
-  dgp_local %>% 
+  dgp %>% 
   dplyr::select(seed, data, true_patterns, true_scores, pca_rotations, pca_scores,
          fa_rotations, fa_scores, nmf_l2_loadings, nmf_l2_scores,
          nmf_p_loadings, nmf_p_scores, eh, ewa) %>% 
@@ -258,27 +259,6 @@ dgp_matrix_norms %>%
   geom_boxplot(aes(color = results, fill = results), 
                alpha = 0.75, notch = TRUE, outlier.size = 0, varwidth = TRUE) +
   facet_grid(matrix ~ data, scales = "free") + 
-  geom_vline(xintercept = 0, color = "pink", linetype = "dashed", size = 0.5) +
-  scale_y_log10() +
-  labs(y = "Relative Predictive Error",
-       title = "")
-
-norm_plot %>% 
-  #filter(model != "NMF L2") %>%
-  # filter(model != "NMF P") %>% 
-  ggplot(aes(x = model, y = value, color = model, fill = model)) +
-  geom_jitter(alpha = 0.5, height = 0, width = .3) + scale_y_log10() +
-  geom_boxplot(alpha = 0.75, notch = TRUE, outlier.size = 0, varwidth = TRUE) +
-  facet_grid(name ~ data)
-
-norm_plot %>% 
-  #filter(model != "NMF L2") %>%
-  # filter(model != "NMF P") %>% 
-  ggplot(aes(x = model, y = value)) +
-  geom_jitter(alpha = 0.5, height = 0, width = .3) +
-  geom_boxplot(aes(color = model, fill = model), 
-               alpha = 0.75, notch = TRUE, outlier.size = 0, varwidth = TRUE) +
-  facet_grid(name ~ data, scales = "free") + 
   geom_vline(xintercept = 0, color = "pink", linetype = "dashed", size = 0.5) +
   scale_y_log10() +
   labs(y = "Relative Predictive Error",
