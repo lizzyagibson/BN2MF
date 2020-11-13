@@ -233,4 +233,5 @@ apply(fa_score, 2, sum)
 
 # Conclusion: Run factor correspondence for ALL results
 # Also: NMF over/underestimates 1 matrix and under/overestimates the other
+#       FA underestimates scores and loadings so pred error overall is worse than either
 
