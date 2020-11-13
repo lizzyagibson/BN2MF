@@ -183,3 +183,54 @@ head(fact_score)
 apply(nml2_load, 1, sum)
 apply(nml2_score, 2, sum) # Scores sum to 1 across 1000 sample size
 
+# FA
+fa <- dgp_rep1$fa_pred[[1]]
+fa_load <- t(dgp_rep1$fa_rotations[[1]])
+fa_score <- dgp_rep1$fa_scores[[1]]
+
+true_load <- dgp_rep1$true_patterns[[1]]
+true_score <- dgp_rep1$true_scores[[1]]
+truth <- dgp_rep1$chem[[1]]
+
+norm(truth -  fa, "F")/norm(truth, "F")
+dgp_e1 %>% filter(name == "FA")
+
+norm(true_load -  fa_load, "F")/norm(true_load, "F")
+norm(true_score -  fa_score, "F")/norm(true_score, "F")
+norm_rep1 %>% filter(model == "FA")
+
+norm(truth -  fa_score%*%fa_load, "F")/norm(truth, "F")
+
+head(truth)[,1:5]
+head(fa)[,1:5]
+
+head(true_load)[,1:5]
+head(fa_load)[,1:5]
+# Order is wrong!
+
+head(true_score)
+head(fa_score)
+# Order is wrong!
+
+fact_load <- factor_correspondence(t(true_load), t(fa_load))
+fa_load2 <- t(fact_load$rearranged)
+
+fact_score <- fa_score %*% fact_load$permutation_matrix
+
+norm(true_load -  fa_load2, "F")/norm(true_load, "F")
+norm(true_score -  fact_score, "F")/norm(true_score, "F")
+
+head(true_load)[,1:5]
+head(fa_load2)[,1:5]
+# Loadings too small
+
+head(true_score)
+head(fact_score)
+# Scores too small
+
+apply(fa_load, 2, sum)
+apply(fa_score, 2, sum)
+
+# Conclusion: Run factor correspondence for ALL results
+# Also: NMF over/underestimates 1 matrix and under/overestimates the other
+
