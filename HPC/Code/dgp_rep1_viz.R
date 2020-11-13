@@ -92,11 +92,13 @@ dgp_re <- dgp_rep1_all_re %>%
 #####
 
 dist_rank <- dgp_rep1_all %>%
-  dplyr::select(seed, data, fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank, bnmf_rank) %>%
-  unnest(c(fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank, bnmf_rank)) %>%
-  pivot_longer(cols = fa_rank:bnmf_rank) %>%
+  dplyr::select(seed, data, grep("rank", colnames(.))) %>%
+  unnest(grep("rank", colnames(.))) %>%
+  pivot_longer(cols = pca_rank:bnmf_rank,
+               names_to = c("model", "drop"),
+               names_sep = "_") %>%
   mutate(value = ifelse(value > 5, "> 5", value)) %>% 
-  group_by(name, value, data) %>%
+  group_by(data, model, value) %>%
   summarise(n = n()) %>% 
   ungroup() %>% 
   filter(data == "Distinct") %>% 
@@ -106,9 +108,9 @@ dist_rank <- dgp_rep1_all %>%
   mutate_if(is.integer, replace_na, 0)
 
 over_rank <- dgp_rep1_all %>%
-  dplyr::select(seed, data, fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank, bnmf_rank) %>%
-  unnest(c(fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank, bnmf_rank)) %>%
-  pivot_longer(cols = fa_rank:bnmf_rank) %>%
+  dplyr::select(seed, data, grep("rank", colnames(.))) %>%
+  unnest(grep("rank", colnames(.))) %>%
+  pivot_longer(cols = pca_rank:bnmf_rank) %>%
   mutate(value = ifelse(value > 5, "> 5", value)) %>% 
   group_by(name, value, data) %>%
   summarise(n = n()) %>% 
@@ -120,9 +122,9 @@ over_rank <- dgp_rep1_all %>%
   mutate_if(is.integer, replace_na, 0)
 
 cor_rank <- dgp_rep1_all %>%
-  dplyr::select(seed, data, fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank, bnmf_rank) %>%
-  unnest(c(fa_rank, pca_rank, nmf_l2_rank, nmf_p_rank, bnmf_rank)) %>%
-  pivot_longer(cols = fa_rank:bnmf_rank) %>%
+  dplyr::select(seed, data, grep("rank", colnames(.))) %>%
+  unnest(grep("rank", colnames(.))) %>%
+  pivot_longer(cols = pca_rank:bnmf_rank) %>%
   mutate(value = ifelse(value > 5, "> 5", value)) %>% 
   group_by(name, value, data) %>%
   summarise(n = n()) %>% 
@@ -142,33 +144,38 @@ cor_rank <- dgp_rep1_all %>%
 # Pred error
 #####
 
-#pdf("./Figures/bnmf_error.pdf")
+# pdf("./Figures/bnmf_error.pdf", width = 10)
 dgp_e1 %>%
-  ggplot(aes(x = name, y = l2_true, color = name, fill = name)) +
-  geom_boxplot(alpha = 0.5) +
+  mutate(data = fct_relevel(data, "Distinct", "Overlapping", "Correlated"),
+         model = ifelse(model == "BNMF", "BN2MF", model)) %>% 
+  ggplot(aes(x = model, y = l2_true)) +
+  geom_jitter(alpha = 0.15, size = 0.5, height = 0, width = .3) +
+  geom_boxplot(aes(color = model, fill = model),
+              alpha = 0.5, outlier.shape = NA) +
   facet_grid(. ~ data, scales = "free") + 
-  #geom_vline(xintercept = 0, color = "pink", linetype = "dashed", size = 0.5) +
   scale_y_log10() +
   theme(legend.position = "none") + 
-  labs(y = "Relative Predictive Error",
-       title = "")
-#dev.off()
+  labs(y = "Relative Predictive Error")
+# dev.off()
 
 
 #####
 # SSD
 #####
 
-# pdf("./Figures/bnmf_ssd.pdf", height = 10)
-dgp_s1 %>% 
-  # filter(!(model %in% c("PCA", "FA")))
-  ggplot(aes(x = model, y = value, color = model, fill = model)) +
-  geom_boxplot(alpha = 0.5) +
-  facet_grid(type ~ data) + 
+#pdf("./Figures/bnmf_ssd.pdf", width = 10, height = 10)
+dgp_s1 %>%
+  mutate(data = fct_relevel(data, "Distinct", "Overlapping", "Correlated"),
+         model = ifelse(model == "BNMF", "BN2MF", model),
+         matrix = str_to_title(matrix)) %>% 
+  ggplot(aes(x = model, y = ssdist)) +
+  geom_jitter(alpha = 0.15, size = 0.5, height = 0, width = .3) +
+  geom_boxplot(aes(color = model, fill = model),
+               alpha = 0.5, outlier.shape = NA) +
+  facet_grid(matrix ~ data) + 
   geom_hline(yintercept = 0.5, color = "pink", linetype = "dashed", size = 0.5) +
-  # scale_y_log10() +
   labs(y = "Symmetric Subspace Distance")
-# dev.off()
+#dev.off()
 
 
 #####
@@ -184,24 +191,22 @@ cor_rank
 # Rel error loadings and scores
 #####
 
-#pdf("./Figures/bnmf_loadscore_error.pdf", height = 10)
-dgp_rep1_all_re %>% 
-  ggplot(aes(x = method, y = l2)) +
-  geom_jitter(alpha = 0.25, size = 0.5, height = 0, width = .3) +
-  geom_boxplot(aes(color = method, fill = method), 
-               alpha = 0.75, outlier.shape = NA, varwidth = TRUE) +
-  facet_grid(results ~ data, scales = "free") + 
-  geom_vline(xintercept = 0, color = "pink", linetype = "dashed", size = 0.5) +
+dgp_re <- dgp_re %>% 
+  dplyr::select(-value, -truth, -value_re) %>% 
+  mutate(data = as.factor(data)) 
+
+#pdf("./Figures/bnmf_loadscore_error.pdf", width = 10, height = 10)
+dgp_re %>% 
+  mutate(data = fct_relevel(data, "Distinct", "Overlapping", "Correlated"),
+         model = str_to_upper(model),
+         model = ifelse(model == "BNMF", "BN2MF", model),
+         matrix = str_to_title(matrix)) %>% 
+  ggplot(aes(x = model, y = l2)) +
+  geom_jitter(alpha = 0.15, size = 0.5, height = 0, width = .3) +
+  geom_boxplot(aes(color = model, fill = model), 
+               alpha = 0.5, outlier.shape = NA, varwidth = TRUE) +
+  facet_grid(matrix ~ data, scales = "free") + 
   scale_y_log10() +
-  labs(y = "Relative Predictive Error",
-       title = "")
+  labs(y = "Relative Predictive Error")
 #dev.off()
 
-dgp_rep1_all_re %>% 
-  group_by(data, results, method) %>% 
-  summarize(min = min(l2),
-            med = median(l2),
-            mean = mean(l2),
-            q75 = quantile(l2, probs = 0.75),
-            max = max(l2)) %>% 
-  arrange(method, data, results) %>% View()
