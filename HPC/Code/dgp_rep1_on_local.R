@@ -131,7 +131,7 @@ dgp_rep1_all <-
          bnmf_scores_ssdist   = map2(true_scores,   ewa,    symm_subspace_dist),
          bnmf_rank = map(eh, nrow))
 
-# dgp_rep1_all <- dgp_rep1_all %>%
-#   rename(pca_loadings_ssdist = pca_rotation_ssdist)
+dgp_rep1_all <- dgp_rep1_all %>%
+  rename(bnmf_loadings_ssdist = bnmf_loading_ssdist)
 
 # save(dgp_rep1_all, file = "./HPC/Rout/dgp_rep1_all.RDA")
