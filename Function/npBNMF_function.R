@@ -6,14 +6,14 @@
 # %           values of these matrices according to their approximate posterior variational distributions.
 # % num_iter is the number of iterations to run. The code terminates based on convergence currently.
 
-NPBayesNMF <- function(X) {
+BN2MF <- function(X) {
   X = as.matrix(X)
   bnp_switch = 1
   dim = nrow(X)
   N = ncol(X)
   Kinit = ncol(X)
 
-  nruns = 1 # INCREASE
+  nruns = 10 # 10 runs and choose the best
   end_score = matrix(rep(0, times = nruns))
   
   EA = matrix()
@@ -136,22 +136,12 @@ NPBayesNMF <- function(X) {
   }
 
 
-# X = matrix(runif(50), 10, 5)
-# system.time(NPBayesNMF(X))
-X = sim_dgp$sim[1][[1]]
-tic()
-out <- NPBayesNMF(X)
-toc()
-# 570.706 sec elapsed with noise = var/10
-# 10 min with noise = var/10
-
-# 607.329 sec elapsed with noise = 1
-# 10 min with noise = 1
+library(tictoc)
+load("./Sims/sim_dgp_rep1.RDA")
+X = sim_dgp_rep1$sim[[1]]
+dim(X)
 
 tic()
-edc_out <- NPBayesNMF(edc_std)
+out <- BN2MF(X)
 toc()
-# 6.832 sec elapsed per run
-
-system.time(NPBayesNMF(X))
-system.time(NPBayesNMF_future(X))
+# 58 minutes

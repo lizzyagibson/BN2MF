@@ -103,7 +103,7 @@ middle_loop <- function(X, N, dim, Kinit, bnp_switch, nruns) {
     }
 
 
-NPBayesNMF_future <- function(X) {
+BN2MF_parallel <- function(X) {
   
   X = as.matrix(X)
   dim = nrow(X)
@@ -111,7 +111,7 @@ NPBayesNMF_future <- function(X) {
   Kinit = ncol(X)
   
   bnp_switch = 1
-  nruns = 3
+  nruns = 4
   future_results <- list()
   
   EA = matrix()
@@ -130,6 +130,11 @@ NPBayesNMF_future <- function(X) {
   results
   }
 
-# X = matrix(runif(50), 10, 5)
-# results_npb <- NPBayesNMF(X)
-# system.time(NPBayesNMF(X))
+library(tictoc)
+load("./Sims/sim_dgp_rep1.RDA")
+X = sim_dgp_rep1$sim[[1]]
+
+tic()
+out <- BN2MF_parallel(X)
+toc()
+# 
