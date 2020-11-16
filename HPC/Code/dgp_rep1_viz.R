@@ -158,6 +158,29 @@ dgp_e1 %>%
   labs(y = "Relative Predictive Error")
 # dev.off()
 
+dgp_e1 %>% 
+  group_by(data, model) %>% 
+  summarise(qs = quantile(l2_true, c(0.25, 0.5, 0.75)), prob = c(0.25, 0.5, 0.75)) %>% 
+  pivot_wider(names_from = "prob",
+              values_from = "qs") %>% 
+  arrange(model)
+
+dgp_rep1_all %>%
+  dplyr::select(seed, data, grep("rank", colnames(.))) %>%
+  unnest(grep("rank", colnames(.))) %>%
+  pivot_longer(cols = pca_rank:bnmf_rank,
+               names_to = c("model", "drop"),
+               names_sep = "_",
+               values_to = "rank") %>%
+  mutate(rank = ifelse(rank > 5, "> 5", rank),
+         model = str_to_upper(model)) %>% 
+  left_join(., dgp_e1) %>% 
+  group_by(data, model, rank) %>% 
+  summarise(qs = quantile(l2_true, c(0.25, 0.5, 0.75)), prob = c(0.25, 0.5, 0.75)) %>% 
+  pivot_wider(names_from = "prob",
+              values_from = "qs") %>% 
+  arrange(model)
+
 
 #####
 # SSD
@@ -177,6 +200,12 @@ dgp_s1 %>%
   labs(y = "Symmetric Subspace Distance")
 #dev.off()
 
+dgp_s1 %>% 
+  group_by(data, model, matrix) %>% 
+  summarise(qs = quantile(ssdist, c(0.25, 0.5, 0.75)), prob = c(0.25, 0.5, 0.75)) %>% 
+  pivot_wider(names_from = "prob",
+              values_from = "qs") %>% 
+  arrange(matrix, model) %>% print(., n = 30)
 
 #####
 # Rank
@@ -209,4 +238,11 @@ dgp_re %>%
   scale_y_log10() +
   labs(y = "Relative Predictive Error")
 #dev.off()
+
+dgp_re %>% 
+  group_by(data, model, matrix) %>% 
+  summarise(qs = quantile(l2, c(0.25, 0.5, 0.75)), prob = c(0.25, 0.5, 0.75)) %>% 
+  pivot_wider(names_from = "prob",
+              values_from = "qs") %>% 
+  arrange(matrix, model) %>% print(., n = 26)
 
