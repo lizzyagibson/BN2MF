@@ -2,7 +2,7 @@
 #$ -cwd -S /bin/bash
 #$ -o /dev/null
 #$ -e /dev/null
-#$ -l mem=16G
+#$ -l mem=12G
 #$ -l time=:10000:
 #$ -M eag2186@cumc.columbia.edu
 

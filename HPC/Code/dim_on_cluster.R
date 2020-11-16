@@ -26,7 +26,7 @@ job_num
 source("/ifs/scratch/msph/ehs/eag2186/npbnmf/compare_functions.R")
 
 # Read in Sims
-load(paste0("/ifs/scratch/msph/ehs/eag2186/Data/sim_dim", , ".RDA"))
+load(paste0("/ifs/scratch/msph/ehs/eag2186/Data/sim_dim", job_num, ".RDA"))
 
 # Run everything
 
@@ -36,7 +36,7 @@ load(paste0("/ifs/scratch/msph/ehs/eag2186/Data/sim_dim", , ".RDA"))
 
 output_all <- to_save %>% 
   mutate(pca_out       = map(sim, get_pca),
-         pca_rotations = map(pca_out, function(x) x[[1]]),
+         pca_loadings = map(pca_out, function(x) x[[1]]),
          pca_scores    = map(pca_out, function(x) x[[2]]),
          pca_pred      = map(pca_out, function(x) x[[3]]),
          pca_rank      = map(pca_out, function(x) x[[4]]))
@@ -47,7 +47,7 @@ output_all <- to_save %>%
 
 output_all <- output_all %>% 
   mutate(fa_out       = map(sim, get_fa),
-         fa_rotations = map(fa_out, function(x) x[[1]]),
+         fa_loadings = map(fa_out, function(x) x[[1]]),
          fa_scores    = map(fa_out, function(x) x[[2]]),
          fa_pred      = map(fa_out, function(x) x[[3]]),
          fa_rank      = map(fa_out, function(x) x[[4]]))
@@ -57,38 +57,36 @@ output_all <- output_all %>%
 #####
 
 output_all <- output_all %>%
-  mutate(nmf_l2_out      = map(sim, get_nmf_l2),
-         nmf_l2_loadings = map(nmf_l2_out, function(x) x[[1]]),
-         nmf_l2_scores   = map(nmf_l2_out, function(x) x[[2]]),
-         nmf_l2_pred     = map(nmf_l2_out, function(x) x[[3]]),
-         nmf_l2_rank     = map(nmf_l2_out, function(x) x[[4]]))
+  mutate(nmfl2_out      = map(sim, get_nmf_l2),
+         nmfl2_loadings = map(nmfl2_out, function(x) x[[1]]),
+         nmfl2_scores   = map(nmfl2_out, function(x) x[[2]]),
+         nmfl2_pred     = map(nmfl2_out, function(x) x[[3]]),
+         nmfl2_rank     = map(nmfl2_out, function(x) x[[4]]))
 
 #####
 # Poisson NMF
 #####
 
 output_all <- output_all %>% 
-  mutate(nmf_p_out      = map(sim, get_nmf_p),
-         nmf_p_loadings = map(nmf_p_out, function(x) x[[1]]),
-         nmf_p_scores   = map(nmf_p_out, function(x) x[[2]]),
-         nmf_p_pred     = map(nmf_p_out, function(x) x[[3]]),
-         nmf_p_rank     = map(nmf_p_out, function(x) x[[4]]))
+  mutate(nmfp_out      = map(sim, get_nmf_p),
+         nmfp_loadings = map(nmfp_out, function(x) x[[1]]),
+         nmfp_scores   = map(nmfp_out, function(x) x[[2]]),
+         nmfp_pred     = map(nmfp_out, function(x) x[[3]]),
+         nmfp_rank     = map(nmfp_out, function(x) x[[4]]))
 
 #####
 # Symmetric Subspace Distance #
 #####
 
 output_all <- output_all %>% 
-  mutate(pca_rotation_ssdist   = map2(true_patterns, pca_rotations,   symm_subspace_dist),
-         pca_scores_ssdist     = map2(true_scores,   pca_scores,      symm_subspace_dist),
-         pca_uncenter_rotation_ssdist   = map2(true_patterns, pca_uncenter_rotations,   symm_subspace_dist),
-         pca_uncenter_scores_ssdist     = map2(true_scores,   pca_uncenter_scores,      symm_subspace_dist),
-         fa_rotations_ssdist   = map2(true_patterns, fa_rotations,    symm_subspace_dist),
-         fa_scores_ssdist      = map2(true_scores,   fa_scores,       symm_subspace_dist),
-         nmf_l2_loading_ssdist = map2(true_patterns, nmf_l2_loadings, symm_subspace_dist),
-         nmf_l2_scores_ssdist  = map2(true_scores,   nmf_l2_scores,   symm_subspace_dist),
-         nmf_p_loading_ssdist  = map2(true_patterns, nmf_p_loadings,  symm_subspace_dist),
-         nmf_p_scores_ssdist   = map2(true_scores,   nmf_p_scores,    symm_subspace_dist))
+  mutate(pca_loadings_ssdist  = map2(true_patterns, pca_loadings,   symm_subspace_dist),
+         pca_scores_ssdist    = map2(true_scores,   pca_scores,     symm_subspace_dist),
+         fa_loadings_ssdist   = map2(true_patterns, fa_loadings,    symm_subspace_dist),
+         fa_scores_ssdist     = map2(true_scores,   fa_scores,      symm_subspace_dist),
+         nmfl2_loading_ssdist = map2(true_patterns, nmfl2_loadings, symm_subspace_dist),
+         nmfl2_scores_ssdist  = map2(true_scores,   nmfl2_scores,   symm_subspace_dist),
+         nmfp_loading_ssdist  = map2(true_patterns, nmfp_loadings,  symm_subspace_dist),
+         nmfp_scores_ssdist   = map2(true_scores,   nmfp_scores,    symm_subspace_dist))
 
 #####
 # Save
