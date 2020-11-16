@@ -111,7 +111,7 @@ BN2MF_parallel <- function(X) {
   Kinit = ncol(X)
   
   bnp_switch = 1
-  nruns = 4
+  nruns = 3
   future_results <- list()
   
   EA = matrix()
@@ -127,7 +127,7 @@ BN2MF_parallel <- function(X) {
   results_all <- lapply(future_results, value)
   best <- which.max(sapply(results_all, function(x) x$score))
   results <- results_all[[best]]
-  results
+  return(results)
   }
 
 library(tictoc)
@@ -137,4 +137,4 @@ X = sim_dgp_rep1$sim[[1]]
 tic()
 out <- BN2MF_parallel(X)
 toc()
-# 
+# 29 minutes
