@@ -15,9 +15,7 @@ library(NMF)
 to_do = c(19  , 46  , 49  , 73  , 100 , 127 , 130 ,  145  , 154  , 172  , 181 ,  199  , 208  , 211 , 235
           , 253 , 262 , 280 , 289 , 292 , 307 , 316 ,  343  , 361  , 370  , 388 ,  397  , 415  , 424 , 427
           , 451 , 478 , 496 , 505 , 532 , 559 , 562 ,  577  , 586  , 589  , 604 ,  613  , 631  , 640 , 667
-          , 685 , 694 , 721 , 724 , 739 , 748 , 775 
-          # ,  784  
-          , 793  , 802  , 805 ,  829  , 856  , 859 , 883
+          , 685 , 694 , 721 , 724 , 739 , 748 , 775 ,  784  , 793  , 802  , 805 ,  829  , 856  , 859 , 883
           , 886 , 910 , 937 , 940 , 964 , 967 , 991 , 1018 , 1036 ,  1045 , 1072,  1075,  1090,  1099, 1102
           , 1117, 1126, 1129, 1153, 1180, 1198, 1207,  1210,  1234,  1252 , 1261,  1288,  1306,  1315, 1333
           , 1342, 1345, 1360, 1369, 1372, 1387, 1396,  1399,  1423,  1441 , 1450,  1468,  1477,  1495, 1504
@@ -34,59 +32,32 @@ source("./R/compare_functions.R")
 # Read in Sims
 load(paste0("./Sims/sim_dim.RDA"))
 
-dim_local = sim_over %>% 
+test_fa = sim_over %>% 
   slice(to_do)
 
 #####
-# PCA
+# Factor Analysis
 #####
 
-output_all <- dim_local %>% 
-  mutate(pca_out       = map(sim, get_pca)) %>% 
-  mutate(pca_loadings  = map(pca_out, function(x) x[[1]]),
-         pca_scores    = map(pca_out, function(x) x[[2]]),
-         pca_pred      = map(pca_out, function(x) x[[3]]),
-         pca_rank      = map(pca_out, function(x) x[[4]]))
-
-#####
-# L2 NMF
-#####
-
-output_all <- output_all %>%
- mutate(nmfl2_out      = map(sim, get_nmf_l2),
-        nmfl2_loadings = map(nmfl2_out, function(x) x[[1]]),
-        nmfl2_scores   = map(nmfl2_out, function(x) x[[2]]),
-        nmfl2_pred     = map(nmfl2_out, function(x) x[[3]]),
-        nmfl2_rank     = map(nmfl2_out, function(x) x[[4]]))
-
-#####
-# Poisson NMF
-#####
-
-output_all <- output_all %>% 
- mutate(nmfp_out      = map(sim, get_nmf_p),
-        nmfp_loadings = map(nmfp_out, function(x) x[[1]]),
-        nmfp_scores   = map(nmfp_out, function(x) x[[2]]),
-        nmfp_pred     = map(nmfp_out, function(x) x[[3]]),
-        nmfp_rank     = map(nmfp_out, function(x) x[[4]]))
+output_all <- 
+  test_fa %>% 
+  mutate(fa_out       = map(sim, function(x) try(get_fa(x))),
+         fa_loadings  = map(fa_out, function(x) if(class(x) == "try-error") {NA} else{x[[1]]}), 
+         fa_scores    = map(fa_out, function(x) if(class(x) == "try-error") {NA} else{x[[2]]}),
+         fa_pred      = map(fa_out, function(x) if(class(x) == "try-error") {NA} else{x[[3]]}),
+         fa_rank      = map(fa_out, function(x) if(class(x) == "try-error") {NA} else{x[[4]]}))
 
 #####
 # Symmetric Subspace Distance #
 #####
 
 output_all <- output_all %>% 
- mutate(pca_loadings_ssdist  = map2(true_patterns, pca_loadings,   symm_subspace_dist),
-        pca_scores_ssdist    = map2(true_scores,   pca_scores,     symm_subspace_dist),
-        nmfl2_loading_ssdist = map2(true_patterns, nmfl2_loadings, symm_subspace_dist),
-        nmfl2_scores_ssdist  = map2(true_scores,   nmfl2_scores,   symm_subspace_dist),
-        nmfp_loading_ssdist  = map2(true_patterns, nmfp_loadings,  symm_subspace_dist),
-        nmfp_scores_ssdist   = map2(true_scores,   nmfp_scores,    symm_subspace_dist))
+  mutate(fa_loadings_ssdist   = map2(true_patterns, fa_loadings,    
+                                     function(x,y) if(is.na(y)) {NA} else{symm_subspace_dist(x,y)}),
+         fa_scores_ssdist     = map2(true_scores,   fa_scores, 
+                                     function(x,y) if(is.na(y)) {NA} else{symm_subspace_dist(x,y)}))
 
-#####
-# Save
-#####
-                          
-output_all <- output_all %>% dplyr::select(-grep("_out", colnames(.)))
+unlist(output_all$fa_rank)
 
-save(output_all, file = paste0("./HPC/Rout/dim_out/dim_out_nofa.RDA"))
-
+output_all %>% slice(53)
+to_do[53]
