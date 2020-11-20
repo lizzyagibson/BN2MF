@@ -1,4 +1,4 @@
-function [EWA,EH] = NPBayesNMF(X,Kinit,num_iter)
+function [EWA,EH] = NPBayesNMF_jp(X,Kinit,num_iter)
 % X is the data matrix of non-negative values
 % Kinit is the maximum allowable factorization (initial). The algorithm tries to reduce this number.
 %       the size of EWA and EH indicate the learned factorization.
@@ -6,14 +6,14 @@ function [EWA,EH] = NPBayesNMF(X,Kinit,num_iter)
 %           values of these matrices according to their approximate posterior variational distributions.
 % num_iter is the number of iterations to run. The code doesn't terminate based on convergence currently.
 
-bnp_switch = 0;  % this turns on/off the Bayesian nonparametric part. I made the default off for now.
+bnp_switch = 1;  % this turns on/off the Bayesian nonparametric part. I made the default off for now.
 
 [dim,N] = size(X);
 
 h01 = 1/Kinit;
 h02 = 1;
 
-w01 = 1/dim;
+w01 = 1;
 w02 = 1;
 W1 = gamrnd(dim*ones(dim,Kinit),1/dim);
 W2 = dim*ones(dim,Kinit);
@@ -26,6 +26,7 @@ A2 = a02 + bnp_switch*1000*ones(1,Kinit);
 H1 = ones(Kinit,N);
 H2 = ones(Kinit,N);
 
+num_iter = 100000;
 K = Kinit;
 for iter = 1:num_iter
   
