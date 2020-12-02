@@ -12,8 +12,8 @@ source("/ifs/scratch/msph/ehs/eag2186/npbnmf/compare_functions.R")
 source("/ifs/scratch/msph/ehs/eag2186/npbnmf/factor_correspondence.R")
 
 load(paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/dim_out/dim_out", job_num, ".RDA")) 
-load("/Users/lizzy/BN2MF/HPC/Rout/dim_out/dim_out_1_ex.RDA") 
-output_all
+#load("/Users/lizzy/BN2MF/HPC/Rout/dim_out/dim_out_1_ex.RDA") 
+#output_all
 
 # Calculate all error metrics
 
@@ -30,39 +30,49 @@ output_all <- output_all %>%
 output_all <- output_all %>%
   mutate(true_patterns   = map(true_patterns, t),
          nmfl2_loadings  = map(nmfl2_loadings, t),
-         nmfp_loadings   = map(nmfp_loadings, t)) %>% 
-  mutate(pca_loadings_re = map2(true_patterns, pca_loadings, 
-                           function(x,y) if(ncol(y) == 4) 
-                                         {factor_correspondence(as.matrix(x), 
-                                          as.matrix(y), nn = FALSE)$rearranged} else{NA}),
-         pca_scores_re = map2(true_scores, pca_scores, 
-                                function(x,y) if(ncol(y) == 4) 
-                                {factor_correspondence(as.matrix(x), 
-                                                       as.matrix(y), nn = FALSE)$rearranged} else{NA}),
-         fa_loadings_re = map2(true_patterns, fa_loadings, 
-                                function(x,y) if(ncol(y) == 4) 
-                                {factor_correspondence(as.matrix(x), 
-                                                       as.matrix(y), nn = FALSE)$rearranged} else{NA}),
-         fa_scores_re = map2(true_scores, fa_scores, 
-                                function(x,y) if(ncol(y) == 4) 
-                                {factor_correspondence(as.matrix(x), 
-                                                       as.matrix(y), nn = FALSE)$rearranged} else{NA}),
-         nmfl2_loadings_re = map2(true_patterns, nmfl2_loadings, 
-                                function(x,y) if(ncol(y) == 4) 
-                                {factor_correspondence(as.matrix(x), 
-                                                       as.matrix(y))$rearranged} else{NA}),
-         nmfl2_scores_re = map2(true_scores, nmfl2_scores, 
-                                function(x,y) if(ncol(y) == 4) 
-                                {factor_correspondence(as.matrix(x), 
-                                                       as.matrix(y))$rearranged} else{NA}),
-         nmfp_loadings_re = map2(true_patterns, nmfp_loadings, 
-                                function(x,y) if(ncol(y) == 4) 
-                                {factor_correspondence(as.matrix(x), 
-                                                       as.matrix(y))$rearranged} else{NA}),
-         nmfp_scores_re = map2(true_scores, nmfp_scores, 
-                                function(x,y) if(ncol(y) == 4) 
-                                {factor_correspondence(as.matrix(x), 
-                                                       as.matrix(y))$rearranged} else{NA}))
+         nmfp_loadings   = map(nmfp_loadings, t),
+         true_patterns = map(true_patterns, as.matrix),
+         pca_loadings = map(pca_loadings, as.matrix)) %>%
+  mutate(pca_perm = map2(true_patterns, pca_loadings, 
+                         function(x,y) if(ncol(y) == 4)
+                         {factor_correspondence(as.matrix(x),
+                                                as.matrix(y), nn = FALSE)$permutation_matrix} else{NA}),
+         pca_loadings_re = map2(pca_loadings, pca_perm, 
+                                function(x,y) if(ncol(x) == 4) 
+                                {x %*% y} else{NA}),
+         pca_scores_re = map2(pca_scores, pca_perm, 
+                              function(x,y) if(ncol(x) == 4) 
+                              {x %*% y} else{NA}),
+         fa_perm = map2(true_patterns, fa_loadings, 
+                         function(x,y) if(ncol(y) == 4)
+                         {factor_correspondence(as.matrix(x),
+                                                as.matrix(y), nn = FALSE)$permutation_matrix} else{NA}),
+         fa_loadings_re = map2(fa_loadings, fa_perm, 
+                                function(x,y) if(ncol(x) == 4) 
+                                {x %*% y} else{NA}),
+         fa_scores_re = map2(fa_scores, fa_perm, 
+                              function(x,y) if(ncol(x) == 4) 
+                              {x %*% y} else{NA}),
+         nmfl2_perm = map2(true_patterns, nmfl2_loadings,
+                           function(x,y) if(ncol(y) == 4)
+                           {factor_correspondence(as.matrix(x),
+                                                  as.matrix(y))$permutation_matrix} else{NA}),
+         nmfl2_loadings_re = map2(nmfl2_loadings, nmfl2_perm, 
+                                  function(x,y) if(ncol(x) == 4) 
+                                  {x %*% y} else{NA}),
+         nmfl2_scores_re = map2(nmfl2_scores, nmfl2_perm,
+                                function(x,y) if(ncol(x) == 4) 
+                                {x %*% y} else{NA}),
+         nmfp_perm = map2(true_patterns, nmfp_loadings,
+                          function(x,y) if(ncol(y) == 4)
+                          {factor_correspondence(as.matrix(x),
+                                                 as.matrix(y))$permutation_matrix} else{NA}),
+         nmfp_loadings_re = map2(nmfp_loadings, nmfp_perm, 
+                                 function(x,y) if(ncol(x) == 4) 
+                                 {x %*% y} else{NA}),
+         nmfp_scores_re = map2(nmfp_scores, nmfp_perm, 
+                               function(x,y) if(ncol(x) == 4) 
+                               {x %*% y} else{NA}))
          
 output_all <- 
   output_all %>% 
@@ -95,6 +105,4 @@ output_all <- output_all %>%
 
 save(output_all, file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/combo_dim/dim_out_", job_num, ".RDA"))
 
-
-# output_all %>% unnest(pca_rank:nmfp_load_l2) %>% View()
 
