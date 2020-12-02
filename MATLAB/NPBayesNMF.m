@@ -1,4 +1,4 @@
-function [EWA, EH] = NPBayesNMF(X)
+function [EWA, EH, varH, alphaH, betaH, varWA] = NPBayesNMF(X)
     %EWA_low, EH_low, varWA_low, varH_low, alphaH_low, betaH_low] = NPBayesNMF(X)
 % X is the data matrix of non-negative values
 % Kinit is the maximum allowable factorization (initial). The algorithm tries to reduce this number.
@@ -16,21 +16,23 @@ end_score = zeros(10, 1);
 %Not sure if i need this
 EWA = [];
 EH = [];
-%varWA = [];
-%varH = [];
-%alphaH = [];
-%betaH = [];
+varWA = [];
+varH = [];
+alphaH = [];
+betaH = [];
 
 Kinit = N;
 
 for i = 1:10 % Switch back to 1:10
 
 K = Kinit;
-    
+ 
+%h01 = 1/Kinit;
 h01 = 1; % Try h with non-sparse prior, yes!
 h02 = 1;
 
 w01 = 1;
+%w01 = 1/dim;
 w02 = 1;
 W1 = gamrnd(dim*ones(dim,Kinit),1/dim);
 % gamrnd(A,B) generates random numbers from the gamma distribution 
@@ -114,10 +116,10 @@ disp(['Run Number: ' num2str(i) '. Iter Number: ' num2str(iter) '. Iter Score: '
 if i == 1 || (i > 1 && (end_score(i) >= max(end_score)))
     EWA = (W1./W2)*diag(A1./A2);
     EH = H1./H2;
-    %varWA = (W1 .* A1) .* (W1 + A1 + 1) ./ (W2.^2 .* A2.^2);
-    %varH = H1 ./ H2.^2;
-    %alphaH = H1;
-    %betaH = H2;
+    varWA = ((W1 .* A1) .* (W1 + A1 + 1)) ./ (W2.^2 .* A2.^2);
+    varH = H1 ./ H2.^2;
+    alphaH = H1;
+    betaH = H2;
 
 end
 
