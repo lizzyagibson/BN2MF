@@ -1,47 +1,33 @@
-%% Setup the Import Options and import the data
-% opts = delimitedTextImportOptions("NumVariables", 50);
-% % Specify range and delimiter
-% opts.DataLines = [2, Inf];
-% opts.Delimiter = ",";
-% % Specify column names and types
-% opts.VariableTypes = ["double", "double", "double", "double", "double", "double", ...
-%     "double", "double", "double", "double", "double", "double", "double", "double", "double", ...
-%     "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", ...
-%     "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", ...
-%     "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", ...
-%     "double", "double", "double", "double", "double"];
-% % Specify file level properties
-% opts.ExtraColumnsRule = "ignore";
-% opts.EmptyLineRule = "read";
-% % Import the data
-% simdata1 = readtable(strcat("/Users/lizzy/BN2MF/Sims/dgp_rep1/sim_dgp_rep1_", num2str(1), ".csv"), opts);
-% %% Convert to output type
-% simdata1 = table2array(simdata1);
-% %% Clear temporary variables
-% clear opts
+% Import the data
+simdata1 = readtable(strcat("/Users/lizzy/BN2MF/Sims/dgp_rep1/sim_dgp_rep1_", num2str(1), ".csv"));
+% Convert to output type
+simdata1 = table2array(simdata1);
 
-%[EWA, EH, varH, alphaH, betaH] = NPBayesNMF(simdata1);
-% x = gaminv(p,a,b) returns the icdf of the gamma distribution with 
-% shape parameter a and the scale parameter b, evaluated at the values in p.
+tnot = 0:.0001:0.02;
+[~, ni] = size(tnot);
+out = zeros(ni,4);
 
-% shapeH = 1./betaH;
-% gaminv(0.025, alphaH, shapeH);
-% gaminv(0.975, alphaH, shapeH);
-sum(sum( varH ./ EH))
+[EWAreg, EHreg, varHreg, alphaHreg, betaHreg] = NPBayesNMF(simdata1);
+
+for i = 1:ni
+                                       
+    [EWA, EH, varH, alphaH, betaH, final_score, final_iter] = ...
+            NPBayesNMF_annealing(simdata1, tnot(i));
+    [N,rank] = size(EWA);
+
+    out(i, 1) = rank;
+    out(i, 2) = final_score;
+    out(i, 3) = final_iter;
     
-[EWAa, EHa, varHa, alphaHa, betaHa] = NPBayesNMF_annealing(simdata1);
-sum(sum( varHa ./ EHa))
+    try
+        varHdiff = varH - varHreg; % difference matrix, positive means annealed is wider
+        out(i, 4) = mean(mean(varHdiff));
+    catch ME
+    end
+    
+    disp(i)
+end
 
-shapeHa = 1./betaHa;
-lower = gaminv(0.025, alphaHa, shapeHa);
-upper = gaminv(0.975, alphaHa, shapeHa);
-
-% Hard to compare with truth
-% Need to normalize truth and EH and then compare
-% ship to R
-
-% save("/Users/lizzy/BN2MF/MATLAB/test_loadings.mat", 'EHa');
-% save("/Users/lizzy/BN2MF/MATLAB/test_upper.mat", 'upper');
-% save("/Users/lizzy/BN2MF/MATLAB/test_lower.mat", 'lower');
-
-
+tnot_long = reshape(tnot, 201, 1);
+grid_out = [tnot_long,out];
+save("/Users/lizzy/BN2MF/MATLAB/grid_out4.m", 'grid_out')

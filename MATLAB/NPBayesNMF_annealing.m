@@ -1,4 +1,4 @@
-function [EWA,EH, varH, alphaH, betaH] = NPBayesNMF_annealing(X)
+function [EWA,EH, varH, alphaH, betaH, final_score, final_iter] = NPBayesNMF_annealing(X, t0)
 % X is the data matrix of non-negative values
 % Kinit is the maximum allowable factorization (initial). The algorithm tries to reduce this number.
 %       the size of EWA and EH indicate the learned factorization.
@@ -7,10 +7,6 @@ function [EWA,EH, varH, alphaH, betaH] = NPBayesNMF_annealing(X)
 % num_iter is the number of iterations to run. The code doesn't terminate based on convergence currently.
 
 bnp_switch = 1;  % this turns on/off the Bayesian nonparametric part.
-
-alphaH = [];
-betaH = [];
-varH = [];
 
 [dim,N] = size(X);
 Kinit = N;
@@ -35,16 +31,19 @@ K = Kinit;
 num_iter = 100000;
 score = zeros(num_iter, 1);
 
-t0 = .9;
-powC = 2 ; 
+% t0 = .015;
+%powC = 1 ;  % also 1/2 or 2 works here
+%base = 10 ; % we've used .75 here
+%  we can kinda trade off between basePow \in (0,1) and powC 1/4 ... 1 .. 4
+%  when basepow is close to zero, powC far from 1 (eg 2) seems to be slow to
+%  converge AND give the same answer as just rocking basepow = 0 
+%  aka, when the base "heat" is low, we want a powC < 1, for a slower
+%  cooling schedule (eg pow = 1/2 base = .2 )
+%  when base heat is high
 for iter = 1:num_iter
 
-    T = 1+ ...
-        t0^(iter * powC  );  % +   ...
-%        .75^((iter-1  )* powC);                       % deterministic annealing temperature
-    T = max(T,1);
-    
-    
+    T = 1 + t0 + 0.75^(iter-1); % deterministic annealing temperature
+
     EW = W1./W2;
     X_reshape = repmat(reshape(X',[1 N dim]),[K 1 1]);
     ElnWA = psi(W1) - log(W2) + repmat(psi(A1)-log(A2),dim,1);
@@ -93,5 +92,7 @@ EH = H1./H2;
 alphaH = H1;
 betaH = H2;
 varH = H1 ./ H2.^2;
+final_score = score(iter);
+final_iter = iter;
 
 end
