@@ -20,3 +20,4 @@ R/Sims/*.mat
 HPC/MATLABout
 HPC/Rout
 MATLAB/Output/*
+MATLAB/grid_out*
