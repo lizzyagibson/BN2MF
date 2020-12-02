@@ -198,10 +198,25 @@ melt(cormat3) %>% rename(Correlation = value) %>%
 ```{r} 
 # save(sim_over, file = "./Sims/sim_dim.RDA")
 
-for (i in 1:nrow(sim_over)) {
-  to_save = sim_over[i,]
-  save(to_save, file = paste0("./Sims/sim_dim/sim_dim", i, ".RDA"))
-}
+# for (i in 1:nrow(sim_over)) {
+#   to_save = sim_over[i,]
+#   save(to_save, file = paste0("./Sims/sim_dim/sim_dim", i, ".RDA"))
+# }
 
+# for (i in 1:nrow(sim_over)) {
+#   to_save = as_tibble(sim_over$sim[[i]])
+#   write_csv(to_save, path = paste0("./Sims/sim_dim/sim_dim", i, ".csv"))
+# }
+
+```
+
+Need to repeat bc diff number of patterns requires diff functions!
+```{r}
+to_do = sim_over %>% dplyr::select(seed, participants, chemicals, patterns) %>% 
+  mutate(row_num = 1:nrow(.)) %>% 
+  filter(patterns != 4) %>% 
+  pull(row_num)
+
+save(to_do, file = "./R/to_do_dim.RDA")
 ```
 
