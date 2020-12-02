@@ -42,7 +42,10 @@ dgp_s1 <- dgp_rep1_all %>% dplyr::select(seed, data, grep("_ssdist", colnames(.)
                values_to = "ssdist",
                names_sep = "_") %>%
   mutate(model = str_to_upper(model)) %>% 
-  dplyr::select(-drop)
+  dplyr::select(-drop) %>% 
+  mutate(matrix = case_when(matrix == "rotations" ~ "Loadings",
+                            matrix == "loading" ~ "Loadings",
+                            TRUE ~ matrix))
 
 #####
 # Relative error on loadings and scores
@@ -56,36 +59,62 @@ dgp_rep1_all_t <-
          nmfp_loadings  = map(nmfp_loadings, t),
          eh = map(eh, t))
 
-dgp_rep1_all_re <- dgp_rep1_all_t %>% 
+dgp_rep1_all_re <- 
+  dgp_rep1_all_t %>% 
   dplyr::select(seed, data, 
                 true_patterns, 
                 grep("scores", colnames(.)),
                 grep("loadings", colnames(.)),
                 bnmf_loadings = eh, bnmf_scores = ewa,
                 -grep("_ssdist", colnames(.))) %>% 
-  pivot_longer(true_patterns:bnmf_scores,
+  pivot_longer(pca_scores:bnmf_scores,
                names_to = c("model", "matrix"),
                names_sep = "_") %>% 
   drop_na(value) %>% 
-  mutate(matrix = ifelse(matrix == "patterns", "loadings", matrix)) %>% 
-  group_by(seed, data, matrix) %>% 
-  mutate(truth = value[model == "true"]) %>% 
-  filter(model != "true") %>% 
-  mutate(value_re = 
-           case_when(str_detect(model, "a") ~ map2(truth, value, 
-                                              function(x,y) if(ncol(y) == 4) 
-                                              {factor_correspondence(as.matrix(x), 
-                                              as.matrix(y), nn = FALSE)$rearranged} else{NA}),
-                     TRUE ~ map2(truth, value, 
-                           function(x,y) if(ncol(y) == 4) 
-                           {factor_correspondence(as.matrix(x), 
-                            as.matrix(y))$rearranged} else{NA})))
+  pivot_wider(names_from = "matrix",
+              values_from = "value") %>% 
+  mutate(perm = case_when(str_detect(model, "a") ~ map2(true_patterns, loadings, 
+                                                   function(x,y) if(ncol(y) == 4) 
+                                                   {factor_correspondence(as.matrix(x), 
+                                                   as.matrix(y), nn = FALSE)$permutation_matrix} else{NA}),
+                          str_detect(model, "nmf") ~ map2(true_patterns, loadings, 
+                                                     function(x,y) if(ncol(y) == 4) 
+                                                     {factor_correspondence(as.matrix(x), 
+                                                     as.matrix(y))$permutation_matrix} else{NA})),
+         loadings_re = map2(loadings, perm, 
+                            function(x,y) if(ncol(x) == 4) 
+                            {as.matrix(x) %*% as.matrix(y)} else{NA}),
+         scores_re   = map2(scores,   perm, 
+                            function(x,y) if(ncol(x) == 4) 
+                            {as.matrix(x) %*% as.matrix(y)} else{NA}))
+         
+
+save(dgp_rep1_all_re, file = "./HPC/Rout/dgp_rep1_reordered.RDA")
+load("./HPC/Rout/dgp_rep1_reordered.RDA")
 
 dgp_re <- dgp_rep1_all_re %>% 
-  filter(!is.na(value_re)) %>%
-  mutate(l2 = map2(truth, value_re, function (x,y) norm(x-y, "F")/norm(x, "F")),
-         l1 = map2(truth, value_re, function (x,y) sum(abs(x-y))/sum(abs(x)))) %>% 
-  unnest(c(l1, l2))
+  mutate(l2_loadings = map2(true_patterns, loadings_re, function (x,y) norm(x-y, "F")/norm(x, "F")),
+         l2_scores = map2(true_scores, scores_re,     function (x,y) norm(x-y, "F")/norm(x, "F"))) %>% 
+  unnest(c(l2_loadings, l2_scores)) %>% 
+  dplyr::select(seed, data, model, l2_loadings, l2_scores) %>% 
+  pivot_longer(l2_loadings:l2_scores,
+               names_prefix = "l2_",
+               names_to = "matrix",
+               values_to = "l2")
+
+#####
+# Cosine distance
+#####
+
+dgp_cos <- dgp_rep1_all_re %>% 
+  filter(!is.na(loadings_re)) %>% 
+  mutate(cos_dist_loadings = map2(true_patterns, loadings_re, cos_dist),
+         cos_dist_scores = map2(true_scores, scores_re, cos_dist)) %>% 
+  dplyr::select(seed, data, model, cos_dist_loadings, cos_dist_scores) %>% 
+  pivot_longer(c(cos_dist_loadings, cos_dist_scores),
+               names_prefix = "cos_dist_",
+               names_to = "matrix",
+               values_to = "cosine_dist") %>% unnest(cosine_dist)
 
 #####
 # Rank
@@ -192,11 +221,11 @@ dgp_s1 %>%
          model = ifelse(model == "BNMF", "BN2MF", model),
          matrix = str_to_title(matrix)) %>% 
   ggplot(aes(x = model, y = ssdist)) +
+  #geom_hline(yintercept = 0.5, color = "pink", linetype = "dashed", size = 0.5) +
   geom_jitter(alpha = 0.15, size = 0.5, height = 0, width = .3) +
   geom_boxplot(aes(color = model, fill = model),
                alpha = 0.5, outlier.shape = NA) +
   facet_grid(matrix ~ data) + 
-  geom_hline(yintercept = 0.5, color = "pink", linetype = "dashed", size = 0.5) +
   labs(y = "Symmetric Subspace Distance")
 #dev.off()
 
@@ -221,7 +250,6 @@ cor_rank
 #####
 
 dgp_re <- dgp_re %>% 
-  dplyr::select(-value, -truth, -value_re) %>% 
   mutate(data = as.factor(data)) 
 
 #pdf("./Figures/bnmf_loadscore_error.pdf", width = 10, height = 10)
@@ -241,8 +269,36 @@ dgp_re %>%
 
 dgp_re %>% 
   group_by(data, model, matrix) %>% 
-  summarise(qs = quantile(l2, c(0.25, 0.5, 0.75)), prob = c(0.25, 0.5, 0.75)) %>% 
+  summarise(qs = quantile(l2, c(0.25, 0.5, 0.75), na.rm = TRUE), prob = c(0.25, 0.5, 0.75)) %>% 
   pivot_wider(names_from = "prob",
               values_from = "qs") %>% 
-  arrange(matrix, model) %>% print(., n = 26)
+  arrange(matrix, model) %>% print(., n = 30)
+
+#####
+# Cosine distance
+#####
+
+#pdf("./Figures/bnmf_cos.pdf", width = 10, height = 10)
+dgp_cos %>% 
+  mutate(data = fct_relevel(data, "Distinct", "Overlapping", "Correlated"),
+         model = str_to_upper(model),
+         model = ifelse(model == "BNMF", "BN2MF", model),
+         matrix = str_to_title(matrix)) %>% 
+  ggplot(aes(x = model, y = cosine_dist)) +
+  geom_jitter(alpha = 0.15, size = 0.5, height = 0, width = .3) +
+  geom_boxplot(aes(color = model, fill = model), 
+               alpha = 0.5, outlier.shape = NA) +
+  facet_grid(matrix ~ data, scales = "free") + 
+  labs(y = "Cosine Similarity")
+#dev.off()
+
+dgp_cos %>% 
+  #filter(grepl("bnmf", model)) %>% 
+  group_by(data, model, matrix) %>% 
+  summarise(qs = quantile(cosine_dist, c(0.25, 0.5, 0.75), na.rm = TRUE), prob = c(0.25, 0.5, 0.75),
+            min = min(cosine_dist)) %>% 
+  pivot_wider(names_from = "prob",
+              values_from = "qs") %>% 
+  arrange(matrix, model) %>% print(., n = 30)
+
 
