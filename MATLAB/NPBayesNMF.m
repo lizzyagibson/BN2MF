@@ -1,4 +1,4 @@
-function [EWA, EH, varH, alphaH, betaH, varWA] = NPBayesNMF(X)
+function [EWA, EH, varH, alphaH, betaH, varWA, finalscore] = NPBayesNMF(X)
     %EWA_low, EH_low, varWA_low, varH_low, alphaH_low, betaH_low] = NPBayesNMF(X)
 % X is the data matrix of non-negative values
 % Kinit is the maximum allowable factorization (initial). The algorithm tries to reduce this number.
@@ -8,22 +8,11 @@ function [EWA, EH, varH, alphaH, betaH, varWA] = NPBayesNMF(X)
 % num_iter is the number of iterations to run. The code terminates based on convergence currently.
 
 bnp_switch = 1;  % this turns on/off the Bayesian nonparametric part. On now.
-
 [dim,N] = size(X);
-
 end_score = zeros(10, 1);
-
-%Not sure if i need this
-EWA = [];
-EH = [];
-varWA = [];
-varH = [];
-alphaH = [];
-betaH = [];
-
 Kinit = N;
 
-for i = 1:10 % Switch back to 1:10
+for i = 1:10 % Choose best of 10 runs
 
 K = Kinit;
  
@@ -120,6 +109,7 @@ if i == 1 || (i > 1 && (end_score(i) >= max(end_score)))
     varH = H1 ./ H2.^2;
     alphaH = H1;
     betaH = H2;
+    finalscore = end_score(i);
 
 end
 
