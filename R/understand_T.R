@@ -38,6 +38,20 @@ mean_out = rbind(mean_out1, mean_out2)
 colnames(mean_out) = c("t0", "rank", "score", "iter", "mean", "run")
 
 mean_out %>% 
+  filter(rank != 4) %>% 
+  arrange(desc(rank))
+
+mean_o = readMat("./MATLAB/grid_out4.mat")[[1]] %>% as_tibble()
+colnames(mean_o) = c("t0", "rank", "score", "iter", "mean_diff", "mean_T", "mean_reg")
+
+mean_o %>% 
   filter(rank == 4) %>% 
-  arrange(desc(mean))
+  arrange((t0))
+
+mean_10 = readMat("./MATLAB/grid_out5.mat")[[1]] %>% as_tibble()
+colnames(mean_10) = c("t0", "rank", "score", "iter", "mean_diff", "mean_T", "mean_reg")
+
+mean_10 %>% 
+  filter(rank == 4) %>% 
+  arrange(t0)
 

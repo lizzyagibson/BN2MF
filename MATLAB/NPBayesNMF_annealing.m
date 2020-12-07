@@ -1,4 +1,4 @@
-function [EWA,EH, varH, alphaH, betaH, final_score, final_iter] = NPBayesNMF_annealing(X, t0)
+function [EWA,EH, varH, alphaH, betaH, varWA, finalscore, final_iter] = NPBayesNMF_annealing(X, t0)
 % X is the data matrix of non-negative values
 % Kinit is the maximum allowable factorization (initial). The algorithm tries to reduce this number.
 %       the size of EWA and EH indicate the learned factorization.
@@ -7,10 +7,12 @@ function [EWA,EH, varH, alphaH, betaH, final_score, final_iter] = NPBayesNMF_ann
 % num_iter is the number of iterations to run. The code doesn't terminate based on convergence currently.
 
 bnp_switch = 1;  % this turns on/off the Bayesian nonparametric part.
-
 [dim,N] = size(X);
 Kinit = N;
+end_score = zeros(10, 1);
 
+for i = 1:10 % Choose best of 10 runs
+    
 h01 = 1; %/Kinit;
 h02 = 1;
 
@@ -85,14 +87,19 @@ for iter = 1:num_iter
  
 end
 
-disp(['Iter Number: ' num2str(iter) '. Iter Score: ' num2str(score(iter))]); 
+end_score(i) = score(find(score,1,'last'));  
+disp(['Run Number: ' num2str(i) '. Iter Number: ' num2str(iter) '. Iter Score: ' num2str(end_score(i))]); 
 
-EWA = (W1./W2)*diag(A1./A2);
-EH = H1./H2;
-alphaH = H1;
-betaH = H2;
-varH = H1 ./ H2.^2;
-final_score = score(iter);
-final_iter = iter;
+% Among the results, use the fitted variational parameters that achieve the HIGHEST ELBO
+if i == 1 || (i > 1 && (end_score(i) >= max(end_score)))
+    EWA = (W1./W2)*diag(A1./A2);
+    EH = H1./H2;
+    varWA = ((W1 .* A1) .* (W1 + A1 + 1)) ./ (W2.^2 .* A2.^2);
+    varH = H1 ./ H2.^2;
+    alphaH = H1;
+    betaH = H2;
+    finalscore = end_score(i);
+    final_iter = iter;
+end
 
 end
