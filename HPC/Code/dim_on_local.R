@@ -16,7 +16,7 @@ to_do = c(19  , 46  , 49  , 73  , 100 , 127 , 130 ,  145  , 154  , 172  , 181 , 
           , 253 , 262 , 280 , 289 , 292 , 307 , 316 ,  343  , 361  , 370  , 388 ,  397  , 415  , 424 , 427
           , 451 , 478 , 496 , 505 , 532 , 559 , 562 ,  577  , 586  , 589  , 604 ,  613  , 631  , 640 , 667
           , 685 , 694 , 721 , 724 , 739 , 748 , 775 
-          # ,  784  
+          ,  784  
           , 793  , 802  , 805 ,  829  , 856  , 859 , 883
           , 886 , 910 , 937 , 940 , 964 , 967 , 991 , 1018 , 1036 ,  1045 , 1072,  1075,  1090,  1099, 1102
           , 1117, 1126, 1129, 1153, 1180, 1198, 1207,  1210,  1234,  1252 , 1261,  1288,  1306,  1315, 1333
@@ -36,7 +36,8 @@ source("./R/factor_correspondence.R")
 load(paste0("./Sims/sim_dim.RDA"))
 
 dim_local = sim_over %>% 
-  slice(to_do)
+  slice(to_do) %>% 
+  mutate(id = to_do)
 
 #####
 # PCA
@@ -54,7 +55,7 @@ output_nofa <- dim_local %>%
 #####
 
 output_nofa <- output_nofa %>%
- mutate(nmfl2_out      = map(sim, get_nmf_l2),
+ mutate(nmfl2_out      = map2(sim, patterns, get_nmf_l2_dim),
         nmfl2_loadings = map(nmfl2_out, function(x) x[[1]]),
         nmfl2_scores   = map(nmfl2_out, function(x) x[[2]]),
         nmfl2_pred     = map(nmfl2_out, function(x) x[[3]]),
@@ -65,7 +66,7 @@ output_nofa <- output_nofa %>%
 #####
 
 output_nofa <- output_nofa %>% 
- mutate(nmfp_out      = map(sim, get_nmf_p),
+ mutate(nmfp_out      = map2(sim, patterns, get_nmf_p_dim),
         nmfp_loadings = map(nmfp_out, function(x) x[[1]]),
         nmfp_scores   = map(nmfp_out, function(x) x[[2]]),
         nmfp_pred     = map(nmfp_out, function(x) x[[3]]),
@@ -97,7 +98,7 @@ output_nofa <- output_nofa %>%
          fa_loadings_ssdist = NA,
          fa_scores_ssdist = NA)
 
-# save(output_nofa, file = paste0("./HPC/Rout/dim_out/dim_out_nofa.RDA"))
+# save(output_nofa, file = paste0("./HPC/Rout/dim_out_nofa.RDA"))
 load("./HPC/Rout/dim_out/dim_out_nofa.RDA")
 output_nofa
 
@@ -119,37 +120,37 @@ output_nofa <- output_nofa %>%
          nmfp_loadings   = map(nmfp_loadings, t),
          true_patterns = map(true_patterns, as.matrix),
          pca_loadings = map(pca_loadings, as.matrix)) %>%
-  mutate(pca_perm = map2(true_patterns, pca_loadings, 
-                                function(x,y) if(ncol(y) == 4)
-                                {factor_correspondence(as.matrix(x),
-                                 as.matrix(y), nn = FALSE)$permutation_matrix} else{NA}),
-         pca_loadings_re = map2(pca_loadings, pca_perm, 
-                                function(x,y) if(ncol(x) == 4) 
+  mutate(pca_perm = map2(true_patterns, pca_loadings,
+                         function(x,y) if(ncol(y) == ncol(x))
+                         {factor_correspondence(as.matrix(x),
+                                                as.matrix(y), nn = FALSE)$permutation_matrix} else{NA}),
+         pca_loadings_re = map2(pca_loadings, pca_perm,
+                                function(x,y) if(!any(is.na(y)))
                                 {x %*% y} else{NA}),
-         pca_scores_re = map2(pca_scores, pca_perm, 
-                              function(x,y) if(ncol(x) == 4) 
+         pca_scores_re = map2(pca_scores, pca_perm,
+                              function(x,y) if(!any(is.na(y)))
                               {x %*% y} else{NA}),
          fa_loadings_re = NA,
          fa_scores_re = NA,
          nmfl2_perm = map2(true_patterns, nmfl2_loadings,
-                                  function(x,y) if(ncol(y) == 4)
-                                  {factor_correspondence(as.matrix(x),
-                                                         as.matrix(y))$permutation_matrix} else{NA}),
-         nmfl2_loadings_re = map2(nmfl2_loadings, nmfl2_perm, 
-                                  function(x,y) if(ncol(x) == 4) 
+                           function(x,y) if(ncol(y) == ncol(x))
+                           {factor_correspondence(as.matrix(x),
+                                                  as.matrix(y))$permutation_matrix} else{NA}),
+         nmfl2_loadings_re = map2(nmfl2_loadings, nmfl2_perm,
+                                  function(x,y) if(!any(is.na(y)))
                                   {x %*% y} else{NA}),
          nmfl2_scores_re = map2(nmfl2_scores, nmfl2_perm,
-                                function(x,y) if(ncol(x) == 4) 
+                                function(x,y) if(!any(is.na(y)))
                                 {x %*% y} else{NA}),
          nmfp_perm = map2(true_patterns, nmfp_loadings,
-                           function(x,y) if(ncol(y) == 4)
-                           {factor_correspondence(as.matrix(x),
-                           as.matrix(y))$permutation_matrix} else{NA}),
-         nmfp_loadings_re = map2(nmfp_loadings, nmfp_perm, 
-                                 function(x,y) if(ncol(x) == 4) 
+                          function(x,y) if(ncol(y) == ncol(x))
+                          {factor_correspondence(as.matrix(x),
+                                                 as.matrix(y))$permutation_matrix} else{NA}),
+         nmfp_loadings_re = map2(nmfp_loadings, nmfp_perm,
+                                 function(x,y) if(!any(is.na(y)))
                                  {x %*% y} else{NA}),
-         nmfp_scores_re = map2(nmfp_scores, nmfp_perm, 
-                               function(x,y) if(ncol(x) == 4) 
+         nmfp_scores_re = map2(nmfp_scores, nmfp_perm,
+                               function(x,y) if(!any(is.na(y)))
                                {x %*% y} else{NA}))
 
 output_nofa
@@ -160,10 +161,8 @@ output_nofa <-
                             function(x,y) if(!any(is.na(y))) {norm(x-y, "F")/norm(x, "F")} else{NA}),
          pca_score_l2 = map2(true_scores, pca_scores_re, 
                              function(x,y) if(!any(is.na(y))) {norm(x-y, "F")/norm(x, "F")} else{NA}),
-         fa_load_l2 = map2(true_patterns, fa_loadings_re,
-                           function(x,y) if(!any(is.na(y))) {norm(x-y, "F")/norm(x, "F")} else{NA}),
-         fa_score_l2 = map2(true_scores, fa_scores_re,
-                            function(x,y) if(!any(is.na(y))) {norm(x-y, "F")/norm(x, "F")} else{NA}),
+         fa_load_l2 = NA,
+         fa_score_l2 = NA,
          nmfl2_load_l2 = map2(true_patterns, nmfl2_loadings_re,
                               function(x,y) if(!any(is.na(y))) {norm(x-y, "F")/norm(x, "F")} else{NA}),
          nmfl2_score_l2 = map2(true_scores, nmfl2_scores_re,
@@ -185,5 +184,8 @@ output_nofa_summaries <- output_nofa %>%
 
 for (i in 1:nrow(output_nofa_summaries)) {
   no_fa_summaries = output_nofa_summaries[i,]
-  save(no_fa_summaries, file = paste0("./HPC/Rout/dim_out/dim_out_", i, ".RDA"))
+  job_num = to_do[i]
+  save(no_fa_summaries, file = paste0("./HPC/Rout/combo_dim/dim_out_", job_num, ".RDA"))
 }
+
+
