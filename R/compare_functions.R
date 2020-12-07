@@ -1,4 +1,7 @@
-# functions to compare other models with BN2MF
+# Functions for BN2MF project
+
+# Functions to run other models
+# & to choose number of factors/components
 
 # PCA
 get_pca <- function (sim) {
