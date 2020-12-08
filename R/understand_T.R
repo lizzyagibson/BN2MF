@@ -48,10 +48,11 @@ mean_o %>%
   filter(rank == 4) %>% 
   arrange((t0))
 
+# Here we ran BN2MF with annealing 10x and chose the best
 mean_10 = readMat("./MATLAB/grid_out5.mat")[[1]] %>% as_tibble()
 colnames(mean_10) = c("t0", "rank", "score", "iter", "mean_diff", "mean_T", "mean_reg")
 
 mean_10 %>% 
   filter(rank == 4) %>% 
-  arrange(t0)
+  arrange(desc(t0))
 
