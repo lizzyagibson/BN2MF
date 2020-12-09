@@ -167,14 +167,14 @@ get_fa_dim <- function (sim, patterns) {
   fa_5 <- try(fa(sim, patternsp1, scores = "regression", rotate = "promax"))
   
   # Choose the model with the LOWEST BIC
-  fa_3$BIC = if(class(fa_3$BIC) != "try-error") {fa_3$BIC} else{NA}
-  fa_4$BIC = if(class(fa_4$BIC) != "try-error") {fa_4$BIC} else{NA}
-  fa_5$BIC = if(class(fa_5$BIC) != "try-error") {fa_5$BIC} else{NA}
+  fa_3$BIC = if(all(class(fa_3) != "try-error")) {fa_3$BIC} else{NA}
+  fa_4$BIC = if(all(class(fa_4) != "try-error")) {fa_4$BIC} else{NA}
+  fa_5$BIC = if(all(class(fa_5) != "try-error")) {fa_5$BIC} else{NA}
   
-  if (min(fa_5$BIC, fa_4$BIC, fa_3$BIC, na.rm = T) == fa_5$BIC) {
+  if (min(fa_5$BIC, fa_4$BIC, fa_3$BIC, na.rm = T) == fa_5$BIC & !is.na(fa_5$BIC)) {
     fa_out <- fa_5
     rank <- patternsm1
-  } else if (min(fa_5$BIC, fa_4$BIC, fa_3$BIC, na.rm = T) == fa_4$BIC) {
+  } else if (min(fa_5$BIC, fa_4$BIC, fa_3$BIC, na.rm = T) == fa_4$BIC & !is.na(fa_4$BIC)) {
     fa_out <- fa_4
     rank <- patterns
   } else {
