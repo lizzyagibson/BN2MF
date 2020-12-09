@@ -22,7 +22,6 @@ for (i in 1:n) {
 }
 
 metrics %>%
-  slice(to_do) %>% 
   dplyr::select(id, everything())
 
 # Should have 900 in each
@@ -128,3 +127,48 @@ mutate(name = str_to_upper(name),
   facet_grid(matrix ~ patterns, scales = "free") + 
   theme(legend.position = "none") + 
   labs(y = "Cosine Distance")
+
+# Rank
+all %>%
+  filter(patterns == "4 Patterns") %>% 
+  dplyr::select(seed, participants, chemicals, patterns, grep("rank", colnames(.))) %>% 
+  pivot_longer(grep("rank", colnames(.)),
+               names_to = c("name", "drop"),
+               names_sep = "_") %>% 
+  mutate(name = str_to_upper(name)) %>% 
+  group_by(name, value) %>% 
+  summarise(n = n()) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = value,
+              values_from = n) %>% 
+  mutate_if(is.integer, replace_na, 0)
+
+all %>%
+  filter(patterns == "10 Patterns") %>% 
+  dplyr::select(seed, participants, chemicals, patterns, grep("rank", colnames(.))) %>% 
+  pivot_longer(grep("rank", colnames(.)),
+               names_to = c("name", "drop"),
+               names_sep = "_") %>% 
+  mutate(name = str_to_upper(name)) %>% 
+  group_by(name, value) %>% 
+  summarise(n = n()) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = value,
+              values_from = n) %>% 
+  mutate_if(is.integer, replace_na, 0)
+
+left_join(metrics, bn2mf_m) %>%
+  filter(patterns == 10) %>% 
+  filter(fa_rank == 5 | nmfl2_rank == 5 | nmfp_rank == 5 | nmfp_rank == 4) %>% 
+  dplyr::select(id, seed, participants, chemicals, patterns, grep("rank", colnames(.)))
+
+load(paste0("./HPC/Rout/combo_dim/dim_out_", 81, ".RDA"))
+output_all %>% unnest(pca_rank:nmfp_load_l2)
+
+metrics %>%
+  filter(seed == 3) %>% View()
+
+to_do_2 = metrics %>%
+  filter(patterns == 10) %>% 
+  filter(fa_rank == 5 | nmfl2_rank == 5 | nmfp_rank == 5 | nmfp_rank == 4) %>% 
+  pull(id)
