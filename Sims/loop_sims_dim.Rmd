@@ -39,8 +39,6 @@ loop_patterns <- expand_grid(seed, participants, chemicals)
 * Generate non-negative scores
 * 1,000 individuals with scores on each of 4 patterns
 * Individual distributions are independent
-* Patterns (columns) are standardized to stdev = 1
-   * Not mean-centered
 
 ```{r}
 create_scores_dist <- function (seed, participants, patterns) {
@@ -196,6 +194,9 @@ melt(cormat3) %>% rename(Correlation = value) %>%
 ## Save
 
 ```{r} 
+sim_over %>% 
+  filter(patterns == 4)
+
 # save(sim_over, file = "./Sims/sim_dim.RDA")
 
 # for (i in 1:nrow(sim_over)) {
@@ -208,15 +209,16 @@ melt(cormat3) %>% rename(Correlation = value) %>%
 #   write_csv(to_save, path = paste0("./Sims/sim_dim/sim_dim", i, ".csv"))
 # }
 
+check_sim_dim = tibble()
+
+for (i in 1:2700) {
+  load(paste0("./Sims/sim_dim/sim_dim", i, ".RDA"))
+  check_sim_dim = bind_rows(check_sim_dim, to_save)
+}
+
+check_sim_dim %>% 
+  filter(patterns == 4)
+
 ```
 
-Need to repeat bc diff number of patterns requires diff functions!
-```{r}
-to_do = sim_over %>% dplyr::select(seed, participants, chemicals, patterns) %>% 
-  mutate(row_num = 1:nrow(.)) %>% 
-  filter(patterns != 4) %>% 
-  pull(row_num)
-
-save(to_do, file = "./R/to_do_dim.RDA")
-```
 

@@ -34,6 +34,12 @@ source("./R/factor_correspondence.R")
 
 # Read in Sims
 load(paste0("./Sims/sim_dim.RDA"))
+sim_over %>% 
+  filter(patterns == 4)
+
+sim_over %>% 
+  slice(to_do) %>% 
+  filter(patterns == 4)
 
 dim_local = sim_over %>% 
   slice(to_do) %>% 
@@ -99,8 +105,9 @@ output_nofa <- output_nofa %>%
          fa_scores_ssdist = NA)
 
 # save(output_nofa, file = paste0("./HPC/Rout/dim_out_nofa.RDA"))
-load("./HPC/Rout/dim_out/dim_out_nofa.RDA")
-output_nofa
+load("./HPC/Rout/dim_out_nofa.RDA")
+output_nofa %>% 
+  filter(patterns == 4)
 
 #####
 # Combine
@@ -188,4 +195,13 @@ for (i in 1:nrow(output_nofa_summaries)) {
   save(no_fa_summaries, file = paste0("./HPC/Rout/combo_dim/dim_out_", job_num, ".RDA"))
 }
 
+# Check
+check = tibble()
+for (i in 1:length(to_do)) {
+  job_num = to_do[i]
+  load(paste0("./HPC/Rout/combo_dim/dim_out_", job_num, ".RDA"))
+  no_fa_summaries = no_fa_summaries %>% mutate(id = job_num)
+  check = bind_rows(check, no_fa_summaries) 
+}
+check %>% dplyr::select(id, everything())
 
