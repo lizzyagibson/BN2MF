@@ -275,6 +275,6 @@ sim_noise
 #   write_csv(as_tibble(sim_dgp_rep1$sim[[i]]), paste0("./Sims/dgp_rep1/sim_dgp_rep1_", i, ".csv"))
 # }
 
-# save(sim_dgp_rep1, file = "./Sims/sim_dgp_rep1.RDA")
+save(sim_noise, file = "./Results/Simulations/sim_noise.RDA")
 ```
 
