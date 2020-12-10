@@ -19,15 +19,18 @@ to_do_both = sort(to_do_both)
 save(to_do_both, file = "./R/to_do_fa.RDA")
 
 ## Get functions
-source("./R/compare_functions.R")
-source("./R/factor_correspondence.R")
+source("./Results/compare_functions.R")
+source("./Results/factor_correspondence.R")
 
 # Read in Sims
-load(paste0("./Sims/sim_dim.RDA"))
+load(paste0("./Results/Simulations/sim_dim.RDA"))
 
 dim_local = sim_over %>% 
   slice(to_do_2) %>% 
   mutate(id = to_do_2)
+
+dim_local = sim_over %>% 
+  slice(390)
 
 sim = dim_local[1,]$sim[[1]]
 dim(sim)
@@ -43,8 +46,16 @@ output_wrongrank <- dim_local %>%
          pca_pred      = map(pca_out, function(x) x[[3]]),
          pca_rank      = map(pca_out, function(x) x[[4]]))
 
-output_wrongrank %>% 
-  mutate(fa_out       = map2(sim, patterns, function(x,y) try(get_fa_dim)))
+output_wrongrank <- output_wrongrank %>%
+  mutate(fa_out       = map2(sim, patterns, get_fa_dim),
+         fa_loadings = map(fa_out, function(x) x[[1]]),
+         fa_scores    = map(fa_out, function(x) x[[2]]),
+         fa_pred      = map(fa_out, function(x) x[[3]]),
+         fa_rank      = map(fa_out, function(x) x[[4]]))
+
+sim = dim_local$sim[[1]]
+
+out = get_fa_dim(sim, 10)
 
 #####
 # L2 NMF
