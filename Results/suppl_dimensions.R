@@ -1,7 +1,7 @@
 library(tidyverse)
 
 # Source ggplot settings
-source("./R/fig_set.R") 
+source("./Results/fig_set.R") 
 
 # Read in metrics
 n = 2700
@@ -9,7 +9,7 @@ n = 2700
 metrics = tibble()
 
 for (i in 1:n) {
-  load(paste0("./Results/combo_dim/dim_out_", i, ".RDA"))
+  load(paste0("./Results/Solutions/combo_dim/dim_out_", i, ".RDA"))
   if (exists('output_all')) {
       output_all = output_all %>% mutate(id = i) %>% 
         unnest(pca_rank:nmfp_load_l2)
@@ -26,23 +26,21 @@ metrics %>%
 
 # Should have 900 in each
 metrics %>% 
-  filter(patterns == 1) %>% 
+  filter(patterns == 4) %>% 
   #dplyr::select(seed:patterns) %>% 
   distinct()
 
 bn2mf_m = tibble()
 
 for (i in 1:n) {
-  if (file.exists(paste0("./Results/combo_bnmf/bnmf_dim_out_", i, ".RDA"))) {
-  load(paste0("./Results/combo_bnmf/bnmf_dim_out_", i, ".RDA"))
+  load(paste0("./Results/Solutions/combo_bnmf/bnmf_dim_out_", i, ".RDA"))
   output_all = output_all %>% unnest(c(bn2mf_rank:bn2mf_cos_dist_scores))
   bn2mf_m = bind_rows(bn2mf_m, output_all)
-  }
 }
 
 # Should have 900 in each
 bn2mf_m %>% 
-  filter(patterns == 1)
+  filter(patterns == 4)
 
 all = left_join(metrics, bn2mf_m) %>% 
   mutate(patterns = paste0(patterns, " Patterns"),
@@ -130,6 +128,20 @@ mutate(name = str_to_upper(name),
 
 # Rank
 all %>%
+  filter(patterns == "1 Pattern") %>% 
+  dplyr::select(seed, participants, chemicals, patterns, grep("rank", colnames(.))) %>% 
+  pivot_longer(grep("rank", colnames(.)),
+               names_to = c("name", "drop"),
+               names_sep = "_") %>% 
+  mutate(name = str_to_upper(name)) %>% 
+  group_by(name, value) %>% 
+  summarise(n = n()) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = value,
+              values_from = n) %>% 
+  mutate_if(is.integer, replace_na, 0)
+
+all %>%
   filter(patterns == "4 Patterns") %>% 
   dplyr::select(seed, participants, chemicals, patterns, grep("rank", colnames(.))) %>% 
   pivot_longer(grep("rank", colnames(.)),
@@ -157,18 +169,7 @@ all %>%
               values_from = n) %>% 
   mutate_if(is.integer, replace_na, 0)
 
-left_join(metrics, bn2mf_m) %>%
-  filter(patterns == 10) %>% 
-  filter(fa_rank == 5 | nmfl2_rank == 5 | nmfp_rank == 5 | nmfp_rank == 4) %>% 
-  dplyr::select(id, seed, participants, chemicals, patterns, grep("rank", colnames(.)))
 
-#load(paste0("./HPC/Rout/combo_dim/dim_out_", 81, ".RDA"))
-#output_all %>% unnest(pca_rank:nmfp_load_l2)
 
-metrics %>%
-  filter(seed == 3) %>% View()
 
-to_do_2 = metrics %>%
-  filter(patterns == 10) %>% 
-  filter(fa_rank == 5 | nmfl2_rank == 5 | nmfp_rank == 5 | nmfp_rank == 4) %>% 
-  pull(id)
+
