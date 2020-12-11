@@ -6,10 +6,13 @@
 # Cleaned up code # 9/22/202  ###########################
 #########################################################
 
+## read job number from system environment
+## This only works if run on cluster!!
+job_num = as.integer(Sys.getenv("SGE_TASK_ID"))
+job_num
+
 # Packages
-library(tidyverse)
-# library(psych)
-# library(NMF)
+library(tidyverse, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
 library(registry, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
 library(pkgmaker, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
 library(rngtools, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
@@ -17,16 +20,11 @@ library(NMF, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
 library(GPArotation, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
 library(psych, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
 
-## read job number from system environment
-## This only works if run on cluster!!
-job_num = as.integer(Sys.getenv("SGE_TASK_ID"))
-job_num
-
 ## Get functions
 source("/ifs/scratch/msph/ehs/eag2186/npbnmf/compare_functions.R")
 
 # Read in Sims
-load(paste0("/ifs/scratch/msph/ehs/eag2186/Data/sim_dim", job_num, ".RDA"))
+load(paste0("/ifs/scratch/msph/ehs/eag2186/Data/sim_dim/sim_dim", job_num, ".RDA"))
 
 # Run everything
 
@@ -46,7 +44,7 @@ output_all <- to_save %>%
 #####
 
 output_all <- output_all %>% 
-  mutate(fa_out       = map(sim, get_fa),
+  mutate(fa_out       = map2(sim, patterns, get_fa),
          fa_loadings = map(fa_out, function(x) x[[1]]),
          fa_scores    = map(fa_out, function(x) x[[2]]),
          fa_pred      = map(fa_out, function(x) x[[3]]),
@@ -57,7 +55,7 @@ output_all <- output_all %>%
 #####
 
 output_all <- output_all %>%
-  mutate(nmfl2_out      = map(sim, get_nmf_l2),
+  mutate(nmfl2_out      = map2(sim, patterns, get_nmf_l2),
          nmfl2_loadings = map(nmfl2_out, function(x) x[[1]]),
          nmfl2_scores   = map(nmfl2_out, function(x) x[[2]]),
          nmfl2_pred     = map(nmfl2_out, function(x) x[[3]]),
@@ -68,7 +66,7 @@ output_all <- output_all %>%
 #####
 
 output_all <- output_all %>% 
-  mutate(nmfp_out      = map(sim, get_nmf_p),
+  mutate(nmfp_out      = map2(sim, patterns, get_nmf_p),
          nmfp_loadings = map(nmfp_out, function(x) x[[1]]),
          nmfp_scores   = map(nmfp_out, function(x) x[[2]]),
          nmfp_pred     = map(nmfp_out, function(x) x[[3]]),
@@ -93,5 +91,6 @@ output_all <- output_all %>%
 #####
                            
 output_all <- output_all %>% dplyr::select(-grep("_out", colnames(.)))
-
+job_num
 save(output_all, file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/dim_out/dim_out_", job_num, ".RDA"))
+
