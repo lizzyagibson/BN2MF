@@ -3,7 +3,7 @@
 job_num = as.integer(Sys.getenv("SGE_TASK_ID"))
 job_num
 
-load(paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/dim_out_re/dim_out_", job_num, ".RDA")) 
+load(paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/noise_out/noise_out_", job_num, ".RDA")) 
 
 # Packages
 library(tidyverse)
@@ -52,6 +52,6 @@ output_all <- output_all %>%
                 grep("_l2", colnames(.)),
                 grep("ssdist", colnames(.)))
 
-save(output_all, file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/combo_dim/dim_out_", job_num, ".RDA"))
+save(output_all, file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/combo_noise/noise_out_", job_num, ".RDA"))
 
 
