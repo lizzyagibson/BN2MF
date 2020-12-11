@@ -7,10 +7,11 @@
 library(tidyverse)
 
 # Load data
-load("./Results/dgp_rep1_all.RDA")
+load("./Results/Solutions/dgp_rep1_all.RDA")
+dgp_rep1_all
 
 # Source factor corr function to rearrange loadings/scores to match truth
-source("./R/factor_correspondence.R")
+source("./Results/factor_correspondence.R")
 
 # Source ggplot settings
 source("./R/fig_set.R") 
@@ -22,10 +23,10 @@ source("./R/fig_set.R")
 
 dgp_e1 <- dgp_rep1_all %>% 
   dplyr::select(seed, data, sim, chem, grep("pred", colnames(.))) %>% 
-  pivot_longer(c(pca_pred:bnmf_pred),
+  pivot_longer(c(pca_pred:fa_pred),
                names_to = "model") %>% 
-  mutate(l2_true = map2(chem, value, function (x,y) norm(x-y, "F")/norm(x, "F")),
-         l2_sim  = map2(sim,  value, function (x,y) norm(x-y, "F")/norm(x, "F")),
+  mutate(l2_true = map2(chem, value, get_relerror),
+         l2_sim  = map2(sim,  value, get_relerror),
          model = str_to_upper(str_remove(model, "_pred"))) %>% 
   unnest(c(l2_sim, l2_true))
 
@@ -43,20 +44,20 @@ dgp_s1 <- dgp_rep1_all %>% dplyr::select(seed, data, grep("_ssdist", colnames(.)
                names_sep = "_") %>%
   mutate(model = str_to_upper(model)) %>% 
   dplyr::select(-drop) %>% 
-  mutate(matrix = case_when(matrix == "rotations" ~ "Loadings",
+  mutate(matrix = str_to_title(case_when(matrix == "rotations" ~ "Loadings",
                             matrix == "loading" ~ "Loadings",
-                            TRUE ~ matrix))
+                            TRUE ~ matrix)))
 
 #####
 # Relative error on loadings and scores
 #####
 
 # Transpose all loading matrices to have chemical rows and pattern columns
-dgp_rep1_all_t <- 
-  dgp_rep1_all %>%
+dgp_rep1_all_t <- dgp_rep1_all %>% 
   mutate(true_patterns   = map(true_patterns, t),
          nmfl2_loadings = map(nmfl2_loadings, t),
          nmfp_loadings  = map(nmfp_loadings, t),
+         pca_loadings = map(pca_loadings, as.matrix),
          eh = map(eh, t))
 
 dgp_rep1_all_re <- 
@@ -74,21 +75,11 @@ dgp_rep1_all_re <-
   pivot_wider(names_from = "matrix",
               values_from = "value") %>% 
   mutate(perm = case_when(str_detect(model, "a") ~ map2(true_patterns, loadings, 
-                                                   function(x,y) if(ncol(y) == 4) 
-                                                   {factor_correspondence(as.matrix(x), 
-                                                   as.matrix(y), nn = FALSE)$permutation_matrix} else{NA}),
-                          str_detect(model, "nmf") ~ map2(true_patterns, loadings, 
-                                                     function(x,y) if(ncol(y) == 4) 
-                                                     {factor_correspondence(as.matrix(x), 
-                                                     as.matrix(y))$permutation_matrix} else{NA})),
-         loadings_re = map2(loadings, perm, 
-                            function(x,y) if(ncol(x) == 4) 
-                            {as.matrix(x) %*% as.matrix(y)} else{NA}),
-         scores_re   = map2(scores,   perm, 
-                            function(x,y) if(ncol(x) == 4) 
-                            {as.matrix(x) %*% as.matrix(y)} else{NA}))
+                                                   function(x,y) get_perm(x,y,nn = FALSE)),
+                          str_detect(model, "nmf") ~ map2(true_patterns, loadings, get_perm)),
+         loadings_re = map2(loadings, perm, get_product),
+         scores_re   = map2(scores,   perm, get_product))
          
-
 #save(dgp_rep1_all_re, file = "./HPC/Rout/dgp_rep1_reordered.RDA")
 load("./Results/dgp_rep1_reordered.RDA")
 
@@ -102,6 +93,8 @@ dgp_re <- dgp_rep1_all_re %>%
                names_to = "matrix",
                values_to = "l2")
 
+old_l2 <- dgp_re %>% pull(l2)
+
 #####
 # Cosine distance
 #####
@@ -114,7 +107,9 @@ dgp_cos <- dgp_rep1_all_re %>%
   pivot_longer(c(cos_dist_loadings, cos_dist_scores),
                names_prefix = "cos_dist_",
                names_to = "matrix",
-               values_to = "cosine_dist") %>% unnest(cosine_dist)
+               values_to = "cosine_dist") %>% unnest(c(cosine_dist))
+
+old_cos <- dgp_cos %>% pull(cosine_dist)
 
 #####
 # Rank
@@ -193,23 +188,6 @@ dgp_e1 %>%
   pivot_wider(names_from = "prob",
               values_from = "qs") %>% 
   arrange(model)
-
-dgp_rep1_all %>%
-  dplyr::select(seed, data, grep("rank", colnames(.))) %>%
-  unnest(grep("rank", colnames(.))) %>%
-  pivot_longer(cols = pca_rank:bnmf_rank,
-               names_to = c("model", "drop"),
-               names_sep = "_",
-               values_to = "rank") %>%
-  mutate(rank = ifelse(rank > 5, "> 5", rank),
-         model = str_to_upper(model)) %>% 
-  left_join(., dgp_e1) %>% 
-  group_by(data, model, rank) %>% 
-  summarise(qs = quantile(l2_true, c(0.25, 0.5, 0.75)), prob = c(0.25, 0.5, 0.75)) %>% 
-  pivot_wider(names_from = "prob",
-              values_from = "qs") %>% 
-  arrange(model)
-
 
 #####
 # SSD
