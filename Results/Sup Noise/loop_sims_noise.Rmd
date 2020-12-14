@@ -269,12 +269,15 @@ sim_noise <- rbind(sim_dist %>% mutate(data = "Distinct"),
       sim_over %>% mutate(data = "Overlapping"),
       sim_cor %>% mutate(data = "Correlated"))
   
-sim_noise
+apply(sim_noise$chem[[1]], 2, var)
+apply(sim_noise$sim[[1]], 2, var)
+round(cor(sim_noise$sim[[1]]), 2)[1:10, 1:10]
+round(cor(sim_noise$chem[[1]]), 2)[1:10, 1:10]
 
-# for (i in 1:nrow(sim_dgp_rep1)) {
-#   write_csv(as_tibble(sim_dgp_rep1$sim[[i]]), paste0("./Sims/dgp_rep1/sim_dgp_rep1_", i, ".csv"))
+# for (i in 1:nrow(sim_noise)) {
+#   write_csv(as_tibble(sim_noise$sim[[i]]), paste0("./Sims/sim_noise_rep1_", i, ".csv"))
 # }
 
-save(sim_noise, file = "./Results/Simulations/sim_noise.RDA")
+#save(sim_noise, file = "./Results/Simulations/sim_noise.RDA")
 ```
 

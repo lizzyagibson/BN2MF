@@ -26,6 +26,13 @@ source("/ifs/scratch/msph/ehs/eag2186/npbnmf/compare_functions.R")
 # Read in Sims
 load(paste0("/ifs/scratch/msph/ehs/eag2186/Data/sim_noise.RDA"))
 
+sim_t = sim_noise %>% dplyr::select(sim)
+for (i in 1:300) {
+  
+  sim_m = sim_t[[1]][[i]]
+  sim_d = as_tibble(sim_m)
+  }
+
 # Run everything
 
 #####

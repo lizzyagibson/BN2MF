@@ -3,58 +3,15 @@ library(tidyverse)
 # Source ggplot settings
 source("./Results/fig_set.R") 
 
-# Read in metrics
-n = 2700
-
-metrics = tibble()
-
-for (i in 1:n) {
-  load(paste0("./Results/Solutions/combo_dim/dim_out_", i, ".RDA"))
-  if (exists('output_all')) {
-      output_all = output_all %>% mutate(id = i) %>% 
-        unnest(pca_rank:nmfp_load_l2)
-      metrics = bind_rows(metrics, output_all)
-      rm(output_all)
-      } else {
-              no_fa_summaries = no_fa_summaries %>% mutate(id = i) 
-              metrics = bind_rows(metrics, no_fa_summaries) 
-              rm(no_fa_summaries)}
-}
-
-metrics %>%
-  dplyr::select(id, everything())
-
-# Should have 900 in each
-metrics %>% 
-  filter(patterns == 4) %>% 
-  #dplyr::select(seed:patterns) %>% 
-  distinct()
-
-bn2mf_m = tibble()
-
-for (i in 1:n) {
-  load(paste0("./Results/Solutions/combo_bnmf/bnmf_dim_out_", i, ".RDA"))
-  output_all = output_all %>% unnest(c(bn2mf_rank:bn2mf_cos_dist_scores))
-  bn2mf_m = bind_rows(bn2mf_m, output_all)
-}
-
-# Should have 900 in each
-bn2mf_m %>% 
-  filter(patterns == 4)
-
-all = left_join(metrics, bn2mf_m) %>% 
-  mutate(patterns = paste0(patterns, " Patterns"),
-         patterns = ifelse(patterns == "1 Patterns", "1 Pattern", patterns),
-         participants = paste0(participants, " Participants"),
-         chemicals = paste0(chemicals, " Chemicals"),
-         patterns = fct_relevel(patterns, "4 Patterns", after = 1),
-         chemicals = fct_inorder(chemicals))
+# Get data
+load("./Results/Sup Dim/sup_dim.RDA")
+dim_all
 
 ## Plot
 
 # Overall relative error
 # repeat for each participant sample size
-all %>%
+dim_all %>%
   filter(participants == "10000 Participants") %>% 
   dplyr::select(seed, participants, chemicals, patterns, grep("l2er", colnames(.))) %>% 
   pivot_longer(grep("l2er", colnames(.))) %>% 
@@ -70,7 +27,7 @@ all %>%
 
 # Symmetric Subspace Distance
 # repeat for each participant sample size AND chemical mixture size
-all %>%
+dim_all %>%
   filter(participants == "10000 Participants") %>% 
   dplyr::select(seed, participants, chemicals, patterns, grep("ssdist", colnames(.))) %>% 
   pivot_longer(grep("ssdist", colnames(.)),
@@ -88,7 +45,7 @@ all %>%
 
 # relative error on loadings and scores
 # repeat for each participant sample size AND chemical mixture size
-all %>%
+dim_all %>%
   filter(participants == "10000 Participants") %>% 
   dplyr::select(seed, participants, chemicals, patterns, 
          grep("score_l2", colnames(.)), grep("load_l2", colnames(.)),
@@ -110,7 +67,7 @@ all %>%
 # Cosine Distance
 # repeat for each participant sample size AND chemical miture size
 # So far only on BN2MF
-all %>%
+dim_all %>%
   filter(participants == "10000 Participants") %>% 
   dplyr::select(seed, participants, chemicals, patterns, grep("cos_dist", colnames(.))) %>% 
   pivot_longer(grep("cos_dist", colnames(.)),
@@ -127,7 +84,7 @@ mutate(name = str_to_upper(name),
   labs(y = "Cosine Distance")
 
 # Rank
-all %>%
+dim_all %>%
   filter(patterns == "1 Pattern") %>% 
   dplyr::select(seed, participants, chemicals, patterns, grep("rank", colnames(.))) %>% 
   pivot_longer(grep("rank", colnames(.)),
@@ -141,7 +98,7 @@ all %>%
               values_from = n) %>% 
   mutate_if(is.integer, replace_na, 0)
 
-all %>%
+dim_all %>%
   filter(patterns == "4 Patterns") %>% 
   dplyr::select(seed, participants, chemicals, patterns, grep("rank", colnames(.))) %>% 
   pivot_longer(grep("rank", colnames(.)),
@@ -155,7 +112,7 @@ all %>%
               values_from = n) %>% 
   mutate_if(is.integer, replace_na, 0)
 
-all %>%
+dim_all %>%
   filter(patterns == "10 Patterns") %>% 
   dplyr::select(seed, participants, chemicals, patterns, grep("rank", colnames(.))) %>% 
   pivot_longer(grep("rank", colnames(.)),

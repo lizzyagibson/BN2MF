@@ -7,14 +7,15 @@
 library(tidyverse)
 
 # Load data
-load("./Results/Solutions/dgp_rep1_all.RDA")
+load("./Results/Main/dgp_rep1_all.RDA")
 dgp_rep1_all
 
 # Source factor corr function to rearrange loadings/scores to match truth
 source("./Results/factor_correspondence.R")
+source("./Results/compare_functions.R")
 
 # Source ggplot settings
-source("./R/fig_set.R") 
+source("./Results/fig_set.R") 
 
 #####
 # Relative Preditive Error
@@ -80,7 +81,7 @@ dgp_rep1_all_re <-
          loadings_re = map2(loadings, perm, get_product),
          scores_re   = map2(scores,   perm, get_product))
          
-#save(dgp_rep1_all_re, file = "./HPC/Rout/dgp_rep1_reordered.RDA")
+save(dgp_rep1_all_re, file = "./Results/Main/dgp_rep1_reordered.RDA")
 load("./Results/dgp_rep1_reordered.RDA")
 
 dgp_re <- dgp_rep1_all_re %>% 
@@ -93,14 +94,12 @@ dgp_re <- dgp_rep1_all_re %>%
                names_to = "matrix",
                values_to = "l2")
 
-old_l2 <- dgp_re %>% pull(l2)
-
 #####
 # Cosine distance
 #####
 
 dgp_cos <- dgp_rep1_all_re %>% 
-  filter(!is.na(loadings_re)) %>% 
+  #filter(!is.na(loadings_re)) %>% 
   mutate(cos_dist_loadings = map2(true_patterns, loadings_re, cos_dist),
          cos_dist_scores = map2(true_scores, scores_re, cos_dist)) %>% 
   dplyr::select(seed, data, model, cos_dist_loadings, cos_dist_scores) %>% 
@@ -109,7 +108,14 @@ dgp_cos <- dgp_rep1_all_re %>%
                names_to = "matrix",
                values_to = "cosine_dist") %>% unnest(c(cosine_dist))
 
-old_cos <- dgp_cos %>% pull(cosine_dist)
+dgp_cos_v <- dgp_rep1_all_re %>% 
+  mutate(cos_dist_loadings = map2(true_patterns, loadings_re, cos_dist_v),
+         cos_dist_scores = map2(true_scores, scores_re, cos_dist_v)) %>% 
+  dplyr::select(seed, data, model, cos_dist_loadings, cos_dist_scores) %>% 
+  pivot_longer(c(cos_dist_loadings, cos_dist_scores),
+               names_prefix = "cos_dist_",
+               names_to = "matrix",
+               values_to = "cosine_dist") %>% unnest(c(cosine_dist))
 
 #####
 # Rank
@@ -158,7 +164,6 @@ cor_rank <- dgp_rep1_all %>%
   pivot_wider(names_from = value,
               values_from = n) %>% 
   mutate_if(is.integer, replace_na, 0)
-
 
 #####
 # Viz
@@ -222,7 +227,6 @@ dist_rank
 over_rank
 cor_rank
 
-
 #####
 # Rel error loadings and scores
 #####
@@ -264,9 +268,9 @@ dgp_cos %>%
          matrix = str_to_title(matrix)) %>% 
   ggplot(aes(x = model, y = cosine_dist)) +
   geom_jitter(alpha = 0.15, size = 0.5, height = 0, width = .3) +
-  #geom_boxplot(aes(color = model, fill = model), 
-  #             alpha = 0.5, outlier.shape = NA) +
-  geom_violin(aes(color = model, fill = model), scale = "width",alpha = 0.5) +
+  geom_boxplot(aes(color = model, fill = model), 
+               alpha = 0.5, outlier.shape = NA) +
+  #geom_violin(aes(color = model, fill = model), scale = "width",alpha = 0.5) +
   facet_grid(matrix ~ data, scales = "free") + 
   labs(y = "Cosine Similarity")
 #dev.off()
@@ -280,4 +284,15 @@ dgp_cos %>%
               values_from = "qs") %>% 
   arrange(matrix, model) %>% print(., n = 30)
 
-
+dgp_cos_v %>% 
+  mutate(data = fct_relevel(data, "Distinct", "Overlapping", "Correlated"),
+         model = str_to_upper(model),
+         model = ifelse(model == "BNMF", "BN2MF", model),
+         matrix = str_to_title(matrix)) %>% 
+  ggplot(aes(x = model, y = cosine_dist)) +
+  geom_jitter(alpha = 0.15, size = 0.5, height = 0, width = .3) +
+  geom_boxplot(aes(color = model, fill = model), 
+               alpha = 0.5, outlier.shape = NA) +
+  # geom_violin(aes(color = model, fill = model), scale = "width",alpha = 0.5) +
+  facet_grid(matrix ~ data, scales = "free") + 
+  labs(y = "Cosine Similarity")

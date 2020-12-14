@@ -1,22 +1,8 @@
-% Make this whole thing loop
-for i = 1:200
-
-%% Setup the Import Options and import the data
-opts = delimitedTextImportOptions("NumVariables", 50);
-
-% Specify range and delimiter
-opts.DataLines = [2, Inf];
-opts.Delimiter = ",";
-
-% Specify column names and types
-opts.VariableTypes = ["double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double"];
-
-% Specify file level properties
-opts.ExtraColumnsRule = "ignore";
-opts.EmptyLineRule = "read";
+%% Get job number
+i = getenv('SGE_TASK_ID')
 
 % Import the data
-simdata1 = readtable(strcat("/Users/lizzy/BN2MF/Sims/dgp_rep1/sim_dgp_rep1_", num2str(i), ".csv"), opts);
+simdata1 = readtable(strcat("/ifs/scratch/msph/ehs/eag2186/Data/dgp_csv/sim_dim", num2str(i), ".csv"));
 
 %% Convert to output type
 simdata1 = table2array(simdata1);

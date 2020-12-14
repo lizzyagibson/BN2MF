@@ -3,10 +3,10 @@
 job_num = as.integer(Sys.getenv("SGE_TASK_ID"))
 job_num
 
-load(paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/dim_out_re/dim_out_", job_num, ".RDA")) 
+load(paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/noise_out/noise_out_", job_num, ".RDA")) 
 
 # Packages
-library(tidyverse)
+library(tidyverse, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
 library(CVXR, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
 
 ## Get functions
@@ -46,12 +46,35 @@ output_all <-
          nmfp_load_l2   = map2(true_patterns, nmfp_loadings_re,  get_relerror),
          nmfp_score_l2  = map2(true_scores,   nmfp_scores_re,    get_relerror))
 
+output_all <- 
+  output_all %>% 
+  mutate(pca_load_cos    = map2(true_patterns, pca_loadings_re,   cos_dist),
+         pca_score_cos   = map2(true_scores,   pca_scores_re,     cos_dist),
+         fa_load_cos     = map2(true_patterns, fa_loadings_re,    cos_dist),
+         fa_score_cos    = map2(true_scores,   fa_scores_re,      cos_dist),
+         nmfl2_load_cos  = map2(true_patterns, nmfl2_loadings_re, cos_dist),
+         nmfl2_score_cos = map2(true_scores,   nmfl2_scores_re,   cos_dist),
+         nmfp_load_cos   = map2(true_patterns, nmfp_loadings_re,  cos_dist),
+         nmfp_score_cos  = map2(true_scores,   nmfp_scores_re,    cos_dist))
+
+output_all <- 
+  output_all %>% 
+  mutate(pca_load_cos_v    = map2(true_patterns, pca_loadings_re,   cos_dist_v),
+         pca_score_cos_v   = map2(true_scores,   pca_scores_re,     cos_dist_v),
+         fa_load_cos_v     = map2(true_patterns, fa_loadings_re,    cos_dist_v),
+         fa_score_cos_v    = map2(true_scores,   fa_scores_re,      cos_dist_v),
+         nmfl2_load_cos_v  = map2(true_patterns, nmfl2_loadings_re, cos_dist_v),
+         nmfl2_score_cos_v = map2(true_scores,   nmfl2_scores_re,   cos_dist_v),
+         nmfp_load_cos_v   = map2(true_patterns, nmfp_loadings_re,  cos_dist_v),
+         nmfp_score_cos_v  = map2(true_scores,   nmfp_scores_re,    cos_dist_v))
+
 output_all <- output_all %>% 
-  dplyr::select(seed, participants, chemicals, patterns,
+  dplyr::select(seed, data,
                 grep("rank", colnames(.)),
                 grep("_l2", colnames(.)),
-                grep("ssdist", colnames(.)))
+                grep("ssdist", colnames(.)),
+                grep("_cos", colnames(.)))
 
-save(output_all, file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/combo_dim/dim_out_", job_num, ".RDA"))
+save(output_all, file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/combo_noise/noise_out_", job_num, ".RDA"))
 
 

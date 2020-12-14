@@ -1,0 +1,313 @@
+---
+title: "GNMF & MN Data"
+author: "Lizzy Gibson"
+date: "2/25/2020"
+output: 
+  html_document:
+    toc: TRUE
+    toc_float: TRUE
+---
+
+```{r setup, include=FALSE}
+options(scipen = 999)
+library(MNdata) # my data
+library(reshape2) # melt
+library(gridExtra) # gridarrange
+library(bindata) # multivariate binomial dist
+library(NMF) # rmatrix
+library(MASS) # mvrnorm
+library(tidyverse)
+library(R.matlab)
+library(gplots)
+library(GGally)
+```
+
+## MN Data
+
+```{r}
+mn_edc
+# PHT and phenols specific gravity adj
+# pbde and pcb lipid adj
+
+edc_cc <- mn_edc %>% select(2:52) %>% drop_na() %>% 
+  select(28:51, 18:27, 1:9, 10:17)
+edc_cc <- apply(edc_cc, 2, function(x) x/sd(x)) %>% as_tibble()
+cc_ids <- mn_edc %>% select(1:52) %>% drop_na() %>% 
+  select(1)
+
+edc_all <- mn_edc %>% select(2:52) %>% 
+  filter(!is.na(MECPP_sg_adj | dcp_24_sg_adj| BDE47 | pcb146)) %>% 
+  select(28:51, 18:27, 1:9, 10:17)
+edc_all <- apply(edc_all, 2, function(x) x/sd(x, na.rm = TRUE)) %>% as_tibble()
+all_ids <- mn_edc %>% select(1:52) %>% drop_na() %>%
+  filter(!is.na(MECPP_sg_adj | dcp_24_sg_adj| BDE47 | pcb146)) %>% 
+  select(1)
+
+edc_a <- edc_all %>% drop_na()
+all.equal(edc_a, edc_cc) #These are not the same bc order of scale - drop na changes
+
+names(edc_all)
+```
+
+```{r}
+#write_csv(edc_cc, "./Data/edc_cc.csv")
+#write_csv(edc_all, "./Data/edc_all.csv")
+```
+
+### Inspect
+
+```{r}
+cormat <- round(cor(edc_cc, method = c("spearman")),2)
+
+melted_cormat <- melt(cormat) %>% rename(Correlation = value)
+
+labelled <- melted_cormat %>% mutate(Class1 = ifelse(str_detect(Var1, "BDE"), "PBDEs",
+                                                     ifelse(str_detect(Var1, "^M"), "Phthalates",
+                                                            ifelse(str_detect(Var1, "pcb"), "PCBs",
+                                                                   "Phenols")))) %>%
+  mutate(Class2 = ifelse(str_detect(Var2, "BDE"), "PBDEs",
+                         ifelse(str_detect(Var2, "^M"), "Phthalates",
+                                ifelse(str_detect(Var2, "pcb"), "PCBs",
+                                       "Phenols")))) %>%
+  mutate(Class2 = factor(Class2, levels = c("Phthalates", "Phenols",
+                                            "PCBs", "PBDEs")))
+
+ggplot(data = labelled, aes(x = Var1, y = Var2)) +
+  geom_tile(aes(fill = Correlation), colour = "white") +
+  scale_fill_gradient2(low = "#00BFC4", mid = "white", high = "#F8766D",
+                       midpoint = 0,
+                       na.value = "transparent", limits = c(-1, 1)) +
+  theme_grey(base_size = 15) + labs(x = "", y = "", title = "EDC correlations in Mothers & Newborns") +
+  scale_x_discrete(expand = c(0, 0)) +
+  scale_y_discrete(expand = c(0, 0)) +
+  theme(axis.text.x = element_blank(), axis.text.y = element_blank(),
+        panel.spacing = unit(0, "lines"),
+        strip.background = element_blank(),
+        strip.placement = "outside", legend.position = "bottom",
+        strip.text.x = element_text(size = 18),
+        strip.text.y = element_text(size = 18)) +
+  facet_grid(Class2 ~ Class1, scales = "free", space = "free", switch = "both")
+```
+
+## GNMF
+
+### Patterns
+
+```{r}
+eh_cc <- readMat(here::here("./Sims/Iterate_Out/eh_edc_cc.mat"))[[1]]
+
+labels <-  c("pcb28", "pcb66", "pcb74", "pcb99", "pcb105", "pcb114", "pcb118", "pcb138_158", "pcb146", "pcb153",
+             "pcb156", "pcb157", "pcb167", "pcb170", "pcb178", "pcb180", "pcb183", "pcb187", "pcb189", "pcb194",
+             "pcb196_203", "pcb199", "pcb206", "pcb209", "BDE28", "BDE47", "BDE66", "BDE85", "BDE99", "BDE100", "BDE153",
+             "BDE154", "BDE183", "BDE209", "MECPP", "MEHHP", "MEOHP", "MCPP", "MIBP", "MBP", "MBZP", "MEP", "MEHP",
+             "dcp_24", "dcp_25", "b_pb", "bp_3", "m_pb", "p_pb", "tcs", "bpa")
+
+colnames(eh_cc) <- labels
+
+rowSums(eh_cc)
+```
+
+```{r}
+eh_cc %>% 
+  as_tibble() %>% 
+  mutate(Pattern = 1:3) %>% 
+  gather(key = Chemicals, value = Loadings, -Pattern) %>%
+  mutate(Chemicals = fct_inorder(Chemicals)) %>% 
+  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
+                                                     ifelse(str_detect(Chemicals, "^M"), "Phthalates",
+                                                            ifelse(str_detect(Chemicals, "pcb"), "PCBs",
+                                                                   "Phenols")))) %>% 
+  ggplot(aes(x = Chemicals, y = Loadings)) + geom_col(aes(fill = Group)) +
+  facet_wrap(.~Pattern) + theme_bw() +
+  theme(axis.text.x = element_blank(),
+        legend.position = "bottom",
+        strip.background = element_blank())
+```
+
+**Normalize over chemicals for data viz**
+
+```{r, fig.width=20, fig.height=20}
+std_eh_cc <- apply(eh_cc, 2, function(x) x/sum(x)) %>% as_tibble()
+
+std_eh_cc %>% 
+  t() %>% 
+  as_tibble() %>% 
+  mutate(Chemicals = labels) %>% 
+  gather(key = Pattern, value = Loadings, -Chemicals) %>%
+  mutate(Chemicals = fct_inorder(Chemicals)) %>% 
+  mutate(Group = ifelse(str_detect(Chemicals, "BDE"), "PBDEs",
+                                                     ifelse(str_detect(Chemicals, "^M"), "Phthalates",
+                                                            ifelse(str_detect(Chemicals, "pcb"), "PCBs",
+                                                                   "Phenols")))) %>% 
+  ggplot(aes(x = Chemicals, y = Loadings)) + geom_col(aes(fill = Group)) +
+  facet_wrap(~Pattern) + theme_bw(base_size = 30) + coord_flip() +
+  theme(legend.position = "none",
+        strip.background = element_blank(),
+        axis.text.x = element_text(angle = 270, hjust = 1, size = 20),
+        axis.text.y = element_text(size = 25),
+        axis.title.x = element_text(angle = 180)) + labs(x="")
+```
+
+### Scores
+
+```{r}
+ewa_cc <- readMat(here::here("./Sims/Iterate_Out/ewa_edc_cc.mat"))[[1]]
+ewa_cc <- ewa_cc %>%
+  cbind(., cc_ids) %>% 
+  as_tibble(.) %>% 
+  rename(P1 = 1, P2 = 2, P3 = 3)
+
+ewa_cc
+colSums(ewa_cc[,1:3])
+```
+
+#### Multiply by Pattern Sums
+
+```{r}
+std_eh <- apply(eh_cc, 1, function(x) sum(x)) %>% as.vector()
+
+ewa_cc[1,1] * std_eh[1]
+ewa_cc[1,2] * std_eh[2]
+ewa_cc[1,3] * std_eh[3]
+ewa_cc[92,1] * std_eh[1]
+ewa_cc[92,2] * std_eh[2]
+ewa_cc[92,3] * std_eh[3]
+
+ewa_sd <- t(t(as.matrix(ewa_cc %>% select(-sid))) * std_eh) %>% as_tibble() %>% 
+  mutate(sid = ewa_cc$sid)
+```
+
+## Raw
+
+### Product Use
+
+```{r read2}
+quest <- mn_edc %>% select(sid, eth, edu, age, care:creme_rinse)
+personal <- left_join(ewa_cc, quest, by = "sid") %>% select(-deodorant)
+```
+
+### Exposure Model
+
+```{r}
+#function to take component and binary personal care product, regress, and output as tibble
+product_model <- function(P, product) {
+
+  model <- lm(P ~ product + eth + age + edu, data = personal)
+
+  betas_confint <- as.data.frame(model$coefficient[2]) %>% rownames_to_column() %>% 
+    cbind(., as_tibble(confint(model))[2,]) %>%
+    mutate(pvalue = summary(model)$coefficients[2, 4]) %>% 
+    rename(variable = 1, beta = 2, lower = 3, upper = 4) %>% 
+    as_tibble()
+
+  betas_confint
+}
+
+loop_patterns <- personal %>% select(P1:P3) %>% as.matrix()
+loop_prod <- personal %>% select(care:creme_rinse) %>% as.matrix()
+
+out_care <- tibble()
+for (j in 1:ncol(loop_patterns)) {
+for (i in 1:ncol(loop_prod)) {
+  out <- product_model(loop_patterns[,j], loop_prod[,i])
+  out_care <- rbind(out_care, out)
+}
+}
+
+model_out <- cbind(product = rep(colnames(personal)[8:20], times = 3), 
+                   pattern = rep(colnames(personal)[1:3], times = 13), out_care) %>% 
+  as_tibble(.)
+model_out
+```
+
+```{r}
+### Heat Map
+model_out %>% 
+  ggplot(aes(x = pattern, y = product)) + 
+  geom_tile(aes(fill = beta), colour = "white") + 
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red", 
+                       midpoint = 0, 
+                      na.value = "transparent") +
+  labs(x = "Components", y = "Products", title = "") + 
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "bottom")
+```
+
+```{r}
+heat <- model_out %>% select(beta, pattern, product) %>% 
+  spread(pattern, beta) %>%
+  select(-product) %>% 
+  as.matrix()
+
+row.names(heat) <- model_out %>% select(beta, pattern, product) %>% 
+  spread(pattern, beta) %>%
+  select(product) %>% 
+  as.matrix()
+
+## Plot heatmap 
+cool = rainbow(50, start=rgb2hsv(col2rgb('cyan'))[1], end=rgb2hsv(col2rgb('blue'))[1])
+warm = rainbow(50, start=rgb2hsv(col2rgb('red'))[1], end=rgb2hsv(col2rgb('yellow'))[1])
+cols = c(rev(cool), rev(warm))
+
+heatmap.2(heat, key.xlab = "Beta Coefficients", 
+                               margins =c(4,8), Colv = FALSE, keysize = 1.25,
+          col = cols, density.info="none", trace="none", dendrogram = "none", key.title = "")
+```
+
+## Scaled by Pattern Sums
+### Product Use
+
+```{r read}
+personal_sd <- left_join(ewa_sd, quest, by = "sid")
+```
+
+### Exposure Model
+
+```{r}
+loop_patterns_sd <- personal_sd %>% select(P1:P3) %>% as.matrix()
+loop_prod_sd <- personal_sd %>% select(care:creme_rinse) %>% as.matrix()
+
+out_care_sd <- tibble()
+for (j in 1:ncol(loop_patterns)) {
+for (i in 1:ncol(loop_prod)) {
+  out_sd <- product_model(loop_patterns_sd[,j], loop_prod_sd[,i])
+  out_care_sd <- rbind(out_care_sd, out_sd)
+}
+}
+
+model_out_sd <- cbind(product = rep(colnames(personal_sd)[8:20], times = 3), 
+                   pattern = rep(colnames(personal_sd)[1:3], times = 13), out_care_sd) %>% 
+  as_tibble(.) %>% drop_na()
+model_out_sd
+```
+
+```{r}
+### Heat Map
+model_out_sd %>% 
+  ggplot(aes(x = pattern, y = product)) + 
+  geom_tile(aes(fill = beta), colour = "white") + 
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red", 
+                       midpoint = 0, 
+                      na.value = "transparent") +
+  labs(x = "Components", y = "Products", title = "") + 
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "bottom")
+```
+
+```{r}
+heat_sd <- model_out_sd %>% select(beta, pattern, product) %>% 
+  spread(pattern, beta) %>%
+  select(-product) %>% 
+  as.matrix()
+
+row.names(heat_sd) <- model_out_sd %>% select(beta, pattern, product) %>% 
+  spread(pattern, beta) %>%
+  select(product) %>% 
+  as.matrix()
+
+heatmap.2(heat_sd, key.xlab = "Beta Coefficients", 
+                               margins =c(4,8), Colv = FALSE, keysize = 1.25,
+          col = cols, density.info="none", trace="none", dendrogram = "none", key.title = "")
+```

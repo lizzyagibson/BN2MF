@@ -1,9 +1,9 @@
 library(R.matlab)
 library(tidyverse)
 
-mat_sim <- read_csv("./Sims/dgp_rep1/sim_dgp_rep1_1.csv") %>% as.matrix()
-load("./HPC/Rout/dgp_rep1_all.RDA")
-load("./HPC/Rout/dgp_rep1_reordered.RDA")
+mat_sim <- read_csv("./Results/Main/dgp_rep1/sim_dgp_rep1_1.csv") %>% as.matrix()
+load("./Results/Main/dgp_rep1_all.RDA")
+load("./Results/Main/dgp_rep1_reordered.RDA")
 
 head(mat_sim)[,1:5]
 head(dgp_rep1_all$sim[[1]])[,1:5]
