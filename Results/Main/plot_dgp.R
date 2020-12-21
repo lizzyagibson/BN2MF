@@ -81,8 +81,8 @@ dgp_rep1_all_re <-
          loadings_re = map2(loadings, perm, get_product),
          scores_re   = map2(scores,   perm, get_product))
          
-save(dgp_rep1_all_re, file = "./Results/Main/dgp_rep1_reordered.RDA")
-load("./Results/dgp_rep1_reordered.RDA")
+# save(dgp_rep1_all_re, file = "./Results/Main/dgp_rep1_reordered.RDA")
+load("./Results/Main/dgp_rep1_reordered.RDA")
 
 dgp_re <- dgp_rep1_all_re %>% 
   mutate(l2_loadings = map2(true_patterns, loadings_re, function (x,y) norm(x-y, "F")/norm(x, "F")),
@@ -284,6 +284,7 @@ dgp_cos %>%
               values_from = "qs") %>% 
   arrange(matrix, model) %>% print(., n = 30)
 
+# pdf("./Figures/bnmf_cos_v.pdf", width = 10, height = 10)
 dgp_cos_v %>% 
   mutate(data = fct_relevel(data, "Distinct", "Overlapping", "Correlated"),
          model = str_to_upper(model),
@@ -296,3 +297,4 @@ dgp_cos_v %>%
   # geom_violin(aes(color = model, fill = model), scale = "width",alpha = 0.5) +
   facet_grid(matrix ~ data, scales = "free") + 
   labs(y = "Cosine Similarity")
+# dev.off()
