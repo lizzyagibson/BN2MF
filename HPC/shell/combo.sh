@@ -13,4 +13,3 @@ clear
 
 R CMD BATCH --no-save combine_dim.R
 
-
