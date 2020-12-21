@@ -168,3 +168,4 @@ upper_reg_norm = get_norm(ewa_reg, upper_reg)
 lower_reg_norm = get_norm(ewa_reg, lower_reg)
 
 sum(upper_reg_norm >= norm_scores & lower_reg_norm <= norm_scores)/(1000*4)
+
