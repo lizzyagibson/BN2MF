@@ -95,7 +95,7 @@ sim_dist <- scores_dist_iter %>%
     
 ```{r}
 add_noise <- function (seed, chemx) {
-  noise <- list(mean = 0, var = apply(chemx, 2, var)/4)
+  noise <- list(mean = 0, var = apply(chemx, 2, var)/10)
   #noise <- list(mean = 0, var = rep(100, 50))
   set.seed(seed)
   chem_dist <- pmax(chemx + 
@@ -109,7 +109,10 @@ sim_dist <- sim_dist %>%
 ```  
 
 ```{r}
-dist <- sim_dist$sim[[2]]
+apply(sim_dist$sim[[1]], 2, var)
+apply(sim_dist$chem[[1]], 2, var)/10
+
+dist <- sim_dist$sim[[1]]
 melt(cor(dist, method = "spearman")) %>% 
   as_tibble() %>% 
   rename(Correlation = value) %>% 
@@ -278,6 +281,15 @@ round(cor(sim_noise$chem[[1]]), 2)[1:10, 1:10]
 #   write_csv(as_tibble(sim_noise$sim[[i]]), paste0("./Sims/sim_noise_rep1_", i, ".csv"))
 # }
 
-#save(sim_noise, file = "./Results/Simulations/sim_noise.RDA")
+#save(sim_noise, file = "./Results/Sup Noise/sim_noise.RDA")
+# load(paste0("./Results/Sup Noise/sim_noise.RDA"))
+sim_noise
+sim <- sim_noise$sim[[1]] %>% as_tibble()
+patterns <- sim_noise$true_patterns[[1]] %>% as_tibble()
+scores <- sim_noise$true_scores[[1]] %>% as_tibble()
+
+write_csv(sim, "./Results/Sup Noise/noise_sim1.csv")
+write_csv(patterns, "./Results/Sup Noise/noise_patterns1.csv")
+write_csv(scores, "./Results/Sup Noise/noise_scores1.csv")
 ```
 

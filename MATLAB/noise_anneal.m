@@ -39,6 +39,6 @@ for i = 1:ni
     disp(i)
 end
 
-tnot_long = reshape(tnot, 62, 1);
+tnot_long = reshape(tnot, ni, 1);
 grid_out = [tnot_long,out];
 save("/Users/lizzy/BN2MF/MATLAB/test_t0/noise_t0_grid_out.mat", 'grid_out')
