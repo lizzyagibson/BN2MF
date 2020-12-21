@@ -1,4 +1,4 @@
-function [EWA, EH, varH, alphaH, betaH, varWA, finalscore] = NPBayesNMF(X)
+function [EWA, EH, varH, alphaH, betaH,  alphaW, betaW, alphaA, betaA, varWA, finalscore] = NPBayesNMF(X)
     %EWA_low, EH_low, varWA_low, varH_low, alphaH_low, betaH_low] = NPBayesNMF(X)
 % X is the data matrix of non-negative values
 % Kinit is the maximum allowable factorization (initial). The algorithm tries to reduce this number.
@@ -109,6 +109,10 @@ if i == 1 || (i > 1 && (end_score(i) >= max(end_score)))
     varH = H1 ./ H2.^2;
     alphaH = H1;
     betaH = H2;
+    alphaW = W1;
+    betaW = W2;
+    alphaA = A1;
+    betaA = A2;
     finalscore = end_score(i);
 
 end
