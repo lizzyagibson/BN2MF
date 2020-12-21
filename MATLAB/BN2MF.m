@@ -1,4 +1,5 @@
-function [EWA,EH, varH, alphaH, betaH, varWA, finalscore, final_iter] = BN2MF(X)
+function [EWA, EH, varH, alphaH, betaH, alphaW, betaW, ...
+    alphaA, betaA, varWA, finalscore, final_iter, init_seed_struct] = BN2MF(X)
 % X is the data matrix of non-negative values
 % Kinit is the maximum allowable factorization (initial). The algorithm tries to reduce this number.
 %       the size of EWA and EH indicate the learned factorization.
@@ -6,12 +7,18 @@ function [EWA,EH, varH, alphaH, betaH, varWA, finalscore, final_iter] = BN2MF(X)
 %           values of these matrices according to their approximate posterior variational distributions.
 % num_iter is the number of iterations to run. The code doesn't terminate based on convergence currently.
 
+rng('shuffle')
+init_seed_struct = rng; % bc default is seed = 0
+randn(1000); % Warming up the mersenne twister rng
+
 bnp_switch = 1;  % this turns on/off the Bayesian nonparametric part.
 [dim,N] = size(X);
 Kinit = N;
-end_score = zeros(10, 1);
 
-for i = 1:10 % Choose best of 10 runs
+reps = 10;
+end_score = zeros(reps, 1);
+
+for i = 1:reps % Choose best of 10 runs
     
 h01 = 1; %/Kinit;
 h02 = 1;
@@ -89,6 +96,10 @@ if i == 1 || (i > 1 && (end_score(i) >= max(end_score)))
     varH = H1 ./ H2.^2;
     alphaH = H1;
     betaH = H2;
+    alphaW = W1;
+    betaW = W2;
+    alphaA = A1;
+    betaA = A2;
     finalscore = end_score(i);
     final_iter = iter;
 end
