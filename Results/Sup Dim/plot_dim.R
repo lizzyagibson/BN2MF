@@ -11,24 +11,30 @@ dim_all
 
 # Overall relative error
 # repeat for each participant sample size
+
+pdf("./Figures/sim_dim_relerror.pdf", width = 10, height = 10)
 dim_all %>%
-  filter(participants == "10000 Participants") %>% 
+  #filter(participants == "10000 Participants") %>% 
   dplyr::select(seed, participants, chemicals, patterns, grep("l2er", colnames(.))) %>% 
   pivot_longer(grep("l2er", colnames(.))) %>% 
   mutate(name = str_to_upper(str_remove(name, "_l2er"))) %>% 
   ggplot(aes(x = name, y = value, group = interaction(name,patterns))) +
   geom_jitter(alpha = 0.15, size = 0.5, height = 0, width = .3) +
   geom_boxplot(aes(color = name, fill = name),alpha = 0.5, outlier.shape = NA) +
-  #geom_violin(aes(color = name, fill = name),scale = "width",alpha = 0.5) +
+  #geom_violin(aes(color = name, fill = name),
+  #            scale = "width",alpha = 0.5, draw_quantiles = c(0.25, 0.5, 0.75)) +
   facet_grid(chemicals ~ patterns, scales = "free") + 
   scale_y_log10() +
   theme(legend.position = "none") + 
   labs(y = "Relative Predictive Error")
+dev.off()
 
 # Symmetric Subspace Distance
 # repeat for each participant sample size AND chemical mixture size
+
+pdf("./Figures/sim_dim_ssdist.pdf", width = 10, height = 10)
 dim_all %>%
-  filter(participants == "10000 Participants") %>% 
+  #filter(participants == "10000 Participants") %>% 
   dplyr::select(seed, participants, chemicals, patterns, grep("ssdist", colnames(.))) %>% 
   pivot_longer(grep("ssdist", colnames(.)),
                names_to = c("name", "matrix", "drop"),
@@ -37,16 +43,19 @@ dim_all %>%
          matrix = str_to_title(ifelse(matrix == "loading", "loadings", matrix))) %>% 
   ggplot(aes(x = name, y = value, group = interaction(name,patterns))) +
   geom_jitter(alpha = 0.15, size = 0.5, height = 0, width = .3) +
-  #geom_boxplot(aes(color = name, fill = name),alpha = 0.5, outlier.shape = NA) +
-  geom_violin(aes(color = name, fill = name),scale = "width",alpha = 0.5) +
+  geom_boxplot(aes(color = name, fill = name),alpha = 0.5, outlier.shape = NA) +
+  #geom_violin(aes(color = name, fill = name),scale = "width",alpha = 0.5) +
   facet_grid(matrix ~ patterns, scales = "free") + 
   theme(legend.position = "none") + 
   labs(y = "Symmetric Subspace Distance")
+dev.off()
 
 # relative error on loadings and scores
 # repeat for each participant sample size AND chemical mixture size
+
+pdf("./Figures/sim_dim_ls_relerror.pdf", width = 10, height = 10)
 dim_all %>%
-  filter(participants == "10000 Participants") %>% 
+  #filter(participants == "10000 Participants") %>% 
   dplyr::select(seed, participants, chemicals, patterns, 
          grep("score_l2", colnames(.)), grep("load_l2", colnames(.)),
          grep("scores_l2", colnames(.)), grep("loadings_l2", colnames(.))) %>% 
@@ -57,18 +66,19 @@ dim_all %>%
          matrix = str_to_title(ifelse(grepl("load", matrix), "loadings", "scores"))) %>% 
   ggplot(aes(x = name, y = value, group = interaction(name,patterns))) +
   geom_jitter(alpha = 0.15, size = 0.5, height = 0, width = .3) +
-  #geom_boxplot(aes(color = name, fill = name),alpha = 0.5, outlier.shape = NA) +
-  geom_violin(aes(color = name, fill = name),scale = "width",alpha = 0.5) +
+  geom_boxplot(aes(color = name, fill = name),alpha = 0.5, outlier.shape = NA) +
+  #geom_violin(aes(color = name, fill = name),scale = "width",alpha = 0.5) +
   facet_grid(matrix ~ patterns, scales = "free") + 
   scale_y_log10() + 
   theme(legend.position = "none") + 
   labs(y = "Relative Predictive Error")
+dev.off()
 
 # Cosine Distance
 # repeat for each participant sample size AND chemical miture size
 # So far only on BN2MF
 dim_all %>%
-  filter(participants == "10000 Participants") %>% 
+  #filter(participants == "10000 Participants") %>% 
   dplyr::select(seed, participants, chemicals, patterns, grep("cos_dist", colnames(.))) %>% 
   pivot_longer(grep("cos_dist", colnames(.)),
                names_to = c("name", "drop", "drop2", "matrix"),
@@ -84,7 +94,7 @@ mutate(name = str_to_upper(name),
   labs(y = "Cosine Distance")
 
 # Rank
-dim_all %>%
+rank_1= dim_all %>%
   filter(patterns == "1 Pattern") %>% 
   dplyr::select(seed, participants, chemicals, patterns, grep("rank", colnames(.))) %>% 
   pivot_longer(grep("rank", colnames(.)),
@@ -98,7 +108,7 @@ dim_all %>%
               values_from = n) %>% 
   mutate_if(is.integer, replace_na, 0)
 
-dim_all %>%
+rank_4=dim_all %>%
   filter(patterns == "4 Patterns") %>% 
   dplyr::select(seed, participants, chemicals, patterns, grep("rank", colnames(.))) %>% 
   pivot_longer(grep("rank", colnames(.)),
@@ -112,7 +122,7 @@ dim_all %>%
               values_from = n) %>% 
   mutate_if(is.integer, replace_na, 0)
 
-dim_all %>%
+rank_10=dim_all %>%
   filter(patterns == "10 Patterns") %>% 
   dplyr::select(seed, participants, chemicals, patterns, grep("rank", colnames(.))) %>% 
   pivot_longer(grep("rank", colnames(.)),
@@ -126,7 +136,7 @@ dim_all %>%
               values_from = n) %>% 
   mutate_if(is.integer, replace_na, 0)
 
-
-
-
+rank_1
+rank_4
+rank_10
 
