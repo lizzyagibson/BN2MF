@@ -1,9 +1,9 @@
 done = readtable("/ifs/scratch/msph/ehs/eag2186/npbnmf/noise_done.csv");
 done = table2array(done(:,2));
 
-if any(done == j)
-    exit()
-end
+% if any(done == j)
+%     exit()
+% end
 
 %% Get job number
 % j = getenv('SGE_TASK_ID')
