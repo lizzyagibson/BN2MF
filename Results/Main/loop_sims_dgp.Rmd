@@ -109,28 +109,6 @@ sim_dist <- sim_dist %>%
  mutate(sim = map2(seed, chem, add_noise))
 ```  
 
-Mothers \& Newborns phthalates, phenols, parabens (17 total):
-
-`apply(edc_cc, 2, sd)`
-`     mecpp      mehhp      meohp       mcpp       mibp        mbp       mbzp        mep       mehp     dcp_24 `
-`138.477399 124.334142  88.676474   2.708577  18.533785  59.807515  49.739692 597.863602  33.568066  17.029572 `
-`    dcp_25       b_pb       bp_3       m_pb       p_pb        tcs        bpa `
-`307.279835   7.395033 215.282629 318.976581 128.788362 164.312044   4.136665 `
-
-` apply(edc_cc, 2, mean)`
-`     mecpp      mehhp      meohp       mcpp       mibp        mbp       mbzp        mep       mehp     dcp_24 `
-` 72.741399  51.200487  39.018626   2.990761  13.625495  55.572506  28.447649 336.009628  13.074791   8.817393 `
-`    dcp_25       b_pb       bp_3       m_pb       p_pb        tcs        bpa `
-`206.986763   2.794003  70.910095 256.967194  72.418903  71.415968   2.862945 `
-
-`     mecpp              mehhp               meohp              mcpp               mibp              mbp     ` 
-`Min.   :   4.509   Min.   :   0.8727   Min.   :  1.018   Min.   : 0.05333   Min.   :  0.600   Min.   :  4.08`  
-`1st Qu.:  21.038   1st Qu.:  11.2250   1st Qu.:  9.742   1st Qu.: 1.40000   1st Qu.:  5.497   1st Qu.: 22.72`  
-`Median :  35.294   Median :  20.9731   Median : 17.067   Median : 2.34476   Median :  9.600   Median : 37.10`  
-`Mean   :  72.741   Mean   :  51.2005   Mean   : 39.019   Mean   : 2.99076   Mean   : 13.626   Mean   : 55.57`  
-`3rd Qu.:  68.869   3rd Qu.:  39.7335   3rd Qu.: 32.145   3rd Qu.: 3.73144   3rd Qu.: 16.081   3rd Qu.: 66.43`  
-`Max.   :1382.851   Max.   :1217.3912   Max.   :918.261   Max.   :26.69995   Max.   :272.291   Max.   :657.78` 
-
 ```{r}
 dist <- sim_dist$sim[[1]]
 
@@ -340,5 +318,16 @@ sim_dgp_rep1
 # }
 
 # save(sim_dgp_rep1, file = "./Sims/sim_dgp_rep1.RDA")
+
+# Testing overlapping example in MATLAB
+chem <- sim_dgp_rep1$chem[[102]] %>% as_tibble()
+sim <- sim_dgp_rep1$sim[[102]] %>% as_tibble()
+patterns <- sim_dgp_rep1$true_patterns[[102]] %>% as_tibble()
+scores <- sim_dgp_rep1$true_scores[[102]] %>% as_tibble()
+
+write_csv(chem, "./Results/Main/chem1.csv")
+write_csv(sim, "./Results/Main/sim1.csv")
+write_csv(patterns, "./Results/Main/patterns1.csv")
+write_csv(scores, "./Results/Main/scores1.csv")
 ```
 

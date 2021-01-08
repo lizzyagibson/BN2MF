@@ -280,7 +280,7 @@ sim_noise <- rbind(sim_dist %>% mutate(data = "Distinct"),
   
 apply(sim_noise$chem[[1]], 2, var)
 apply(sim_noise$sim[[1]], 2, var)
-round(cor(sim_noise$sim[[1]]), 2)[1:10, 1:10]
+round(cor(sim_noise$sim[[201]]), 2)[1:10, 1:10]
 round(cor(sim_noise$chem[[1]]), 2)[1:10, 1:10]
 
 # for (i in 1:nrow(sim_noise)) {
@@ -290,10 +290,12 @@ round(cor(sim_noise$chem[[1]]), 2)[1:10, 1:10]
 # save(sim_noise, file = "./Results/Sup Noise/sim_noise.RDA")
 # load(paste0("./Results/Sup Noise/sim_noise.RDA"))
 sim_noise
+chem <- sim_noise$chem[[1]] %>% as_tibble()
 sim <- sim_noise$sim[[1]] %>% as_tibble()
 patterns <- sim_noise$true_patterns[[1]] %>% as_tibble()
 scores <- sim_noise$true_scores[[1]] %>% as_tibble()
 
+# write_csv(chem, "./Results/Sup Noise/noise_chem1.csv")
 # write_csv(sim, "./Results/Sup Noise/noise_sim1.csv")
 # write_csv(patterns, "./Results/Sup Noise/noise_patterns1.csv")
 # write_csv(scores, "./Results/Sup Noise/noise_scores1.csv")
