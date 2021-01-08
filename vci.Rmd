@@ -18,6 +18,7 @@ library(GGally)
 library(R.matlab)
 
 source("./Results/factor_correspondence.R")
+source("./Results/compare_functions.R")
 source("./Results/fig_set.R")
 ```
 
@@ -30,13 +31,13 @@ Steps to assess coverage:
     b. $\alpha$ and $\beta$ parameters for W, a, H Gamma distributions
 2. Factor correspondence
     a. Match EH with simulated pattern matrix (truth)
-    b. Use permutation matrix to rearrange all mean and parameter matrices
-3. Create variational distribution
+    b. Use permutation matrix to rearrange all solution matrices
+3. Create variational distributions
     a. Take 1,000 draws each from Gamma distributions for W, a, H
     b. Create scores as $W_{i,k} \times a_k$
 4. Normalize \& scale
     a. $\ell^1$ normalize patterns of H
-    b. Scale Wa patterns by normalizing constant of corresponding H pattern
+    b. Scale $Wa$ by normalizing constant of corresponding H patterns
 5. Create VCI
     a. Take $2.5^{th}$ and $97.5^{th}$ quantiles of scaled Wa distribution
     b. VCI = ($2.5^{th}$, $97.5^{th}$)
@@ -53,7 +54,7 @@ Steps to assess coverage:
 
 ### Main Simulations
 
-```{r, prop}
+```{r, prop_main}
 prop_t0_0 <- tibble()
 
 for (i in 1:300) {
@@ -78,19 +79,79 @@ prop_t0_0 %>%
   knitr::kable(caption = "Coverage for BN2MF with annealing and t0 = 0")
 ```
 
-```{r, prop_t0}
+```{r, cuml}
+cuml = tibble()
+
+for (i in 1:300) {
+  if (i == 278) {
+  cuml = bind_rows(cuml, c(V1 = NA, V2 = NA))
+  } else if (file.exists(paste0("./Results/Main/prop_out_cuml/cuml_prop", i, ".mat"))) {
+  add_prop = readMat(paste0("./Results/Main/prop_out_cuml/cuml_prop", 
+                            i, ".mat"))[[1]] %>% as_tibble()  
+  cuml = bind_rows(cuml, add_prop)
+  } else {cuml = bind_rows(cuml, c(V1 = NA, V2 = NA))}
+}
+
+cuml = cuml %>% rename(row = V1, prop = V2) %>% 
+  mutate(seed = rep(1:100, 3),
+         type = c(rep("Distinct", 100), rep("Overlapping", 100), rep("Correlated", 100)))
+
+cuml %>% 
+  group_by(type) %>% 
+  summarise(qs = quantile(prop, c(0.25, 0.5, 0.75), na.rm = T), prob = c(0.25, 0.5, 0.75),
+            mean = mean(prop, na.rm = T),
+            max = max(prop, na.rm = T),
+            min = min(prop, na.rm = T)) %>% 
+  pivot_wider(names_from = "prob",
+              values_from = "qs") %>% 
+  dplyr::select(type, min, `0.25`, `0.5`, mean, `0.75`, max) %>% 
+  mutate_if(is.numeric, round, 2) %>% 
+  knitr::kable(caption = "Coverage for BN2MF with inverse cumulative distributions")
+```
+
+```{r, prop_t01}
 prop_t0_0.001 <- tibble()
 
 for (i in 1:300) {
-  add_prop = readMat(paste0("./Results/Main/prop_out_t0/t0_save_prop", i, ".mat"))[[1]] %>% as_tibble()  
-  add_prop
-  prop_t0_0.001 = bind_rows(prop_t0_0.001, add_prop)
+  if (file.exists(paste0("./Results/Main/prop_out_t0/t0_save_prop", i, "_001.mat"))) {
+    add_prop = readMat(paste0("./Results/Main/prop_out_t0/t0_save_prop", 
+                            i, "_001.mat"))[[1]] %>% as_tibble()  
+    prop_t0_0.001 = bind_rows(prop_t0_0.001, add_prop) 
+  } else {
+  prop_t0_0.001 = bind_rows(prop_t0_0.001, c(V1 = NA, V2 = NA)) 
+  }
 }
+
 prop_t0_0.001 = prop_t0_0.001 %>% rename(row = V1, prop = V2) %>% 
   mutate(seed = rep(1:100, 3),
          type = c(rep("Distinct", 100), rep("Overlapping", 100), rep("Correlated", 100)))
 
 prop_t0_0.001 %>% 
+  group_by(type) %>% 
+  summarise(qs = quantile(prop, c(0.25, 0.5, 0.75), na.rm = T), prob = c(0.25, 0.5, 0.75),
+            mean = mean(prop, na.rm = T),
+            max = max(prop, na.rm = T),
+            min = min(prop, na.rm = T)) %>% 
+  pivot_wider(names_from = "prob",
+              values_from = "qs") %>% 
+  dplyr::select(type, min, `0.25`, `0.5`, mean, `0.75`, max) %>%
+  mutate_if(is.numeric, round, 2) %>% 
+  knitr::kable(caption = "Coverage for BN2MF with annealing and t0 = 0.001")
+```
+
+```{r, prop_t0}
+prop_t0_0.009 <- tibble()
+
+for (i in 1:300) {
+  add_prop = readMat(paste0("./Results/Main/prop_out_t0/t0_save_prop", i, ".mat"))[[1]] %>% as_tibble()  
+  add_prop
+  prop_t0_0.009 = bind_rows(prop_t0_0.009, add_prop)
+}
+prop_t0_0.009 = prop_t0_0.009 %>% rename(row = V1, prop = V2) %>% 
+  mutate(seed = rep(1:100, 3),
+         type = c(rep("Distinct", 100), rep("Overlapping", 100), rep("Correlated", 100)))
+
+prop_t0_0.009 %>% 
   group_by(type) %>% 
   summarise(qs = quantile(prop, c(0.25, 0.5, 0.75)), prob = c(0.25, 0.5, 0.75),
             mean = mean(prop),
@@ -100,7 +161,7 @@ prop_t0_0.001 %>%
               values_from = "qs") %>% 
   dplyr::select(type, min, `0.25`, `0.5`, mean, `0.75`, max) %>%
   mutate_if(is.numeric, round, 2) %>% 
-  knitr::kable(caption = "Coverage for BN2MF with annealing and t0 = 0.001")
+  knitr::kable(caption = "Coverage for BN2MF with annealing and t0 = 0.009")
 ```
     
 ### Noisy Simulations
@@ -109,7 +170,8 @@ prop_t0_0.001 %>%
 noise_prop_t0_0 <- tibble()
 
 for (i in 1:300) {
-  add_prop = readMat(paste0("./Results/Sup Noise/prop_out/save_prop", i, ".mat"))[[1]] %>% as_tibble()  
+  add_prop = readMat(paste0("./Results/Sup Noise/prop_out_noise/noise_save_prop", 
+                            i, ".mat"))[[1]] %>% as_tibble()  
   add_prop
   noise_prop_t0_0 = bind_rows(noise_prop_t0_0, add_prop)
 }
@@ -131,31 +193,37 @@ noise_prop_t0_0 %>%
 ```
 
 ```{r, prop_n_t0}
-noise_prop_t0_0.001 <- tibble()
+noise_prop_t0_0.009 <- tibble()
 
 for (i in 1:300) {
-  add_prop = readMat(paste0("./Results/Sup Noise/prop_out_t0/t0_save_prop", i, ".mat"))[[1]] %>% as_tibble()  
-  add_prop
-  noise_prop_t0_0.001 = bind_rows(noise_prop_t0_0.001, add_prop)
+  if (file.exists(paste0("./Results/Sup Noise/prop_out_noise_t0/t0_noise_save_prop", i, ".mat"))) {
+    add_prop = readMat(paste0("./Results/Sup Noise/prop_out_noise_t0/t0_noise_save_prop", 
+                              i, ".mat"))[[1]] %>% as_tibble()  
+    noise_prop_t0_0.009 = bind_rows(noise_prop_t0_0.009, add_prop)
+  } else {
+    noise_prop_t0_0.009 = bind_rows(noise_prop_t0_0.009, c(V1 = NA, V2 = NA)) 
+  }
 }
-noise_prop_t0_0.001 = noise_prop_t0_0.001 %>% rename(row = V1, prop = V2) %>% 
+
+noise_prop_t0_0.009 = noise_prop_t0_0.009 %>% 
+  rename(row = V1, prop = V2) %>% 
   mutate(seed = rep(1:100, 3),
          type = c(rep("Distinct", 100), rep("Overlapping", 100), rep("Correlated", 100)))
 
-noise_prop_t0_0.001 %>% 
+noise_prop_t0_0.009 %>% 
   group_by(type) %>% 
-  summarise(qs = quantile(prop, c(0.25, 0.5, 0.75)), prob = c(0.25, 0.5, 0.75),
-            mean = mean(prop),
-            max = max(prop),
-            min = min(prop)) %>% 
+  summarise(qs = quantile(prop, c(0.25, 0.5, 0.75), na.rm = TRUE), 
+            prob = c(0.25, 0.5, 0.75),
+            mean = mean(prop, na.rm = TRUE),
+            max = max(prop, na.rm = TRUE),
+            min = min(prop, na.rm = TRUE)) %>% 
   pivot_wider(names_from = "prob",
               values_from = "qs") %>% 
   dplyr::select(type, min, `0.25`, `0.5`, mean, `0.75`, max) %>% 
   mutate_if(is.numeric, round, 2) %>% 
-  knitr::kable(caption = "Coverage for BN2MF with annealing and t0 = 0.001")
+  knitr::kable(caption = "Coverage for BN2MF with annealing and t0 = 0.009")
 ```
 
-## Results
 
 
     
