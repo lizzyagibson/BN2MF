@@ -25,7 +25,7 @@ h02 = 1;
 w01 = 1; %/dim;
 w02 = 1;
 W1 = gamrnd(ones(dim,Kinit),w02); % changed
-W2 = ones(dim,Kinit);           % changed
+W2 = ones(dim,Kinit);             % changed
 
 a01 = 1/Kinit;
 a02 = 1;
