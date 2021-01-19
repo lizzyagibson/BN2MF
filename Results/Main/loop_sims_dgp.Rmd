@@ -325,9 +325,21 @@ sim <- sim_dgp_rep1$sim[[102]] %>% as_tibble()
 patterns <- sim_dgp_rep1$true_patterns[[102]] %>% as_tibble()
 scores <- sim_dgp_rep1$true_scores[[102]] %>% as_tibble()
 
-write_csv(chem, "./Results/Main/chem1.csv")
-write_csv(sim, "./Results/Main/sim1.csv")
-write_csv(patterns, "./Results/Main/patterns1.csv")
-write_csv(scores, "./Results/Main/scores1.csv")
+# write_csv(chem, "./Results/Main/chem1.csv")
+# write_csv(sim, "./Results/Main/sim1.csv")
+# write_csv(patterns, "./Results/Main/patterns1.csv")
+# write_csv(scores, "./Results/Main/scores1.csv")
+
+# Correlated example for bootstrapping
+corr_chem <- sim_dgp_rep1$chem[[202]] %>% as_tibble()
+corr_sim <- sim_dgp_rep1$sim[[202]] %>% as_tibble()
+corr_patterns <- sim_dgp_rep1$true_patterns[[202]] %>% as_tibble()
+corr_scores <- sim_dgp_rep1$true_scores[[202]] %>% as_tibble()
+
+# write_csv(corr_chem, "./Results/Main/Corr Ex/corr_chem.csv")
+# write_csv(corr_sim, "./Results/Main/Corr Ex/corr_sim.csv")
+# write_csv(corr_patterns, "./Results/Main/Corr Ex/corr_patterns.csv")
+# write_csv(corr_scores, "./Results/Main/Corr Ex/corr_scores.csv")
+
 ```
 
