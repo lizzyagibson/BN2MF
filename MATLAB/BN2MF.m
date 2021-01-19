@@ -25,13 +25,19 @@ h02 = 1;
 
 w01 = 1; %/dim;
 w02 = 1;
-W1 = gamrnd(dim*ones(dim,Kinit),1/dim);
-W2 = dim*ones(dim,Kinit);
+W1 = gamrnd(ones(dim,Kinit),w02); % changed
+W2 = ones(dim,Kinit);             % changed
+
+%W1 = gamrnd(dim*ones(dim,Kinit),1/dim);
+%W2 = dim*ones(dim,Kinit);
 
 a01 = bnp_switch*1/Kinit + (1-bnp_switch);
 a02 = 1;
-A1 = a01 + bnp_switch*1000*ones(1,Kinit)/Kinit;
-A2 = a02 + bnp_switch*1000*ones(1,Kinit);
+A1 = ones(1,Kinit)/Kinit; % changed
+A2 = ones(1,Kinit);       % changed
+
+%A1 = a01 + bnp_switch*1000*ones(1,Kinit)/Kinit;
+%A2 = a02 + bnp_switch*1000*ones(1,Kinit);
 
 H1 = ones(Kinit,N);
 H2 = ones(Kinit,N);
