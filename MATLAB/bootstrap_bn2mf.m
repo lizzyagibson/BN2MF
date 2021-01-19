@@ -7,10 +7,10 @@
 j = getenv('SGE_TASK_ID')
 
 %% Choose 1 example of correlated simulations
-sim       = table2array(readtable("/Users/lizzy/BN2MF/Results/Main/Corr Ex/corr_sim.csv"));
-pre_noise = table2array(readtable("/Users/lizzy/BN2MF/Results/Main/Corr Ex/corr_chem.csv"));
-patterns  = table2array(readtable("/Users/lizzy/BN2MF/Results/Main/Corr Ex/corr_patterns.csv"));
-scores    = table2array(readtable("/Users/lizzy/BN2MF/Results/Main/Corr Ex/corr_scores.csv"));
+sim       = table2array(readtable("/ifs/scratch/msph/ehs/eag2186/Data/Corr Ex/corr_sim.csv"));
+pre_noise = table2array(readtable("/ifs/scratch/msph/ehs/eag2186/Data/Corr Ex/corr_chem.csv"));
+patterns  = table2array(readtable("/ifs/scratch/msph/ehs/eag2186/Data/Corr Ex/corr_patterns.csv"));
+scores    = table2array(readtable("/ifs/scratch/msph/ehs/eag2186/Data/Corr Ex/corr_scores.csv"));
 
 %% Normalize truth
 patterns_denom      = sum(patterns, 2);
