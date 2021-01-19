@@ -29,8 +29,8 @@ a02 = 1;
 A1 = a01 + bnp_switch*1000*ones(1,Kinit)/Kinit;
 A2 = a02 + bnp_switch*1000*ones(1,Kinit);
 
-H1 = true_patterns ; %.* 1000000000; %ones(Kinit,N);
-H2 = ones(Kinit,N) ; %.* 1000000000;
+%H1 = ones(Kinit,N);
+%H2 = ones(Kinit,N); 
 
 K = Kinit;
 num_iter = 100000;
@@ -47,7 +47,9 @@ for iter = 1:num_iter
     t1 = max(ElnWA_reshape,[],1);
     ElnWA_reshape = ElnWA_reshape - repmat(t1,[K 1 1]);
     
-    ElnH = psi(H1) - log(H2);
+    %ElnH = psi(H1) - log(H2);
+    ElnH = log(true_patterns);
+    % HERE
     P = bsxfun(@plus,ElnWA_reshape/T,ElnH/T);
     P = exp(P);
     P = bsxfun(@rdivide,P,sum(P,1));
@@ -55,10 +57,12 @@ for iter = 1:num_iter
     %H2 = (h02 + repmat(sum(EW.*repmat(A1./A2,dim,1),1),N,1)')/T;
     
     W1 = 1 + (w01 + reshape(sum(X_reshape.*P,2),[K dim])' - 1)/T;
-    W2 = (w02 + repmat(sum((H1./H2).*repmat((A1./A2)',1,N),2)',dim,1))/T;
+    W2 = (w02 + repmat(sum((true_patterns).*repmat((A1./A2)',1,N),2)',dim,1))/T;
+    % HERE
     
     A1 = 1 + (a01 + bnp_switch*sum(sum(X_reshape.*P,3),2)' - 1)/T;
-    A2 = (a02 + bnp_switch*sum(W1./W2,1).*sum(H1./H2,2)')/T; 
+    A2 = (a02 + bnp_switch*sum(W1./W2,1).*sum(true_patterns,2)')/T; 
+    % HERE
     
     idx_prune = find(A1./A2 < 10^-3);
     if ~isempty(idx_prune)
@@ -71,10 +75,8 @@ for iter = 1:num_iter
     end
     K = length(A1);
     
-%    stem(A1./A2); colorbar; pause(.5);
-%    disp([num2str(iter) ' : ' num2str(sum(sum(abs(X-(W1./W2)*diag(A1./A2)*(H1./H2)))))]);
-     score(iter) = sum(sum(abs(X-(W1./W2)*diag(A1./A2)*(H1./H2))));
-     
+     score(iter) = sum(sum(abs(X-(W1./W2)*diag(A1./A2)*(true_patterns))));
+     % HERE
      if iter > 1 && abs(score(iter-1)-score(iter)) < 1e-5  
      break
      end
@@ -87,11 +89,12 @@ disp(['Run Number: ' num2str(i) '. Iter Number: ' num2str(iter) '. Iter Score: '
 % Among the results, use the fitted variational parameters that achieve the HIGHEST ELBO
 if i == 1 || (i > 1 && (end_score(i) >= max(end_score)))
     EWA = (W1./W2)*diag(A1./A2);
-    EH = H1./H2;
+    EH = true_patterns;
+    % HERE
     varWA = ((W1 .* A1) .* (W1 + A1 + 1)) ./ (W2.^2 .* A2.^2);
-    varH = H1 ./ H2.^2;
-    alphaH = H1;
-    betaH = H2;
+    varH = 0;
+    alphaH = 0;
+    betaH = 0;
     alphaW = W1;
     betaW = W2;
     alphaA = A1;

@@ -15,129 +15,166 @@ scores_scaled = scores * patterns_denom_diag;
 
 pred = EWA0 * EH0;
 
-% Normalize H matrix to L1 norm across chemicals
-H_denom  = sum(EH0, 2);
-H_scaled = EH0 ./ H_denom;
-H_denom_diag = diag(H_denom);
-
-% Scale WA matrix by corresponding normalization constant
-WA_scaled = EWA0 * H_denom_diag;
-
 % Scale is inverse rate
 % theta is inverse beta
-thetaA0 = 1 ./ betaA0;
-thetaW0 = 1 ./ betaW0;
-thetaH0 = 1 ./ betaH0;
+thetaA = 1 ./ betaA0;
+thetaW = 1 ./ betaW0;
 
-% Create CI with inverse cumulative distribution
-% x = gaminv(p,a,b) returns the icdf of the gamma distribution 
-% with shape parameter a and the scale parameter b, evaluated at the values in p.
-upper_w = gaminv(0.975, alphaW0, thetaW0);
-lower_w = gaminv(0.025, alphaW0, thetaW0);
+draws = 1000;
 
-upper_a = gaminv(0.975, alphaA0, thetaA0);
-lower_a = gaminv(0.025, alphaA0, thetaA0);
+% Take alphas and thetas
+% Take 1000 draws from distributions for W, A, & H
+% This creates an empirical distribution for each
+W_dist = zeros(1000,   4,  draws);
+A_dist = zeros(1,      4,  draws);
 
-upper_ci = upper_w * diag(upper_a) * H_denom_diag;
-lower_ci = lower_w * diag(lower_a) * H_denom_diag;
+WA_dist = zeros(1000,  4,  draws);
+A_dist_diag = zeros(4, 4,  draws);
 
-% Rearrange solution matrices to match truth
-[e,Pi] = factor_correspondence(patterns_scaled',H_scaled');
-EH = (H_scaled' * Pi)';
-EWA = WA_scaled * Pi;
+for i = 1:draws
+    W_dist(:,:,i) = gamrnd(alphaW0, thetaW);
+    A_dist(:,:,i) = gamrnd(alphaA0, thetaA);
 
-upper  = upper_ci * Pi;
-lower  = lower_ci * Pi;
+    A_dist_diag(:,:,i) = diag(A_dist(:,:,i));
+    WA_dist(:,:,i)     = W_dist(:,:,i) * A_dist_diag(:,:,i);
+end
+
+% Normalize all H matrices to L1 norm across chemicals
+H_denom  = sum(EH0, 2);
+H_scaled = EH0 ./ H_denom;
+
+H_denom_diag = diag(H_denom);
+EWA_scaled = EWA0 * H_denom_diag;
+
+% Scale all WA matrices by corresponding normalization constant
+% This creates a scaled empirical distribution for scores
+WA_scaled = zeros(1000, 4, draws);
+
+for i = 1:draws
+    WA_scaled(:,:,i) = WA_dist(:,:,i) * H_denom_diag;
+end
+
+% Create CI
+upper_ci = quantile(WA_scaled, 0.975, 3);
+lower_ci = quantile(WA_scaled, 0.025, 3);
+
+sum(sum(scores_scaled <= upper_ci & scores_scaled >= lower_ci)) / (1000*4)
 
 %% Same steps without known patterns
 [EWA0_reg, EH0_reg, varH0_reg, alphaH0_reg, betaH0_reg, alphaW0_reg, betaW0_reg, ...
-      alphaA0_reg, betaA0_reg, varWA0_reg, finalscore0_reg, final_iter0_reg, INIT_reg] = BN2MF_ones(sim);
+      alphaA0_reg, betaA0_reg, varWA0_reg, finalscore0_reg, final_iter0_reg, INIT_reg] = BN2MF(sim);
 
 pred_reg = EWA0_reg * EH0_reg;
 
-% Normalize H matrix to L1 norm across chemicals
-H_denom_reg  = sum(EH0_reg, 2);
-H_scaled_reg = EH0_reg ./ H_denom_reg;
-H_denom_diag_reg = diag(H_denom_reg);
+[~,Pi_reg] = factor_correspondence(patterns',EH0_reg');
+EH_reg = (EH0_reg' * Pi_reg)';
+EWA_reg = EWA0_reg * Pi_reg;
 
-% Scale WA matrix by corresponding normalization constant
-WA_scaled_reg = EWA0_reg * H_denom_diag_reg;
+alphaW_reg = alphaW0_reg * Pi_reg;
+betaW_reg  = betaW0_reg  * Pi_reg;
+
+alphaH_reg = (alphaH0_reg' * Pi_reg)';
+betaH_reg  = (betaH0_reg'  * Pi_reg)';
+
+alphaA_reg = alphaA0_reg * Pi_reg;
+betaA_reg  = betaA0_reg  * Pi_reg;
 
 % Scale is inverse rate
 % theta is inverse beta
-thetaA0_reg = 1 ./ betaA0_reg;
-thetaW0_reg = 1 ./ betaW0_reg;
-thetaH0_reg = 1 ./ betaH0_reg;
+thetaA_reg = 1 ./ betaA_reg;
+thetaW_reg = 1 ./ betaW_reg;
+thetaH_reg = 1 ./ betaH_reg;
 
-% Create CI with inverse cumulative distribution
-% x = gaminv(p,a,b) returns the icdf of the gamma distribution 
-% with shape parameter a and the scale parameter b, evaluated at the values in p.
-upper_w_reg = gaminv(0.975, alphaW0_reg, thetaW0_reg);
-lower_w_reg = gaminv(0.025, alphaW0_reg, thetaW0_reg);
+draws = 1000;
 
-upper_a_reg = gaminv(0.975, alphaA0_reg, thetaA0_reg);
-lower_a_reg = gaminv(0.025, alphaA0_reg, thetaA0_reg);
+% Take alphas and thetas
+% Take 1000 draws from distributions for W, A, & H
+% This creates an empirical distribution for each
+W_dist_reg = zeros(1000,   4,  draws);
+A_dist_reg = zeros(1,      4,  draws);
+H_dist_reg = zeros(4,      50, draws);
+WA_dist_reg = zeros(1000,  4,  draws);
+A_dist_diag_reg = zeros(4, 4,  draws);
 
-upper_ci_reg = upper_w_reg * diag(upper_a_reg) * H_denom_diag_reg;
-lower_ci_reg = lower_w_reg * diag(lower_a_reg) * H_denom_diag_reg;
+for i = 1:draws
+    W_dist_reg(:,:,i) = gamrnd(alphaW_reg, thetaW_reg);
+    A_dist_reg(:,:,i) = gamrnd(alphaA_reg, thetaA_reg);
+    H_dist_reg(:,:,i) = gamrnd(alphaH_reg, thetaH_reg);
 
-% Rearrange solution matrices to match truth
-[e_reg,Pi_reg] = factor_correspondence(patterns_scaled',H_scaled_reg');
-EH_reg  = (H_scaled_reg' * Pi_reg)';
-EWA_reg = WA_scaled_reg  * Pi_reg;
+    A_dist_diag_reg(:,:,i) = diag(A_dist_reg(:,:,i));
+    WA_dist_reg(:,:,i)     = W_dist_reg(:,:,i) * A_dist_diag_reg(:,:,i);
+end
 
-upper_reg  = upper_ci_reg * Pi_reg;
-lower_reg  = lower_ci_reg * Pi_reg;
+% Normalize all H matrices to L1 norm across chemicals
+H_denom_reg  = sum(H_dist_reg, 2);
+H_scaled_reg = H_dist_reg ./ H_denom_reg;
+
+H_denom_diag_reg = zeros(4, 4, draws);
+for i = 1:draws
+    H_denom_diag_reg(:, :, i) = diag(H_denom_reg(:,:,i));
+end
+
+EH_denom_reg  = sum(EH_reg, 2);
+EH_scaled_reg = EH_reg ./ EH_denom_reg;
+EWA_scaled_reg = EWA_reg * diag(EH_denom_reg);
+
+% Scale all WA matrices by corresponding normalization constant
+% This creates a scaled empirical distribution for scores
+WA_scaled_reg = zeros(1000, 4, draws);
+
+for i = 1:draws
+    WA_scaled_reg(:,:,i) = WA_dist_reg(:,:,i) * H_denom_diag_reg(:,:,i);
+end
+
+% Create CI
+upper_ci_reg = quantile(WA_scaled_reg, 0.975, 3);
+lower_ci_reg = quantile(WA_scaled_reg, 0.025, 3);
+
+sum(sum(scores_scaled <= upper_ci_reg & scores_scaled >= lower_ci_reg)) / (1000*4)
 
 %% Compare results
 
 % Results without known patterns
 disp("Results without known patterns")
-sum(sum(scores_scaled <= upper_reg & scores_scaled >= lower_reg)) / (1000*4)
-% 0.8257
+sum(sum(scores_scaled <= upper_ci_reg & scores_scaled >= lower_ci_reg)) / (1000*4)
+% 0.8183
 norm(sim - pred_reg, "fro") / norm(sim, "fro")
 % 0.0637
 norm(pre_noise - pred_reg, "fro") / norm(pre_noise, "fro")
 % 0.0276
-norm(patterns_scaled - EH_reg, "fro") / norm(patterns_scaled, "fro")
+norm(patterns_scaled - EH_scaled_reg, "fro") / norm(patterns_scaled, "fro")
 % 0.0735
-norm(scores_scaled - EWA_reg, "fro") / norm(scores_scaled, "fro")
+norm(scores_scaled - EWA_scaled_reg, "fro") / norm(scores_scaled, "fro")
 % 0.0759
 
 % Results with known patterns
 disp("Results with known patterns")
-sum(sum(scores_scaled <= upper & scores_scaled >= lower)) / (1000*4)
-% 0.9605
+sum(sum(scores_scaled <= upper_ci & scores_scaled >= lower_ci)) / (1000*4)
+% 0.9575
 norm(sim - pred, "fro") / norm(sim, "fro")
 % 0.0645
 norm(pre_noise - pred, "fro") / norm(pre_noise, "fro")
 % 0.0204
-norm(patterns_scaled - EH, "fro") / norm(patterns_scaled, "fro")
-% 7.3008e-09
-norm(scores_scaled - EWA, "fro") / norm(scores_scaled, "fro")
+norm(patterns_scaled - H_scaled, "fro") / norm(patterns_scaled, "fro")
+% 0
+norm(scores_scaled - EWA_scaled, "fro") / norm(scores_scaled, "fro")
 % 0.0314
+norm(patterns - EH0, "fro") / norm(patterns, "fro")
+% 0
+norm(scores - EWA0, "fro") / norm(scores, "fro")
+% 0.0315
 
 figure(1);
 subplot(2,2,1);
-stem(patterns_scaled(1,:));
+stem(EH0(1,:));
 subplot(2,2,2);
-stem(patterns_scaled(2,:));
+stem(EH0(2,:));
 subplot(2,2,3);
-stem(patterns_scaled(3,:));
+stem(EH0(3,:));
 subplot(2,2,4);
-stem(patterns_scaled(4,:));
+stem(EH0(4,:));
 
 figure(2);
-subplot(2,2,1);
-stem(EH(1,:));
-subplot(2,2,2);
-stem(EH(2,:));
-subplot(2,2,3);
-stem(EH(3,:));
-subplot(2,2,4);
-stem(EH(4,:));
-
-figure(3);
 subplot(2,2,1);
 stem(EH_reg(1,:));
 subplot(2,2,2);
