@@ -48,7 +48,7 @@ var[[1]]
 
 find_upper <- function(thecdf){
   old_x = 1
-  new_x = 2 
+  new_x = 1
   old_prob = thecdf(old_x)
   new_prob = thecdf(new_x)
   
@@ -82,9 +82,9 @@ estTile <- function(prob,
     mid <- (upper + lower) /2 
     midProb <- theCDF(mid)
     }
-  print(paste0("step ", step))
-  print(midProb)
-  print(mid)
+  #print(paste0("step ", step))
+  #print(midProb)
+  #print(mid)
   return(mid)
   }
 
