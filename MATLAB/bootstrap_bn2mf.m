@@ -4,13 +4,18 @@
 % Want to compare bootstrap CI to VCI
 
 %% Get job number
-j = getenv('SGE_TASK_ID')
+%j = getenv('SGE_TASK_ID')
 
 %% Choose 1 example of correlated simulations
-sim       = table2array(readtable("/ifs/scratch/msph/ehs/eag2186/Data/Corr Ex/corr_sim.csv"));
-pre_noise = table2array(readtable("/ifs/scratch/msph/ehs/eag2186/Data/Corr Ex/corr_chem.csv"));
-patterns  = table2array(readtable("/ifs/scratch/msph/ehs/eag2186/Data/Corr Ex/corr_patterns.csv"));
-scores    = table2array(readtable("/ifs/scratch/msph/ehs/eag2186/Data/Corr Ex/corr_scores.csv"));
+% sim       = table2array(readtable("/Users/lizzy/BN2MF/Results/Main/Corr Ex/corr_sim.csv"));
+% pre_noise = table2array(readtable("/Users/lizzy/BN2MF/Results/Main/Corr Ex/corr_chem.csv"));
+% patterns  = table2array(readtable("/Users/lizzy/BN2MF/Results/Main/Corr Ex/corr_patterns.csv"));
+% scores    = table2array(readtable("/Users/lizzy/BN2MF/Results/Main/Corr Ex/corr_scores.csv"));
+
+% sim       = table2array(readtable("/ifs/scratch/msph/ehs/eag2186/Data/Corr Ex/corr_sim.csv"));
+% pre_noise = table2array(readtable("/ifs/scratch/msph/ehs/eag2186/Data/Corr Ex/corr_chem.csv"));
+% patterns  = table2array(readtable("/ifs/scratch/msph/ehs/eag2186/Data/Corr Ex/corr_patterns.csv"));
+% scores    = table2array(readtable("/ifs/scratch/msph/ehs/eag2186/Data/Corr Ex/corr_scores.csv"));
 
 %% Normalize truth
 patterns_denom      = sum(patterns, 2);
@@ -42,5 +47,5 @@ EWA_scaled   = EWA0 * H_denom_diag;
 EH_final = (EH_scaled' * Pi)';
 EWA_final = EWA_scaled * Pi;
 
-save(strcat("/ifs/scratch/msph/ehs/eag2186/npbnmf/bootstrap_cor/bs_ewa_", num2str(j), ".mat"), 'EWA_final');
-save(strcat("/ifs/scratch/msph/ehs/eag2186/npbnmf/bootstrap_cor/bs_eh_",  num2str(j), ".mat"), 'EH_final');
+%save(strcat("/ifs/scratch/msph/ehs/eag2186/npbnmf/bootstrap_cor/bs_ewa_", num2str(j), ".mat"), 'EWA_final');
+%save(strcat("/ifs/scratch/msph/ehs/eag2186/npbnmf/bootstrap_cor/bs_eh_",  num2str(j), ".mat"), 'EH_final');
