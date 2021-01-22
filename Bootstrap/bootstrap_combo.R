@@ -23,7 +23,6 @@ for (run in 1:datasets) {
 for (run in 1:datasets) {
   sim_num = run + 200
   for (boot in 1:bootstraps) {
-
     if (file.exists(paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/bootstrap_cor_ewa/cor_ewa_bs_", 
                                    boot, "sim_", sim_num, ".mat"))) {
     bs_list_ewa[[run]] = readMat(paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/bootstrap_cor_ewa/cor_ewa_bs_", 
@@ -34,7 +33,7 @@ for (run in 1:datasets) {
     print(paste0("Bootstrap Number: ", boot))
   }
   print(paste0("Run Number: ", run))
-}
+  }
 
 # Create empirical confidence interval
 # List of matrices
