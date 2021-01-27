@@ -223,14 +223,14 @@ sim_noise <- rbind(sim_dist %>% mutate(data = "Distinct"),
       sim_over %>% mutate(data = "Overlapping"),
       sim_cor %>% mutate(data = "Correlated"))
 
-# save(sim_noise, file = "./Results/Sup Noise/sim_noise.RDA")
+# save(sim_noise, file = "./Sims/Noise/sim_noise.RDA")
 
-for (i in 1:nrow(sim_noise)) {
-  write_csv(as_tibble(sim_noise$sim[[i]]),           paste0("./Sims/Noise/sim_noise_", i, ".csv"))
-  write_csv(as_tibble(sim_noise$chem[[i]]),          paste0("./Sims/Noise/chem_noise_", i, ".csv"))
-  write_csv(as_tibble(sim_noise$true_patterns[[i]]), paste0("./Sims/Noise/patterns_noise_", i, ".csv"))
-  write_csv(as_tibble(sim_noise$true_scores[[i]]),   paste0("./Sims/Noise/scores_noise_", i, ".csv"))
-}
+# for (i in 1:nrow(sim_noise)) {
+#   write_csv(as_tibble(sim_noise$sim[[i]]),           paste0("./Sims/Noise/sim_noise_", i, ".csv"))
+#   write_csv(as_tibble(sim_noise$chem[[i]]),          paste0("./Sims/Noise/chem_noise_", i, ".csv"))
+#   write_csv(as_tibble(sim_noise$true_patterns[[i]]), paste0("./Sims/Noise/patterns_noise_", i, ".csv"))
+#   write_csv(as_tibble(sim_noise$true_scores[[i]]),   paste0("./Sims/Noise/scores_noise_", i, ".csv"))
+# }
 
 ```
 

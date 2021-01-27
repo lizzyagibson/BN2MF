@@ -226,12 +226,12 @@ sim_dgp <- rbind(sim_dist %>% mutate(data = "Distinct"),
   
 sim_dgp
 
-for (i in 1:nrow(sim_dgp)) {
-  write_csv(as_tibble(sim_dgp$sim[[i]]),           paste0("./Sims/Main/sim_dgp_", i, ".csv"))
-  write_csv(as_tibble(sim_dgp$chem[[i]]),          paste0("./Sims/Main/chem_dgp_", i, ".csv"))
-  write_csv(as_tibble(sim_dgp$true_patterns[[i]]), paste0("./Sims/Main/patterns_dgp_", i, ".csv"))
-  write_csv(as_tibble(sim_dgp$true_scores[[i]]),   paste0("./Sims/Main/scores_dgp_", i, ".csv"))
-}
+# for (i in 1:nrow(sim_dgp)) {
+#   write_csv(as_tibble(sim_dgp$sim[[i]]),           paste0("./Sims/Main/sim_dgp_", i, ".csv"))
+#   write_csv(as_tibble(sim_dgp$chem[[i]]),          paste0("./Sims/Main/chem_dgp_", i, ".csv"))
+#   write_csv(as_tibble(sim_dgp$true_patterns[[i]]), paste0("./Sims/Main/patterns_dgp_", i, ".csv"))
+#   write_csv(as_tibble(sim_dgp$true_scores[[i]]),   paste0("./Sims/Main/scores_dgp_", i, ".csv"))
+# }
 
 # save(sim_dgp, file = "./Sims/Main/sim_dgp.RDA")
 
