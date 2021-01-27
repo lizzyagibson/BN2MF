@@ -11,7 +11,6 @@ rng('shuffle')
 init_seed_struct = rng; % bc default is seed = 0
 randn(1000); % Warming up the mersenne twister rng
 
-bnp_switch = 1;  % this turns on/off the Bayesian nonparametric part.
 [dim,N] = size(X);
 Kinit = N;
 
@@ -31,13 +30,13 @@ W2 = ones(dim,Kinit);             % changed
 %W1 = gamrnd(dim*ones(dim,Kinit),1/dim);
 %W2 = dim*ones(dim,Kinit);
 
-a01 = bnp_switch*1/Kinit + (1-bnp_switch);
+a01 = 1/Kinit;
 a02 = 1;
 A1 = ones(1,Kinit)/Kinit; % changed
 A2 = ones(1,Kinit);       % changed
 
-%A1 = a01 + bnp_switch*1000*ones(1,Kinit)/Kinit;
-%A2 = a02 + bnp_switch*1000*ones(1,Kinit);
+%A1 = a01 + 1000*ones(1,Kinit)/Kinit;
+%A2 = a02 + 1000*ones(1,Kinit);
 
 H1 = ones(Kinit,N);
 H2 = ones(Kinit,N);
@@ -67,8 +66,8 @@ for iter = 1:num_iter
     W1 = 1 + (w01 + reshape(sum(X_reshape.*P,2),[K dim])' - 1)/T;
     W2 = (w02 + repmat(sum((H1./H2).*repmat((A1./A2)',1,N),2)',dim,1))/T;
     
-    A1 = 1 + (a01 + bnp_switch*sum(sum(X_reshape.*P,3),2)' - 1)/T;
-    A2 = (a02 + bnp_switch*sum(W1./W2,1).*sum(H1./H2,2)')/T; 
+    A1 = 1 + (a01 + sum(sum(X_reshape.*P,3),2)' - 1)/T;
+    A2 = (a02 + sum(W1./W2,1).*sum(H1./H2,2)')/T; 
     
     idx_prune = find(A1./A2 < 10^-3);
     if ~isempty(idx_prune)
@@ -81,8 +80,6 @@ for iter = 1:num_iter
     end
     K = length(A1);
     
-%    stem(A1./A2); colorbar; pause(.5);
-%    disp([num2str(iter) ' : ' num2str(sum(sum(abs(X-(W1./W2)*diag(A1./A2)*(H1./H2)))))]);
      score(iter) = sum(sum(abs(X-(W1./W2)*diag(A1./A2)*(H1./H2))));
      
      if iter > 1 && abs(score(iter-1)-score(iter)) < 1e-5  
