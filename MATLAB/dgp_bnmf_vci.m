@@ -1,28 +1,16 @@
-done = readtable("/ifs/scratch/msph/ehs/eag2186/npbnmf/noise_done.csv");
-done = table2array(done(:,2));
-
-% if any(done == j)
-%     exit()
-% end
 
 %% Get job number
-% j = getenv('SGE_TASK_ID')
-
-% Try script locally
-j = 1;
-simdata1 = table2array(readtable("/Users/lizzy/BN2MF/Results/Sup Noise/noise_sim1.csv"));
-patterns = table2array(readtable("/Users/lizzy/BN2MF/Results/Sup Noise/noise_patterns1.csv"));
-scores   = table2array(readtable("/Users/lizzy/BN2MF/Results/Sup Noise/noise_scores1.csv"));
+j = getenv('SGE_TASK_ID')
 
 % Import the data
-%simdata1 = readtable(strcat("/ifs/scratch/msph/ehs/eag2186/Data/dgp_csv/sim_dgp_rep1_", num2str(i), ".csv"));
-%patterns = readtable(strcat("/ifs/scratch/msph/ehs/eag2186/Data/dgp_csv/dgp_patterns_", num2str(i), ".csv"));
-%scores   = readtable(strcat("/ifs/scratch/msph/ehs/eag2186/Data/dgp_csv/dgp_scores_",   num2str(i), ".csv"));
+simdata1 = readtable(strcat("/ifs/scratch/msph/ehs/eag2186/Data/dgp_csv/sim_dgp_rep1_", j, ".csv"));
+patterns = readtable(strcat("/ifs/scratch/msph/ehs/eag2186/Data/dgp_csv/dgp_patterns_", j, ".csv"));
+scores   = readtable(strcat("/ifs/scratch/msph/ehs/eag2186/Data/dgp_csv/dgp_scores_",   j, ".csv"));
 
 %% Convert to output type
-%simdata1 = table2array(simdata1);
-%patterns = table2array(patterns);
-%scores   = table2array(scores);
+simdata1 = table2array(simdata1);
+patterns = table2array(patterns);
+scores   = table2array(scores);
 
 [EWA0, EH0, varH0, alphaH0, betaH0, alphaW0, betaW0, ...
     alphaA0, betaA0, varWA0, finalscore0, final_iter0] = BN2MF(simdata1);
@@ -95,15 +83,18 @@ upper_ci = quantile(WA_scaled, 0.975, 3);
 lower_ci = quantile(WA_scaled, 0.025, 3);
 
 prop = sum(sum(scores_scaled <= upper_ci & scores_scaled >= lower_ci)) / (1000*4)
-save_prop = [j prop]
+save_prop = [str2num(j) prop]
 
 % Save matrices
-save(strcat("/ifs/scratch/msph/ehs/eag2186/npbnmf/bnmf_dgp_vci_out/dgp_ewa_",    num2str(j), ".mat"), 'EWA');
-save(strcat("/ifs/scratch/msph/ehs/eag2186/npbnmf/bnmf_dgp_vci_out/dgp_eh_",     num2str(j), ".mat"), 'EH');
+save(strcat("/ifs/scratch/msph/ehs/eag2186/npbnmf/vci_out/dgp_ewa_", j, ".mat"), 'EWA');
+save(strcat("/ifs/scratch/msph/ehs/eag2186/npbnmf/vci_out/dgp_eh_",  j, ".mat"), 'EH');
 
-save(strcat("/ifs/scratch/msph/ehs/eag2186/npbnmf/bnmf_dgp_vci_out/dgp_upperWA_",  num2str(j), ".mat"), 'upper_ci');
-save(strcat("/ifs/scratch/msph/ehs/eag2186/npbnmf/bnmf_dgp_vci_out/dgp_lowerWA_",  num2str(j), ".mat"), 'lower_ci');
+save(strcat("/ifs/scratch/msph/ehs/eag2186/npbnmf/vci_out/dgp_upperWA_", j, ".mat"), 'upper_ci');
+save(strcat("/ifs/scratch/msph/ehs/eag2186/npbnmf/vci_out/dgp_lowerWA_", j, ".mat"), 'lower_ci');
 
-save(strcat("/ifs/scratch/msph/ehs/eag2186/npbnmf/bnmf_dgp_vci_out/save_prop",  num2str(j), ".mat"), 'save_prop');
+save(strcat("/ifs/scratch/msph/ehs/eag2186/npbnmf/vci_out/save_prop", j, ".mat"), 'save_prop');
+
+save(strcat("/ifs/scratch/msph/ehs/eag2186/npbnmf/vci_out/dgp_distWA_", j, ".mat"), 'WA_scaled');
+save(strcat("/ifs/scratch/msph/ehs/eag2186/npbnmf/vci_out/dgp_distEH_", j, ".mat"), 'H_scaled');
 
 
