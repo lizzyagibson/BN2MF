@@ -3,6 +3,15 @@
 ## Functions to run other models
 ## & to choose number of factors/components
 
+# Packages
+library(tidyverse, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
+library(R.matlab, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
+library(psych, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
+library(rngtools, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
+library(registry, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
+library(pkgmaker, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
+library(NMF, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
+
 # PCA
 get_pca <- function (sim) {
   # Run PCA centered, not scaled
@@ -70,7 +79,7 @@ get_bic <- function(sim, patterns, scores, loadings){
 }
 
 # NMF L2
-get_nmf_l2 <- function (sim, patterns) {
+get_nmfl2 <- function (sim, patterns) {
   
   patternsm1 = ifelse(patterns == 1, 3, patterns - 1)
   patternsp1 = patterns+1
@@ -104,7 +113,7 @@ get_nmf_l2 <- function (sim, patterns) {
 }
 
 # NMF Poisson
-get_nmf_p <- function (sim, patterns) {
+get_nmfp <- function (sim, patterns) {
   
   patternsm1 = ifelse(patterns == 1, 3, patterns - 1)
   patternsp1 = patterns+1
