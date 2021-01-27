@@ -10,8 +10,8 @@ output:
 
 ```{r setup, include=FALSE}
 options(scipen = 999)
-library(reshape2) # melt
-library(MASS) # mvrnorm
+
+library(MASS)
 library(tidyverse)
 library(GGally)
 ```
@@ -26,7 +26,6 @@ library(GGally)
 
 ```{r}
 ## Construct a matrix for 4 TRUE exposure patterns
-## replace runif between 0--0.2 with rep 0
 create_patterns_dist <- function (seed) {
   set.seed(seed)
   patterns_dist <- 
@@ -41,19 +40,6 @@ patterns_dist_iter <- tibble(seed = 1:100) %>%
  mutate(true_patterns = map(seed, create_patterns_dist))
 ```
 
-```{r}
-patterns_dist_iter$true_patterns[[1]] %>% as_tibble() %>% 
-  mutate(Pattern = 1:4) %>% 
-  dplyr::select(Pattern, everything()) %>% 
-  gather(key = Chemicals, value = Loadings, -Pattern) %>% 
-  mutate(Chemicals = fct_inorder(Chemicals)) %>%
-  ggplot(aes(x = Chemicals, y = Loadings)) + geom_col() +
-  facet_wrap(.~Pattern) + theme_bw() +
-  theme(axis.text.x = element_blank(),
-        strip.background = element_blank()) +
-  labs(title = "Distinct Patterns")
-```
-
 ### Simulate Scores
 
 * Generate non-negative scores
@@ -61,7 +47,7 @@ patterns_dist_iter$true_patterns[[1]] %>% as_tibble() %>%
 * Individual distributions are independent
 * Patterns (columns) are NOT standardized
 * Each pattern = log-normal distribution 
-    * Mean = 1
+    * Mean = 0
     * Var = 1
     * Cov = 0
    
@@ -69,7 +55,7 @@ patterns_dist_iter$true_patterns[[1]] %>% as_tibble() %>%
 create_scores_dist <- function (seed) {
   scores_dist <- matrix(nrow = 1000, ncol = 4)
   set.seed(seed)
-  scores_dist <- exp(mvrnorm(n = 1000, mu = rep(1, 4),
+  scores_dist <- exp(mvrnorm(n = 1000, mu = rep(0, 4),
                           Sigma = diag(rep(1, 4)))) # Independent log normal dist
   scores_dist
 }
@@ -91,16 +77,19 @@ sim_dist <- scores_dist_iter %>%
 
 * Add noise
 * Noise distribution Normal(0, s)
-    * where s = simulated variance/10 for each variable
+    * where s = simulated variance/4 for each variable
     
 ```{r}
 add_noise <- function (seed, chemx) {
-  noise <- list(mean = 0, var = apply(chemx, 2, sd)/2)
-  set.seed(seed)
-  chem_dist <- pmax(chemx + 
-                      mvrnorm(n = 1000, mu = rep(0, 50), 
-                                        Sigma = diag(noise$var)), 0)	
-  chem_dist
+  n = nrow(chemx)
+  p = ncol(chemx)
+  noise <- matrix(NA, nrow = n, ncol = p)
+
+  for (i in 1:p) {
+    noise[,i] <- (rnorm(n, mean = 0, sd = var(chemx[,i])/4))
+  }
+  sim = pmax(chemx + noise, 0)
+  sim
 }
 
 sim_dist <- sim_dist %>% 
@@ -108,32 +97,12 @@ sim_dist <- sim_dist %>%
 ```  
 
 ```{r}
-apply(sim_dist$chem[[1]], 2, var)
-apply(sim_dist$chem[[1]], 2, mean)
-
-apply(sim_dist$sim[[1]], 2, var)/10
-apply(sim_dist$chem[[1]], 2, sd)/2
-
-apply(sim_dist$true_scores[[1]], 2, var)
-apply(sim_dist$true_patterns[[1]], 2, sd)
-
-round(cor(sim_dist$sim[[1]])[1:10,1:10],2)
+apply(sim_dist$sim[[1]], 2, var)/4
 
 dist <- sim_dist$sim[[1]]
-melt(cor(dist, method = "spearman")) %>% 
-  as_tibble() %>% 
-  rename(Correlation = value) %>% 
-  mutate(Var1 = as.factor(Var1),
-         Var2 = as.factor(Var2)) %>% 
-  ggplot(aes(x = Var1, y = Var2)) +
-  geom_tile(aes(fill = Correlation), colour = "white") +
-  scale_fill_gradient2(low = "#00BFC4", mid = "white", high = "#F8766D",
-                       midpoint = 0,
-                       na.value = "transparent", limits = c(-1, 1)) +
-  theme_classic() + labs(x = "", y = "") +
-  theme(axis.text = element_blank(),
-        legend.position = "bottom") + 
-  ggtitle("Correlation w/ Distinct Underlying Patterns")
+hist(dist[,45])
+ggcorr(as_tibble(dist))
+cor(dist)[1:15,1:7]
 ```
 
 ## 2: Overlapping Patterns
@@ -142,9 +111,8 @@ melt(cor(dist, method = "spearman")) %>%
 
 * Generate 4 non-negative vectors of length 50
 * Pattern matrix is 4*50, patterns by chemicals
-* Draw each pattern: number 1-2 if pattern is ON, 0.5-1 is the overlapping group, basically 0 otherwise
+* Draw each pattern: number 1-2 if pattern is ON, 0.5-1 is the overlapping group, 0 otherwise
 ```{r}
-# replace runif 0-0.2 with rep 0
 create_patterns_over <- function (seed) {
   set.seed(seed)
   patterns_cor <-
@@ -157,19 +125,6 @@ create_patterns_over <- function (seed) {
 
 patterns_over_iter <- tibble(seed = 1:100) %>% 
  mutate(true_patterns = map(seed, create_patterns_over))
-```
-
-```{r}
-patterns_over_iter$true_patterns[[1]] %>% as_tibble() %>% 
-  mutate(Pattern = 1:4) %>% 
-  dplyr::select(Pattern, everything()) %>% 
-  gather(key = Chemicals, value = Loadings, -Pattern) %>% 
-  mutate(Chemicals = fct_inorder(Chemicals)) %>%
-  ggplot(aes(x = Chemicals, y = Loadings)) + geom_col() +
-  facet_wrap(.~Pattern) + theme_bw() +
-  theme(axis.text.x = element_blank(),
-        strip.background = element_blank()) +
-  labs(title = "Overlapping Patterns")
 ```
 
 ### Simulate Scores
@@ -209,18 +164,9 @@ sim_over <- sim_over %>%
 
 ```{r}
 over <- sim_over$sim[[1]]
-melt(cor(over, method = "spearman")) %>% 
-  as_tibble() %>% 
-  rename(Correlation = value) %>% 
-  mutate(Var1 = as.factor(Var1),
-         Var2 = as.factor(Var2)) %>% 
-  ggplot(aes(x = Var1, y = Var2)) +
-  geom_tile(aes(fill = Correlation), colour = "white") +
-  scale_fill_gradient2(low = "#00BFC4", high = "#F8766D") +
-  theme_classic() + labs(x = "", y = "") +
-  theme(axis.text = element_blank(),
-        legend.position = "bottom") + 
-  ggtitle("Correlation w/ Overlapping Underlying Patterns")
+hist(over[,45])
+ggcorr(over)
+cor(over)[1:15,1:7]
 ```
 
 ## 3. Correlated Scores
@@ -236,7 +182,7 @@ create_scores_cor <- function (seed) {
                   0.15, 0.15, 0.25, 1), nrow = 4)
   
   set.seed(seed)
-  scores_cor <- exp(mvrnorm(n = 1000, mu = rep(1, 4), 
+  scores_cor <- exp(mvrnorm(n = 1000, mu = rep(0, 4), 
                           Sigma = cov)) # dists are kind of DEPENDENT
   }
 
@@ -263,12 +209,11 @@ sim_cor <- sim_cor %>%
 ```  
 
 ```{r}
-simm <- sim_cor$sim[[1]]
+cor <- sim_cor$sim[[1]]
 
-ggcorr(as_tibble(simm), limits = FALSE,
-       hjust = 0.85, size = 2, layout.exp = 1) +
-  labs(x = "Simulated Correlation Matrix") +
-  theme_minimal(base_size = 10)
+cor(cor)[1:15,1:7]
+
+ggcorr(cor)
 ```
 
 ## Save
@@ -277,27 +222,15 @@ ggcorr(as_tibble(simm), limits = FALSE,
 sim_noise <- rbind(sim_dist %>% mutate(data = "Distinct"),
       sim_over %>% mutate(data = "Overlapping"),
       sim_cor %>% mutate(data = "Correlated"))
-  
-apply(sim_noise$chem[[1]], 2, var)
-apply(sim_noise$sim[[1]], 2, var)
-round(cor(sim_noise$sim[[201]]), 2)[1:10, 1:10]
-round(cor(sim_noise$chem[[1]]), 2)[1:10, 1:10]
-
-# for (i in 1:nrow(sim_noise)) {
-#   write_csv(as_tibble(sim_noise$sim[[i]]), paste0("./Sims/sim_noise_rep1_", i, ".csv"))
-# }
 
 # save(sim_noise, file = "./Results/Sup Noise/sim_noise.RDA")
-# load(paste0("./Results/Sup Noise/sim_noise.RDA"))
-sim_noise
-chem <- sim_noise$chem[[1]] %>% as_tibble()
-sim <- sim_noise$sim[[1]] %>% as_tibble()
-patterns <- sim_noise$true_patterns[[1]] %>% as_tibble()
-scores <- sim_noise$true_scores[[1]] %>% as_tibble()
 
-# write_csv(chem, "./Results/Sup Noise/noise_chem1.csv")
-# write_csv(sim, "./Results/Sup Noise/noise_sim1.csv")
-# write_csv(patterns, "./Results/Sup Noise/noise_patterns1.csv")
-# write_csv(scores, "./Results/Sup Noise/noise_scores1.csv")
+for (i in 1:nrow(sim_noise)) {
+  write_csv(as_tibble(sim_noise$sim[[i]]),           paste0("./Sims/Noise/sim_noise_", i, ".csv"))
+  write_csv(as_tibble(sim_noise$chem[[i]]),          paste0("./Sims/Noise/chem_noise_", i, ".csv"))
+  write_csv(as_tibble(sim_noise$true_patterns[[i]]), paste0("./Sims/Noise/patterns_noise_", i, ".csv"))
+  write_csv(as_tibble(sim_noise$true_scores[[i]]),   paste0("./Sims/Noise/scores_noise_", i, ".csv"))
+}
+
 ```
 
