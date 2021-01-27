@@ -103,14 +103,15 @@ sum(bs_ex[1,]$scores_scaled[[1]] <= bs_ex[1,]$bs_upper_wa[[1]] &
 #####
 
 # Read data
-load("./Bootstrap/Compare/bs_list_lower_wa.RDA")
-load("./Bootstrap/Compare/bs_list_upper_wa.RDA")
-load("./Bootstrap/Compare/bs_list_mean_wa.RDA")
-load("./Bootstrap/Compare/bs_list_median_wa.RDA")
-load("./Bootstrap/Compare/bs_list_lower_h.RDA")
-load("./Bootstrap/Compare/bs_list_upper_h.RDA")
-load("./Bootstrap/Compare/bs_list_mean_h.RDA")
-load("./Bootstrap/Compare/bs_list_median_h.RDA")
+load("./Bootstrap/Compare/bs_list_lower_wa_ones.RDA")
+load("./Bootstrap/Compare/bs_list_upper_wa_ones.RDA")
+load("./Bootstrap/Compare/bs_list_mean_wa_ones.RDA")
+load("./Bootstrap/Compare/bs_list_median_wa_ones.RDA")
+load("./Bootstrap/Compare/bs_list_lower_h_ones.RDA")
+load("./Bootstrap/Compare/bs_list_upper_h_ones.RDA")
+load("./Bootstrap/Compare/bs_list_mean_h_ones.RDA")
+load("./Bootstrap/Compare/bs_list_median_h_ones.RDA")
+                                                       
 
 bs_lists = tibble(h_lower = bs_list_lower_h,
               h_mean = bs_list_mean_h,
@@ -168,11 +169,13 @@ bs_dat %>%
               values_from = "qs") %>% 
   dplyr::select(data, min, `0.25`, `0.5`, mean, `0.75`, max)
 
+bs_dat %>% 
+  dplyr::select(seed, data, loading_err, score_err, wa_prop, h_prop) %>% 
+  arrange(desc(loading_err))
 
-
-
-
-
+bs_dat_1000 %>% 
+  dplyr::select(seed, data, loading_err, score_err, wa_prop, h_prop) %>% 
+  arrange(desc(loading_err))
 
 
 
