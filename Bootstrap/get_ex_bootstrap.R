@@ -26,11 +26,11 @@ bs_eh <- array(dim = c(4, 50, bootstraps))
 
 # Read output from matlab
 for (boot in 1:bootstraps) {
-  if (file.exists(paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/bootstrap_", sim_type, "_ewa/", 
+  if (file.exists(paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/main/bs/bootstrap_", sim_type, "_ewa/", 
                         sim_type, "_ewa_bs_", boot, "_sim_", sim_num, ".mat"))) {
-    bs_ewa[,,boot] = readMat(paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/bootstrap_", sim_type, "_ewa/", 
+    bs_ewa[,,boot] = readMat(paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/main/bs/bootstrap_", sim_type, "_ewa/", 
                                          sim_type, "_ewa_bs_", boot, "_sim_", sim_num, ".mat"))[[1]]
-    bs_eh[,,boot]  = readMat(paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/bootstrap_", sim_type, "_eh/", 
+    bs_eh[,,boot]  = readMat(paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/main/bs/bootstrap_", sim_type, "_eh/", 
                                               sim_type, "_eh_bs_", boot, "_sim_", sim_num, ".mat"))[[1]]
   }
   print(paste0("Bootstrap Number: ", boot))
