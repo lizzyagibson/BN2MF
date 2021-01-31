@@ -35,12 +35,12 @@ bs_ex_list = list(dist = tibble(id = 2), over = tibble(id = 102), cor = tibble(i
 for (i in 1:length(type)) {
   bs_names = c("id")
   for (j in matrix) {
-  load(paste0("./Bootstrap/Compare/bs_", type[i], j, "wa.RDA"))
-  load(paste0("./Bootstrap/Compare/bs_", type[i], j, "h.RDA"))
-  
-  bs_ex_list[[i]] = bind_cols(bs_ex_list[[i]], tibble(list(get(paste0("bs_", type[i], j, "wa"))),
-                                                      list(get(paste0("bs_", type[i], j, "h")))))
-  bs_names = c(bs_names, paste0("bs", j, "wa"), paste0("bs", j, "h"))
+    load(paste0("./Bootstrap/Compare/bs_", type[i], j, "wa.RDA"))
+    load(paste0("./Bootstrap/Compare/bs_", type[i], j, "h.RDA"))
+    
+    bs_ex_list[[i]] = bind_cols(bs_ex_list[[i]], tibble(list(get(paste0("bs_", type[i], j, "wa"))),
+                                                        list(get(paste0("bs_", type[i], j, "h")))))
+    bs_names = c(bs_names, paste0("bs", j, "wa"), paste0("bs", j, "h"))
   }
   load(paste0("./Bootstrap/Compare/bs_", type[i], "_ewa.RDA"))
   load(paste0("./Bootstrap/Compare/bs_", type[i], "_eh.RDA"))
@@ -49,7 +49,7 @@ for (i in 1:length(type)) {
   bs_ex_list[[i]] = bind_cols(bs_ex_list[[i]], tibble(list(get(paste0("bs_", type[i], "_ewa"))),
                                                       list(get(paste0("bs_", type[i], "_eh")))))
   names(bs_ex_list[[i]]) <- bs_names
-  }
+}
 
 bs_ex = bs_ex_list[[1]]
 for (i in 2:length(bs_ex_list)) {
