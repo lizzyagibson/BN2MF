@@ -42,5 +42,5 @@ EWA1_scaled = EWA11 * diag(EH1_denom);
 norm(patterns_scaled - EH0_scaled, 'fro')/norm(patterns_scaled, 'fro')
 norm(patterns_scaled - EH1_scaled, 'fro')/norm(patterns_scaled, 'fro')
 
-norm(scores_scaled - EH0_scaled, 'fro')/norm(scores_scaled, 'fro')
-norm(scores_scaled - EH1_scaled, 'fro')/norm(scores_scaled, 'fro')
+norm(scores_scaled - EWA0_scaled, 'fro')/norm(scores_scaled, 'fro')
+norm(scores_scaled - EWA1_scaled, 'fro')/norm(scores_scaled, 'fro')
