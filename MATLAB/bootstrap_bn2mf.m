@@ -3,6 +3,8 @@
 % Then combine results to create empirical distribution for scores
 % Want to compare bootstrap CI to VCI
 
+% Run script 1:45000 (150 bootstraps * 300 datasets)
+
 %% Get job number
 j = getenv('SGE_TASK_ID')
 
