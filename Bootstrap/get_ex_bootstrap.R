@@ -47,15 +47,15 @@ bs_upper_h  = matrix(NA, nrow = 4, ncol = 50)
 bs_mean_h   = matrix(NA, nrow = 4, ncol = 50)
 bs_median_h = matrix(NA, nrow = 4, ncol = 50)
 
-bs_lower_h  <- apply(bs__eh, c(1,2), quantile, 0.025, na.rm = TRUE)
-bs_upper_h  <- apply(bs__eh, c(1,2), quantile, 0.975, na.rm = TRUE)  
-bs_mean_h   <- apply(bs__eh, c(1,2), mean,            na.rm = TRUE)
-bs_median_h <- apply(bs__eh, c(1,2), median,          na.rm = TRUE)
+bs_lower_h  <- apply(bs_eh, c(1,2), quantile, 0.025, na.rm = TRUE)
+bs_upper_h  <- apply(bs_eh, c(1,2), quantile, 0.975, na.rm = TRUE)  
+bs_mean_h   <- apply(bs_eh, c(1,2), mean,            na.rm = TRUE)
+bs_median_h <- apply(bs_eh, c(1,2), median,          na.rm = TRUE)
 
-save(bs_lower_h,  file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/bootstrap_lists/bs_", sim_type, "_lower_h.RDA"))
-save(bs_upper_h,  file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/bootstrap_lists/bs_", sim_type, "_upper_h.RDA"))
-save(bs_mean_h,   file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/bootstrap_lists/bs_", sim_type, "_mean_h.RDA"))
-save(bs_median_h, file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/bootstrap_lists/bs_", sim_type, "_median_h.RDA"))
+save(bs_lower_h,  file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/main/bs/bootstrap_lists/bs_", sim_type, "_lower_h.RDA"))
+save(bs_upper_h,  file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/main/bs/bootstrap_lists/bs_", sim_type, "_upper_h.RDA"))
+save(bs_mean_h,   file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/main/bs/bootstrap_lists/bs_", sim_type, "_mean_h.RDA"))
+save(bs_median_h, file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/main/bs/bootstrap_lists/bs_", sim_type, "_median_h.RDA"))
 
 # EWA
 # first match permutations
@@ -79,11 +79,11 @@ bs_upper_wa  <- apply(bs_ewa, c(1,2), quantile, 0.975, na.rm = TRUE)
 bs_mean_wa   <- apply(bs_ewa, c(1,2), mean,            na.rm = TRUE)
 bs_median_wa <- apply(bs_ewa, c(1,2), median,          na.rm = TRUE)
 
-save(bs_lower_wa,  file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/bootstrap_lists/bs_", sim_type, "_lower_wa.RDA"))
-save(bs_upper_wa,  file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/bootstrap_lists/bs_", sim_type, "_upper_wa.RDA"))
-save(bs_mean_wa,   file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/bootstrap_lists/bs_", sim_type, "_mean_wa.RDA"))
-save(bs_median_wa, file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/bootstrap_lists/bs_", sim_type, "_median_wa.RDA"))
+save(bs_lower_wa,  file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/main/bs/bootstrap_lists/bs_", sim_type, "_lower_wa.RDA"))
+save(bs_upper_wa,  file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/main/bs/bootstrap_lists/bs_", sim_type, "_upper_wa.RDA"))
+save(bs_mean_wa,   file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/main/bs/bootstrap_lists/bs_", sim_type, "_mean_wa.RDA"))
+save(bs_median_wa, file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/main/bs/bootstrap_lists/bs_", sim_type, "_median_wa.RDA"))
 
 # Also save whole over for this example
-save(bs_ewa,  file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/bootstrap_lists/bs_", sim_type, "_ewa.RDA"))
-save(bs_eh,   file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/bootstrap_lists/bs_", sim_type, "_eh.RDA"))
+save(bs_ewa,  file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/main/bs/bootstrap_lists/bs_", sim_type, "_ewa.RDA"))
+save(bs_eh,   file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/main/bs/bootstrap_lists/bs_", sim_type, "_eh.RDA"))
