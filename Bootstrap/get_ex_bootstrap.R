@@ -1,3 +1,5 @@
+# Run on HPC
+# once each for distinct, overlapping, and correlated
 library(tidyverse, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
 library(R.matlab, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
 
