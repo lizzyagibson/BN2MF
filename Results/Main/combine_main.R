@@ -74,7 +74,7 @@ for (j in 1:300) {
   vci_out <- bind_cols(eh_scaled, ewa_scaled, lowerWA, upperWA, lowerH, upperH, prop)
   
   dgp_m   <- bind_rows(dgp_m, m_out)
-  dgp_vci <- bind_rows(dgp_vci, m_out)
+  dgp_vci <- bind_rows(dgp_vci, vci_out)
   print(j)
 }
 
