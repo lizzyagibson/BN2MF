@@ -9,7 +9,7 @@ library(R.matlab)
 library(openssl)
 
 # create random vector for matlab on hpc
-rand_vec = rand_num(150) * ((2^31)-1)
+# rand_vec = rand_num(150) * ((2^31)-1)
 
 #### For all sims ####
 
@@ -69,37 +69,7 @@ bs_dgp = bs_dgp %>%
          bs_wa_upper  = map(bs_wa_upper,  function(x) x[,2:5]),
          bs_wa_median = map(bs_wa_median, function(x) x[,2:5])) 
 
-#### Sanity check ####
-xx = 1
-sum(sim_dgp[xx,]$scores_scaled[[1]] <= vci_dgp[xx,]$vci_wa_upper[[1]] & 
-               sim_dgp[xx,]$scores_scaled[[1]] >= vci_dgp[xx,]$vci_wa_lower[[1]])/4000
-
-sum(sim_dgp[xx,]$scores_scaled[[1]] <= bs_dgp[xx,]$bs_wa_upper[[1]] & 
-      sim_dgp[xx,]$scores_scaled[[1]] >= bs_dgp[xx,]$bs_wa_lower[[1]])/4000
-
-# Above looks OK
-
 #### Combine data ####
-
-## (still sanity checking)
-test = bind_cols(sim_dgp, bs_dgp, vci_dgp) %>% 
-  pivot_longer(c(grep("bs_", colnames(.)), grep("vci_", colnames(.))),
-               names_to = c("method", "side", "matrix"),
-               names_sep = "_") %>%
-  mutate(value = map(value, as.matrix)) %>% 
-  pivot_wider(names_from = matrix,
-              values_from = value) 
-
-xx = 4
-sum(test[xx,]$scores_scaled[[1]] <= test[xx,]$upper[[1]] & 
-      test[xx,]$scores_scaled[[1]] >= test[xx,]$lower[[1]])/4000
-
-xx = 2
-sum(test[xx,]$scores_scaled[[1]] <= test[xx,]$upper[[1]] & 
-      test[xx,]$scores_scaled[[1]] >= test[xx,]$lower[[1]])/4000
-
-# Above look OK
-
 all_dgp = bind_cols(sim_dgp, bs_dgp, vci_dgp) %>% 
   pivot_longer(c(grep("bs_", colnames(.)), grep("vci_", colnames(.))),
                names_to = c("method", "side", "matrix"),
@@ -178,14 +148,9 @@ for (i in 1:length(type)) {
 }
 rm(list = c("bs_ewa", "bs_eh", "bs_row", "vci_wa_dist", "vci_h_dist"))
 
-#####
-#####
-#####
-
 bs_ex = bs_ex %>% 
   mutate(bs_wa_dist = map(bs_wa_dist, function(x) x[,2:5,])) %>% 
   left_join(., bind_cols(bs_dgp, sim_dgp, vci_dgp))
-bs_ex
 
 #### Example viz (Single Entry) ####
 #### Loop for each kind of simulation 
@@ -193,17 +158,17 @@ plot_dist = tibble()
 prop_dist = tibble()
 
 for (i in 1:3) {
-    truth   = bs_ex[i,]$scores_scaled[[1]][10,4]
-    v_dist  = as.numeric(bs_ex[i,]$vci_wa_dist[[1]][10,4,])
-    bs_dist = bs_ex[i,]$bs_wa_dist[[1]][10,4,]
+    truth   = bs_ex[i,]$scores_scaled[[1]][735, 2]
+    v_dist  = as.numeric(bs_ex[i,]$vci_wa_dist[[1]][735, 2,])
+    bs_dist = bs_ex[i,]$bs_wa_dist[[1]][735, 2,]
     
-    bs_ewa    = bs_ex[i,]$bs_wa_median[[1]][10,4]
-    bs_wa_25  = bs_ex[i,]$bs_wa_lower[[1]][10,4]
-    bs_wa_75  = bs_ex[i,]$bs_wa_upper[[1]][10,4]
+    bs_ewa    = bs_ex[i,]$bs_wa_median[[1]][735, 2]
+    bs_wa_25  = bs_ex[i,]$bs_wa_lower[[1]][735, 2]
+    bs_wa_75  = bs_ex[i,]$bs_wa_upper[[1]][735, 2]
     
-    v_ewa   = as.numeric(bs_ex[i,]$vci_wa_mean[[1]][10,4])
-    v_wa_25 = as.numeric(bs_ex[i,]$vci_wa_lower[[1]][10,4])
-    v_wa_75 = as.numeric(bs_ex[i,]$vci_wa_upper[[1]][10,4])
+    v_ewa   = as.numeric(bs_ex[i,]$vci_wa_mean[[1]][735, 2])
+    v_wa_25 = as.numeric(bs_ex[i,]$vci_wa_lower[[1]][735, 2])
+    v_wa_75 = as.numeric(bs_ex[i,]$vci_wa_upper[[1]][735, 2])
     
     v_prop = sum(bs_ex[i,]$scores_scaled[[1]] <= bs_ex[i,]$vci_wa_upper[[1]] & 
           bs_ex[i,]$scores_scaled[[1]] >= bs_ex[i,]$vci_wa_lower[[1]])/4000
@@ -247,14 +212,10 @@ plot_dist %>%
   geom_vline(aes(xintercept = bs_ewa), linetype="dotted", color = "yellow") + 
   geom_vline(aes(xintercept = v_ewa),  linetype="dotted", color = "yellow") + 
   facet_grid(sim_type~., scales = "free") +
+  theme(legend.position = "bottom",
+        strip.background = element_rect(fill="white")) +
   ylab("Density")
 
-# This checks out
-dim(bs_ex$bs_wa_dist[[1]])
-dist = bs_ex$bs_wa_dist[[1]]
-length(unique(dist[1,2,]))
-sum(is.na(dist[1,2,]))
-93+57
 
 
 
