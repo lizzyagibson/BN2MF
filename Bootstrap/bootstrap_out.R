@@ -70,8 +70,7 @@ bs_dgp = bs_dgp %>%
          bs_wa_median = map(bs_wa_median, function(x) x[,2:5])) 
 
 #### Sanity check ####
-
-xx = 99
+xx = 1
 sum(sim_dgp[xx,]$scores_scaled[[1]] <= vci_dgp[xx,]$vci_wa_upper[[1]] & 
                sim_dgp[xx,]$scores_scaled[[1]] >= vci_dgp[xx,]$vci_wa_lower[[1]])/4000
 
@@ -81,6 +80,26 @@ sum(sim_dgp[xx,]$scores_scaled[[1]] <= bs_dgp[xx,]$bs_wa_upper[[1]] &
 # Above looks OK
 
 #### Combine data ####
+
+## (still sanity checking)
+test = bind_cols(sim_dgp, bs_dgp, vci_dgp) %>% 
+  pivot_longer(c(grep("bs_", colnames(.)), grep("vci_", colnames(.))),
+               names_to = c("method", "side", "matrix"),
+               names_sep = "_") %>%
+  mutate(value = map(value, as.matrix)) %>% 
+  pivot_wider(names_from = matrix,
+              values_from = value) 
+
+xx = 4
+sum(test[xx,]$scores_scaled[[1]] <= test[xx,]$upper[[1]] & 
+      test[xx,]$scores_scaled[[1]] >= test[xx,]$lower[[1]])/4000
+
+xx = 2
+sum(test[xx,]$scores_scaled[[1]] <= test[xx,]$upper[[1]] & 
+      test[xx,]$scores_scaled[[1]] >= test[xx,]$lower[[1]])/4000
+
+# Above look OK
+
 all_dgp = bind_cols(sim_dgp, bs_dgp, vci_dgp) %>% 
   pivot_longer(c(grep("bs_", colnames(.)), grep("vci_", colnames(.))),
                names_to = c("method", "side", "matrix"),
@@ -88,29 +107,27 @@ all_dgp = bind_cols(sim_dgp, bs_dgp, vci_dgp) %>%
   mutate(value = map(value, as.matrix)) %>% 
   pivot_wider(names_from = matrix,
               values_from = value) %>% 
-  mutate(truth = pmap(list(side, true_patterns, true_scores),
+  mutate(truth = pmap(list(side, patterns_scaled, scores_scaled),
                       function(x, y, z) if(x == "h") {y} else {z}),
          best = map2(median, mean, function(x,y) if(!is.null(x)) {x} else {y}),
          err  = map2(truth, best, function(x,y)
            if (ncol(x) == ncol(y)) {norm(x-y, "F")/norm(x, "F")} else {NA}),
          iqr  = map2(upper, lower, function(x, y) mean(x-y)),
-         prop = pmap(list(truth, lower, upper), 
-                           function(x,y,z) sum(x >= y & x <= z)/(nrow(x)*ncol(x)))) %>% 
+         prop = pmap(list(truth, lower, upper),
+                           function(x,y,z) sum(x >= y & x <= z)/(nrow(x)*ncol(x)) )) %>%
   unnest(c(err, prop, iqr))
-
-all_dgp %>% 
-  dplyr::select(data, method, side, id, err, iqr, prop)
 
 #### Results Tables ####
 all_dgp %>% 
-  group_by(data, method, side) %>% 
+  group_by(data, method, side) %>%
   summarise(qs = quantile(prop, c(0.25, 0.5, 0.75)), prob = c(0.25, 0.5, 0.75),
             mean = mean(prop),
             max = max(prop),
             min = min(prop)) %>% 
   pivot_wider(names_from = "prob",
               values_from = "qs") %>% 
-  dplyr::select(data, min, `0.25`, `0.5`, mean, `0.75`, max)
+  dplyr::select(side, data, method, min, `0.25`, `0.5`, mean, `0.75`, max) %>% 
+  arrange(side, data, method)
 
 all_dgp %>% 
   group_by(data, method, side) %>% 
@@ -120,7 +137,8 @@ all_dgp %>%
             min = min(err)) %>% 
   pivot_wider(names_from = "prob",
               values_from = "qs") %>% 
-  dplyr::select(data, min, `0.25`, `0.5`, mean, `0.75`, max)
+  dplyr::select(side, data, method, min, `0.25`, `0.5`, mean, `0.75`, max) %>% 
+  arrange(side, data, method)
 
 all_dgp %>% 
   group_by(data, method, side) %>% 
@@ -130,7 +148,8 @@ all_dgp %>%
             min = min(iqr)) %>% 
   pivot_wider(names_from = "prob",
               values_from = "qs") %>% 
-  dplyr::select(data, min, `0.25`, `0.5`, mean, `0.75`, max)
+  dplyr::select(side, data, method, min, `0.25`, `0.5`, mean, `0.75`, max) %>% 
+  arrange(side, data, method)
 
 #### Single Examples #####
 
