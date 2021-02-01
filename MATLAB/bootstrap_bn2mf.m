@@ -1,7 +1,10 @@
 %% Bootstrap BN2MF
-% Each script should take a random subsample with replacement, run bn2mf
+% Each script should take a random subsample with replacement, runn bn2mf
 % Then combine results to create empirical distribution for scores
 % Want to compare bootstrap CI to VCI
+
+%% Add path with functions
+addpath('/ifs/scratch/msph/ehs/eag2186/npbnmf')
 
 % Run script 1:45000 (150 bootstraps * 300 datasets)
 
@@ -12,29 +15,27 @@ job = 1:300;
 bootstrap = 1:150;
 grid = combvec(job, bootstrap)';
     
-boot = grid(str2num(j),2)
-run  = grid(str2num(j),1)
+boot  = grid(str2num(j),2)
+runn  = grid(str2num(j),1)
 
-if run <= 100
-    type = "dist";
-elseif run <= 200 & run > 100
-        type = "over";
-elseif run > 200
-            type = "cor";
+if runn <= 100
+    sim_type = "dist";
+elseif runn <= 200 & runn > 100
+        sim_type = "over";
+elseif runn > 200
+            sim_type = "cor";
         end
-type
+sim_type
 
-%% Choose 1 example of overlapping simulations
-
-sim       = table2array(readtable(strcat("/ifs/scratch/msph/ehs/eag2186/Data/dgp_csv/sim_dgp_rep1_", num2str(run), ".csv")));
-patterns  = table2array(readtable(strcat("/ifs/scratch/msph/ehs/eag2186/Data/dgp_csv/dgp_patterns_", num2str(run), ".csv")));
-scores    = table2array(readtable(strcat("/ifs/scratch/msph/ehs/eag2186/Data/dgp_csv/dgp_scores_",   num2str(run), ".csv")));
+%% Choose 1 simulation
+sim_data = table2array(readtable(strcat("/ifs/scratch/msph/ehs/eag2186/Data/dgp_csv/sim_dgp_rep1_", num2str(runn), ".csv")));
+patterns = table2array(readtable(strcat("/ifs/scratch/msph/ehs/eag2186/Data/dgp_csv/dgp_patterns_", num2str(runn), ".csv")));
+scores   = table2array(readtable(strcat("/ifs/scratch/msph/ehs/eag2186/Data/dgp_csv/dgp_scores_",   num2str(runn), ".csv")));
 
 %% Normalize truth
 patterns_denom      = sum(patterns, 2);
 patterns_scaled     = patterns ./ patterns_denom;
-patterns_denom_diag = diag(patterns_denom);
-scores_scaled       = scores * patterns_denom_diag;
+scores_scaled       = scores * diag(patterns_denom);
 
 %% Random vector for RNG
 rand_vec = [1943390030  746196695   17852396  940589715   42646086 1692962385 1885869580  174393542 1996151257  500383961 1542277254 ...
@@ -58,9 +59,9 @@ init_seed_struct = rng; % bc default is seed = 0
 randn(1000); % Warming up the mersenne twister rng
 
 %% Take a bootstrapped sample
-[n, p] = size(sim)
+[n, p] = size(sim_data)
 sam = randsample(1:n, n, true);
-sim_sample = sim(sam, :);
+sim_sample = sim_data(sam, :);
 
 %% Run bn2mf
 [EWA0, EH0, varH0, alphaH0, betaH0, alphaW0, betaW0, ...
@@ -73,16 +74,17 @@ H_denom   = sum(EH0, 2);
 EH_scaled = EH0 ./ H_denom;
 
 %% Scale EWA by corresponding normalization constant
-H_denom_diag = diag(H_denom);
-EWA_scaled   = EWA0 * H_denom_diag;
+EWA_scaled   = EWA0 * diag(H_denom);
 
 %% Rearrange solution to match truth
-[~,Pi] = factor_correspondence(patterns_scaled',EH_scaled');
-EH_final = (EH_scaled' * Pi)';
+[~,Pi]    = factor_correspondence(patterns_scaled',EH_scaled');
+EH_final  = (EH_scaled' * Pi)';
 EWA_final = EWA_scaled * Pi;
 
 EWA_sam = [sam' EWA_final];
 
-path = "/ifs/scratch/msph/ehs/eag2186/npbnmf/";
-save(strcat(path, "bootstrap_", type, "_ewa/", type, "_ewa_bs_", num2str(boot), "_sim_", num2str(run), ".mat"), 'EWA_sam');
-save(strcat(path, "bootstrap_", type, "_eh/",  type, "_eh_bs_",  num2str(boot), "_sim_", num2str(run), ".mat"), 'EH_final');
+path = "/ifs/scratch/msph/ehs/eag2186/npbnmf/main/bs/";
+save(strcat(path, "bootstrap_", sim_type, "_ewa/", sim_type, "_ewa_bs_", num2str(boot), "_sim_", num2str(runn), ".mat"), 'EWA_sam');
+save(strcat(path, "bootstrap_", sim_type, "_eh/",  sim_type, "_eh_bs_",  num2str(boot), "_sim_", num2str(runn), ".mat"), 'EH_final');
+
+% Results go into `get_ex_bootstrap.R`, and `bootstrap_combo.R`

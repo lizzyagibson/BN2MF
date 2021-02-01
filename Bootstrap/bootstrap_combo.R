@@ -4,6 +4,8 @@ library(R.matlab, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
 
 # First combine bootstraps
 
+# Run one time!
+
 # 150 bootstrap samples 
 bootstraps = 150
 
@@ -20,6 +22,7 @@ for (run in 1:datasets) {
   bs_list_eh[[run]]  <- array(dim = c(4, 50, bootstraps))
 }
 
+# Read in data output by `bootstrap_bn2mf.m`
 for (run in 1:datasets) {
   
   type = ""
@@ -61,7 +64,7 @@ save(bs_list_mean_h,   file = "/ifs/scratch/msph/ehs/eag2186/npbnmf/main/bs/boot
 save(bs_list_median_h, file = "/ifs/scratch/msph/ehs/eag2186/npbnmf/main/bs/bootstrap_lists/bs_list_median_h.RDA")
 
 # EWA
-# first match permutations
+# first match permutations !!!
 # reorder IDs
 for (run in 1:datasets) {
   for (boot in 1:bootstraps) {
@@ -92,4 +95,13 @@ save(bs_list_lower_wa,  file = "/ifs/scratch/msph/ehs/eag2186/npbnmf/main/bs/boo
 save(bs_list_upper_wa,  file = "/ifs/scratch/msph/ehs/eag2186/npbnmf/main/bs/bootstrap_lists/bs_list_upper_wa.RDA")
 save(bs_list_mean_wa,   file = "/ifs/scratch/msph/ehs/eag2186/npbnmf/main/bs/bootstrap_lists/bs_list_mean_wa.RDA")
 save(bs_list_median_wa, file = "/ifs/scratch/msph/ehs/eag2186/npbnmf/main/bs/bootstrap_lists/bs_list_median_wa.RDA")
+# all `bs_list...` files go into `bootstrap_out.R`
 
+# Also save whole distribution for three examples
+save_dist = c(2, 102, 202)
+
+for (i in 1:length(save_dist)) {
+  save(bs_list_ewa[[i]],  file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/main/bs/bootstrap_lists/bs_", save_dist[i], "_ewa_array.RDA"))
+  save(bs_list_eh[[i]],   file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/main/bs/bootstrap_lists/bs_", save_dist[i], "_eh_array.RDA"))
+}
+# this also go into `bootstrap_out.R`

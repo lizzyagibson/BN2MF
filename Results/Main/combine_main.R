@@ -9,6 +9,8 @@
     # on loadings
     # on scores
 
+# Run one time!
+
 ## Packages
 library(tidyverse, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
 library(R.matlab, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
@@ -25,7 +27,7 @@ for (i in 1:300) {
   print(i)
 }
 
-dgp_r = dgp_r %>% # Replace original with reordered version if it exists
+dgp_r = dgp_r %>% # Replace original with reordered version IF it exists
         mutate(pca_loadings   = ifelse(!is.na(pca_loadings_re),   pca_loadings_re,   pca_loadings),
                fa_loadings    = ifelse(!is.na(fa_loadings_re),    fa_loadings_re,    fa_loadings),
                nmfl2_loadings = ifelse(!is.na(nmfl2_loadings_re), nmfl2_loadings_re, nmfl2_loadings),
@@ -36,10 +38,9 @@ dgp_r = dgp_r %>% # Replace original with reordered version if it exists
                nmfp_scores  = ifelse(!is.na(nmfp_scores_re),  nmfp_scores_re,  nmfp_scores)) %>% 
         dplyr::select(-grep("_re", colnames(.)))
   
-# Aggregate BN2MF results
-dgp_m = tibble()
-dgp_vci = tibble()
-# Still have arrays for each bootstrap distribution iff needed
+# Aggregate BN2MF results from `dgp_bnmf_vci.m`
+dgp_m = tibble() # to combine with dgp_r
+dgp_vci = tibble() # to combine with bootsraps
 
 for (j in 1:300) {
 
@@ -67,11 +68,8 @@ for (j in 1:300) {
   lowerH = readMat(paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/main/dgp_vci_out/dgp_lowerH_", j, ".mat"))[[1]] %>% 
     as_tibble(.) %>% nest(data= everything()) %>% rename(lowerH = data)
 
-  prop = readMat(paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/main/dgp_vci_out/save_prop", j, ".mat"))[[1]] %>% 
-    as_tibble(.) %>% nest(data= everything()) %>% rename(prop = data)
-
   m_out   <- bind_cols(bn2mf_loadings, bn2mf_scores)
-  vci_out <- bind_cols(eh_scaled, ewa_scaled, lowerWA, upperWA, lowerH, upperH, prop)
+  vci_out <- bind_cols(eh_scaled, ewa_scaled, lowerWA, upperWA, lowerH, upperH)
   
   dgp_m   <- bind_rows(dgp_m, m_out)
   dgp_vci <- bind_rows(dgp_vci, vci_out)
@@ -93,7 +91,6 @@ save(dgp, file = "/ifs/scratch/msph/ehs/eag2186/npbnmf/main/main_out.RDA")
 save(dgp_vci, file = "/ifs/scratch/msph/ehs/eag2186/npbnmf/main/vci_out.RDA")
 
 # Calculate error metrics
-
 dgp_metrics = dgp %>% 
               pivot_longer(pca_out:bn2mf_rank,
                names_to = c("model", "object"),
@@ -168,4 +165,6 @@ metrics <- rank %>%
            full_join(., ssd_scores)
 
 save(metrics, file = "/ifs/scratch/msph/ehs/eag2186/npbnmf/main/main_metrics.RDA")
-# Next plot metrics
+# `main_metrics.RDA` go into `plot_dgp.R`
+# `vci_out.RDA` go into `bootstrap_out.R`
+

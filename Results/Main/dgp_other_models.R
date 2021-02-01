@@ -8,6 +8,8 @@ source("/ifs/scratch/msph/ehs/eag2186/npbnmf/compare_functions.R")
 # Read in Sims
 load("/ifs/scratch/msph/ehs/eag2186/Data/sim_dgp.RDA")
 
+# Run script once for each simulation (1:300)
+
 job_num = as.integer(Sys.getenv("SGE_TASK_ID"))
 job_num
 
@@ -67,5 +69,6 @@ dgp_out <- dgp_out %>%
          nmfp_loadings_re = map2(nmfp_loadings, nmfp_perm, get_product),
          nmfp_scores_re   = map2(nmfp_scores, nmfp_perm, get_product))
 
-save(dgp_out, file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/dgp_main_", job_num, ".RDA"))
-# Next combine all
+save(dgp_out, file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/main/dgp_main_", job_num, ".RDA"))
+# Results go into `combine_main.R`
+
