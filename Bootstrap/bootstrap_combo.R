@@ -101,7 +101,7 @@ save(bs_list_median_wa, file = "/ifs/scratch/msph/ehs/eag2186/npbnmf/main/bs/boo
 save_dist = c(2, 102, 202)
 
 for (i in 1:length(save_dist)) {
-  save(bs_list_ewa[[i]],  file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/main/bs/bootstrap_lists/bs_", save_dist[i], "_ewa_array.RDA"))
-  save(bs_list_eh[[i]],   file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/main/bs/bootstrap_lists/bs_", save_dist[i], "_eh_array.RDA"))
+  save(bs_list_ewa[[save_dist[i]]],  file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/main/bs/bootstrap_lists/bs_", save_dist[i], "_ewa_array.RDA"))
+  save(bs_list_eh[[save_dist[i]]],   file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/main/bs/bootstrap_lists/bs_", save_dist[i], "_eh_array.RDA"))
 }
 # this also go into `bootstrap_out.R`

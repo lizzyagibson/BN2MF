@@ -161,8 +161,6 @@ get_nmfp <- function (sim, patterns) {
 # Symmetric Subspace Distance 
 symm_subspace_dist <- function(U, V) {
   
-  if(any(is.na(U)) | any(is.na(V))) {return(NA)} else{
-    
     U = as.matrix(U)
     V = as.matrix(V)
     
@@ -170,7 +168,6 @@ symm_subspace_dist <- function(U, V) {
     if (nrow(U) < ncol(U)) {U <- t(U)}
     if (nrow(V) < ncol(V)) {V <- t(V)}
     
-    if(ncol(U) != ncol(V)) { return(NA) } else{
     qrU <- qr.Q(qr(U))
     qrV <- qr.Q(qr(V))
   
@@ -181,8 +178,6 @@ symm_subspace_dist <- function(U, V) {
   
     ratio <- dUV/sqrt( max(m,n))
     return(ratio)
-    }
-  }
 }
 
 # Cosine distance (matrix version)
@@ -315,8 +310,8 @@ get_perm <- function(x,y, nn = TRUE) {
       }
 }
 
-get_product <- function(x,y) {
-  if(any(is.na(x)) | any(is.na(y))) {return(NA)} else{
+get_perm_product <- function(x,y) {
+  if(any(is.na(x)) | any(is.na(y))) {return(x)} else{ # if permutation matrix is NA, return X
     
     x = as.matrix(x)
     y = as.matrix(y)
@@ -324,7 +319,7 @@ get_product <- function(x,y) {
     # patterns should be columns
     if (nrow(x) < ncol(x)) {x <- t(x)}
     
-    if(ncol(x) != ncol(y)) { return(NA) } else{ return(x %*% y) }
+    if(ncol(x) != ncol(y)) { return(x) } else{ return(x %*% y) }
   }
 }
 

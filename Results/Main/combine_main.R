@@ -26,17 +26,6 @@ for (i in 1:300) {
   dgp_r = bind_rows(dgp_r, dgp_out)
   print(i)
 }
-
-dgp_r = dgp_r %>% # Replace original with reordered version IF it exists
-        mutate(pca_loadings   = ifelse(!is.na(pca_loadings_re),   pca_loadings_re,   pca_loadings),
-               fa_loadings    = ifelse(!is.na(fa_loadings_re),    fa_loadings_re,    fa_loadings),
-               nmfl2_loadings = ifelse(!is.na(nmfl2_loadings_re), nmfl2_loadings_re, nmfl2_loadings),
-               nmfp_loadings  = ifelse(!is.na(nmfp_loadings_re),  nmfp_loadings_re,  nmfp_loadings),
-               pca_scores   = ifelse(!is.na(pca_scores_re),   pca_scores_re,   pca_scores),
-               fa_scores    = ifelse(!is.na(fa_scores_re),    fa_scores_re,    fa_scores),
-               nmfl2_scores = ifelse(!is.na(nmfl2_scores_re), nmfl2_scores_re, nmfl2_scores),
-               nmfp_scores  = ifelse(!is.na(nmfp_scores_re),  nmfp_scores_re,  nmfp_scores)) %>% 
-        dplyr::select(-grep("_re", colnames(.)))
   
 # Aggregate BN2MF results from `dgp_bnmf_vci.m`
 dgp_m = tibble() # to combine with dgp_r

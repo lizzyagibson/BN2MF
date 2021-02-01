@@ -25,6 +25,7 @@ source("./Results/fig_set.R")
 # pdf("./Figures/bnmf_error.pdf", width = 10)
 metrics %>%
   dplyr::select(seed, data, model, rel_err_all) %>%
+  mutate(data = fct_inorder(data)) %>% 
   ggplot(aes(x = model, y = rel_err_all)) +
   geom_jitter(alpha = 0.15, size = 0.5, height = 0, width = .3) +
   geom_boxplot(aes(color = model, fill = model),
@@ -40,6 +41,7 @@ metrics %>%
 
 #pdf("./Figures/bnmf_loadscore_error.pdf", width = 10, height = 10)
 metrics %>%
+  mutate(data = fct_inorder(data)) %>% 
   dplyr::select(seed, data, model, rel_err_loadings, rel_err_scores) %>%
   pivot_longer(c(rel_err_loadings, rel_err_scores)) %>% 
   mutate(name = str_to_title(str_remove(name, "rel_err_"))) %>% 
@@ -59,6 +61,7 @@ metrics %>%
 
 #pdf("./Figures/bnmf_ssd.pdf", width = 10, height = 10)
 metrics %>%
+  mutate(data = fct_inorder(data)) %>% 
   dplyr::select(seed, data, model, ssd_loadings, ssd_scores) %>%
   pivot_longer(c(ssd_loadings, ssd_scores)) %>% 
   mutate(name = str_to_title(str_remove(name, "ssd_"))) %>% 
@@ -74,6 +77,7 @@ metrics %>%
 #####
 
 metrics %>%
+  mutate(data = fct_inorder(data)) %>% 
   dplyr::select(seed, data, model, cos_dist_loadings, cos_dist_scores) %>%
   pivot_longer(c(cos_dist_loadings, cos_dist_scores)) %>% 
   mutate(name = str_to_title(str_remove(name, "cos_dist_"))) %>% 
@@ -83,7 +87,7 @@ metrics %>%
                alpha = 0.5, outlier.shape = NA) +
   #geom_violin(aes(color = model, fill = model), scale = "width",alpha = 0.5) +
   facet_grid(name ~ data, scales = "free") + 
-  labs(y = "Cosine Similarity")
+  labs(y = "Cosine Distance on Matrix")
 
 # pdf("./Figures/bnmf_cos_v.pdf", width = 10, height = 10)
 metrics %>%
@@ -97,7 +101,7 @@ metrics %>%
                alpha = 0.5, outlier.shape = NA) +
   # geom_violin(aes(color = model, fill = model), scale = "width",alpha = 0.5) +
   facet_grid(name ~ data, scales = "free") + 
-  labs(y = "Cosine Similarity")
+  labs(y = "Cosine Distance on Vectors")
 # dev.off()
 
 #####
@@ -115,6 +119,10 @@ metrics %>%
   pivot_wider(names_from = rank,
               values_from = n) %>% 
   mutate_if(is.integer, replace_na, 0)
+
+# 210 solutions are not rank 4
+100+100+10
+# this accounts for the 420 missing values (loadings and scores) in the plots above
 
 #####
 # Relative Preditive Error
