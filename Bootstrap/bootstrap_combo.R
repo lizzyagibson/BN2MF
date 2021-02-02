@@ -13,8 +13,8 @@ bootstraps = 150
 datasets = 300
 
 # List with one entry per simulation
-bs_list_ewa = list(rep(NA, datasets))
-bs_list_eh  = list(rep(NA, datasets))
+bs_list_ewa = list()
+bs_list_eh  = list()
 
 # One array for each BN2MF output
 for (run in 1:datasets) {
@@ -46,10 +46,10 @@ for (run in 1:datasets) {
 # Create empirical confidence interval
 # List of matrices, one for each BN2MF output
 # 25th, mean, median, and 75th percentile matrices (4 lists) for EH
-bs_list_lower_h  = list(rep(NA, datasets))
-bs_list_upper_h  = list(rep(NA, datasets))
-bs_list_mean_h   = list(rep(NA, datasets))
-bs_list_median_h = list(rep(NA, datasets))
+bs_list_lower_h  = list()
+bs_list_upper_h  = list()
+bs_list_mean_h   = list()
+bs_list_median_h = list()
 
 for (run in 1:datasets) {
   bs_list_lower_h[[run]]  <- apply(bs_list_eh[[run]], c(1,2), quantile, 0.025, na.rm = TRUE)
@@ -58,10 +58,20 @@ for (run in 1:datasets) {
   bs_list_median_h[[run]] <- apply(bs_list_eh[[run]], c(1,2), median, na.rm = TRUE)
 }
 
+# all `bs_list...` files go into `bootstrap_out.R`
 save(bs_list_lower_h,  file = "/ifs/scratch/msph/ehs/eag2186/npbnmf/main/bs/bootstrap_lists/bs_list_lower_h.RDA")
 save(bs_list_upper_h,  file = "/ifs/scratch/msph/ehs/eag2186/npbnmf/main/bs/bootstrap_lists/bs_list_upper_h.RDA")
 save(bs_list_mean_h,   file = "/ifs/scratch/msph/ehs/eag2186/npbnmf/main/bs/bootstrap_lists/bs_list_mean_h.RDA")
 save(bs_list_median_h, file = "/ifs/scratch/msph/ehs/eag2186/npbnmf/main/bs/bootstrap_lists/bs_list_median_h.RDA")
+
+# Also save whole distribution for three examples
+save_dist = c(2, 102, 202)
+for (i in 1:length(save_dist)) {
+  print(save_dist[i])
+  save_eh  = bs_list_eh[[save_dist[i]]]
+  save(save_eh, file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/main/bs/bootstrap_lists/bs_", save_dist[i], "_eh_array.RDA"))
+}
+# this also goes into `bootstrap_out.R`
 
 # EWA
 # first match permutations !!!
@@ -71,18 +81,18 @@ for (run in 1:datasets) {
   # takes the first instance of an ID
   # all instances of same ID are equal
     bs_list_ewa[[run]][,,boot] = bs_list_ewa[[run]][,,boot][match(1:1000, bs_list_ewa[[run]][,,boot][,1]),]
-    print(paste0("Run Number: ", run, "Bootstrap: ", boot))
   }
+    print(paste0("Run Number: ", run))
 }
 
 # Create empirical confidence interval
 # List of matrices
 # One matrix for each BN2MF output
 # 25th, mean, median, and 75th percentile matrices (4 lists) for EWA
-bs_list_lower_wa  = list(rep(NA, datasets))
-bs_list_upper_wa  = list(rep(NA, datasets))
-bs_list_mean_wa   = list(rep(NA, datasets))
-bs_list_median_wa = list(rep(NA, datasets))
+bs_list_lower_wa  = list()
+bs_list_upper_wa  = list()
+bs_list_mean_wa   = list()
+bs_list_median_wa = list()
 
 for (run in 1:datasets) {
   bs_list_lower_wa[[run]]  <- apply(bs_list_ewa[[run]], c(1,2), quantile, 0.025, na.rm = TRUE)
@@ -101,7 +111,8 @@ save(bs_list_median_wa, file = "/ifs/scratch/msph/ehs/eag2186/npbnmf/main/bs/boo
 save_dist = c(2, 102, 202)
 
 for (i in 1:length(save_dist)) {
-  save(bs_list_ewa[[save_dist[i]]],  file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/main/bs/bootstrap_lists/bs_", save_dist[i], "_ewa_array.RDA"))
-  save(bs_list_eh[[save_dist[i]]],   file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/main/bs/bootstrap_lists/bs_", save_dist[i], "_eh_array.RDA"))
+  print(save_dist[i])
+  save_ewa = bs_list_ewa[[save_dist[i]]]
+  save(save_ewa,  file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/main/bs/bootstrap_lists/bs_", save_dist[i], "_ewa_array.RDA"))
 }
-# this also go into `bootstrap_out.R`
+# this also goes into `bootstrap_out.R`
