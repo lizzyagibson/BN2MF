@@ -267,8 +267,8 @@ plot_h %>% dplyr::select(sim_type, bs_eh:truth) %>%
 plot_h %>% 
   mutate(sim_type = fct_inorder(sim_type)) %>% 
   ggplot(aes(x = Distribution, fill = Type)) +
-  geom_rect(aes(xmin = v_h_25,  xmax = v_h_75,  ymin=0, ymax=Inf), fill="lightblue", alpha=0.025) +
   geom_rect(aes(xmin = bs_h_25, xmax = bs_h_75, ymin=0, ymax=Inf), fill="pink",      alpha=0.025) +
+  geom_rect(aes(xmin = v_h_25,  xmax = v_h_75,  ymin=0, ymax=Inf), fill="lightblue", alpha=0.025) +
   geom_histogram(aes(y=..density..,fill = Type), bins = 100) +
   #geom_density(aes(group = Type), alpha = 0.5) +
   scale_fill_manual(values = c("red", "blue")) +
