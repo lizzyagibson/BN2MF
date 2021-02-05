@@ -48,6 +48,8 @@ dgp_metrics0 = dgp_all %>%
 
 # Normalize loadings
 # Scale scores
+# It really doesn't make sense to L1 scale PCA and FA components
+# Just curious
 dgp_metrics = dgp_metrics0 %>% 
     mutate(true_denom = map(true_patterns, function(x) apply(x,1, sum)),
            true_patterns_scaled = map2(true_patterns, true_denom, function(x,y) x/y),
@@ -64,56 +66,60 @@ dgp_metrics = dgp_metrics0 %>%
 # l2 relative error -- loadings
 rel_err_loadings <- dgp_metrics %>%
                 filter(object == "loadings") %>% 
-                mutate(rel_err_loadings = map2(true_patterns_scaled, value, get_relerror)) %>%
+                mutate(l2_loadings = map2(true_patterns_scaled, value, get_relerror)) %>%
                 mutate(l1_loadings = map2(true_patterns_scaled, value, get_relerror_l1)) %>%
-                dplyr::select(seed, data, model, sparsity, scaled, rel_err_loadings, l1_loadings) %>% 
-                unnest(c(rel_err_loadings, l1_loadings))
+                dplyr::select(seed, data, model, sparsity, scaled, l2_loadings, l1_loadings) %>% 
+                unnest(c(l2_loadings, l1_loadings))
 
 # l2 relative error -- scores
 rel_err_scores <- dgp_metrics %>%
                   filter(object == "scores") %>% 
-                  mutate(rel_err_scores = map2(true_scores_scaled, value, get_relerror)) %>%
+                  mutate(l2_scores = map2(true_scores_scaled, value, get_relerror)) %>%
                   mutate(l1_scores = map2(true_scores_scaled, value, get_relerror_l1)) %>%
-                  dplyr::select(seed, data, model, sparsity, scaled, rel_err_scores, l1_scores) %>% 
-                  unnest(c(rel_err_scores, l1_scores))
+                  dplyr::select(seed, data, model, sparsity, scaled, l2_scores, l1_scores) %>% 
+                  unnest(c(l2_scores, l1_scores))
 
 # Combine all metrics
 metrics <- full_join(rel_err_loadings, rel_err_scores)
 
 #### Viz ####
 metrics %>% 
-  filter(model != "pca") %>% 
-  #filter(model != "fa") %>% 
-  filter(data != "Distinct") %>% 
+  mutate_at(vars(2:5), as.factor) %>% 
+  #filter(scaled == "scaled") %>% 
+  filter(model != "pca") %>% # BC PCA error is way higher on loadings
+  filter(model != "fa") %>% 
+  #filter(data != "Distinct") %>% 
   mutate(model = str_c(model, "_", sparsity),
          model = str_remove(model, "_reg")) %>% 
   mutate(data = fct_inorder(data)) %>% 
-  dplyr::select(seed, data, model, sparsity, scaled, rel_err_loadings, rel_err_scores) %>%
-  pivot_longer(c(rel_err_loadings, rel_err_scores)) %>% 
-  mutate(name = str_to_title(str_remove(name, "rel_err_"))) %>%
-  filter(scaled == "scaled") %>% 
+  dplyr::select(seed, data, model, sparsity, scaled, l2_loadings, l2_scores) %>%
+  pivot_longer(c(l2_loadings, l2_scores)) %>% 
+  mutate(name = str_to_title(str_remove(name, "l2_"))) %>%
+  filter(name == "Loadings") %>% 
   ggplot(aes(x = model, y = value)) +
   geom_boxplot(aes(color = model, fill = model), 
                alpha = 0.5, outlier.shape = NA) +
-  facet_grid(name ~ data, scales = "free") + 
+  facet_grid(scaled ~ data, scales = "free") + 
   scale_y_log10() +
   labs(y = "L2 Error")
 
 metrics %>% 
-  filter(model != "pca") %>% 
-  filter(model != "fa") %>% 
-  filter(data != "Distinct") %>% 
+  mutate_at(vars(2:5), as.factor) %>% 
+  #filter(scaled == "scaled") %>% 
+  #filter(model != "pca") %>% # BC PCA error is way higher on loadings
+  #filter(model != "fa") %>% 
+  #filter(data != "Distinct") %>% 
   mutate(model = str_c(model, "_", sparsity),
          model = str_remove(model, "_reg")) %>% 
   mutate(data = fct_inorder(data)) %>% 
   dplyr::select(seed, data, model, sparsity, scaled, l1_loadings, l1_scores) %>%
   pivot_longer(c(l1_loadings, l1_scores)) %>% 
   mutate(name = str_to_title(str_remove(name, "l1_"))) %>%
-  filter(scaled == "scaled") %>% 
+  filter(name == "Loadings") %>% 
   ggplot(aes(x = model, y = value)) +
   geom_boxplot(aes(color = model, fill = model), 
                alpha = 0.5, outlier.shape = NA) +
-  facet_grid(name ~ data, scales = "free") + 
+  facet_grid(scaled ~ data, scales = "free") + 
   scale_y_log10() +
   labs(y = "L1 Error")
 
