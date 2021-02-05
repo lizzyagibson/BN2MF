@@ -241,7 +241,44 @@ get_relerror <- function(x,y) {
                 return(norm(x-y, "F")/norm(x, "F"))
               }
   }
+}
+
+get_relerror_l1 <- function(x,y) {
+  
+  if(any(is.na(x)) | any(is.na(y))) {return(NA)} else{
+    
+    x = as.matrix(x)
+    y = as.matrix(y)
+    
+    # patterns should be columns
+    if (nrow(x) < ncol(x)) {x <- t(x)}
+    if (nrow(y) < ncol(y)) {y <- t(y)}  
+    
+    if(ncol(x) != ncol(y)) { return(NA) } else{
+      return( sum(abs(x-y))/sum(abs(x)) )
+    }
   }
+}
+
+get_prop <- function(x,y,z) {
+  # mean, lower, upper
+  
+  if(any(is.na(x)) | any(is.na(y))) {return(NA)} else{
+    
+    x = as.matrix(x)
+    y = as.matrix(y)
+    z = as.matrix(z)
+    
+    # patterns should be columns
+    if (nrow(x) < ncol(x)) {x <- t(x)}
+    if (nrow(y) < ncol(y)) {y <- t(y)}  
+    if (nrow(z) < ncol(z)) {z <- t(z)}  
+    
+    if(ncol(x) != ncol(y)) { return(NA) } else{
+      return( sum(x >= y & x <= z)/(nrow(x)*ncol(x)) )
+    }
+  }
+}
   
 # Factor correspondence
 # WITH error handling
