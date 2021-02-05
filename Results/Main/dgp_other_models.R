@@ -69,6 +69,6 @@ dgp_out <- dgp_out %>%
          nmfp_loadings = map2(nmfp_loadings, nmfp_perm, get_perm_product),
          nmfp_scores   = map2(nmfp_scores, nmfp_perm, get_perm_product))
 
-save(dgp_out, file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/main/dgp_main_", job_num, ".RDA"))
+save(dgp_out, file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/main/dgp_other_models_out/dgp_main_", job_num, ".RDA"))
 # Results go into `combine_main.R`
 

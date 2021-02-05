@@ -4,17 +4,21 @@
 % All WA matrices are scaled by the corresponding normalization constant
 
 %% Add path with functions
-addpath('/ifs/scratch/msph/ehs/eag2186/npbnmf')
+% addpath('/ifs/scratch/msph/ehs/eag2186/npbnmf')
 
 %% Run script 1 time for each simulated dataset (1:300)
 
 %% Get job number
-j = getenv('SGE_TASK_ID')
+% j = getenv('SGE_TASK_ID')
 
 % Import the data
-simdata1 = readtable(strcat("/ifs/scratch/msph/ehs/eag2186/Data/dgp_csv/sim_dgp_", j, ".csv"));
-patterns = readtable(strcat("/ifs/scratch/msph/ehs/eag2186/Data/dgp_csv/patterns_dgp_", j, ".csv"));
-scores   = readtable(strcat("/ifs/scratch/msph/ehs/eag2186/Data/dgp_csv/scores_dgp_",   j, ".csv"));
+% simdata1 = readtable(strcat("/ifs/scratch/msph/ehs/eag2186/Data/dgp_csv/sim_dgp_", j, ".csv"));
+% patterns = readtable(strcat("/ifs/scratch/msph/ehs/eag2186/Data/dgp_csv/patterns_dgp_", j, ".csv"));
+% scores   = readtable(strcat("/ifs/scratch/msph/ehs/eag2186/Data/dgp_csv/scores_dgp_",   j, ".csv"));
+
+simdata1 = readtable("/Users/lizzy/BN2MF/Sims/Main/sim_dgp_1.csv");
+patterns = readtable("/Users/lizzy/BN2MF/Sims/Main/patterns_dgp_1.csv");
+scores   = readtable("/Users/lizzy/BN2MF/Sims/Main/scores_dgp_1.csv");
 
 %% Convert to output type
 simdata1 = table2array(simdata1);
@@ -23,7 +27,7 @@ scores   = table2array(scores);
 
 %% Run model
 [EWA0, EH0, varH0, alphaH0, betaH0, alphaW0, betaW0, ...
-    alphaA0, betaA0, varWA0, finalscore0, final_iter0] = BN2MF(simdata1);
+    alphaA0, betaA0, varWA0, finalscore0, final_iter0] = BN2MF_sparse_h(simdata1);
 
 % Save pattern number
 [kk,~] = size(EH0);
@@ -37,10 +41,15 @@ scores_scaled = scores * diag(patterns_denom);
 % If  matrices are the same size, rearrange
 % If matrices are not the same size, rearrange by identity
 % ie dont rearrange
+
+size(patterns)
+size(EH0)
+
 try
     [~,Pi] = factor_correspondence(patterns',EH0');
 catch
     warning('Matrices not the same size. Replacing permutation matrix with identity.');
+    [r,~] = size(EH0)
     Pi = eye(r);
 end
 
