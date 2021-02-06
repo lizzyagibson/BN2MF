@@ -1,15 +1,11 @@
 # Combine bootstrap results
 # Combine VCI results
-# Single examples for distinct, overlapping, and correlated simulations
-# Overall charactersistics, too
+# Overall characteristics
 
 ####  Load packages ####
 library(tidyverse)
 library(R.matlab)
 #library(openssl)
-
-# create random vector for matlab on hpc
-# rand_vec = rand_num(150) * ((2^31)-1)
 
 #### For all sims ####
 
@@ -24,15 +20,16 @@ sim_dgp = sim_dgp %>%
          id = 1:nrow(.))
 
 #### Read bootstrap data ####
-load("./Bootstrap/compare/bs_list_lower_wa.RDA")
-load("./Bootstrap/compare/bs_list_upper_wa.RDA")
-load("./Bootstrap/compare/bs_list_mean_wa.RDA")
-load("./Bootstrap/compare/bs_list_median_wa.RDA")
-load("./Bootstrap/compare/bs_list_lower_h.RDA")
-load("./Bootstrap/compare/bs_list_upper_h.RDA")
-load("./Bootstrap/compare/bs_list_mean_h.RDA")
-load("./Bootstrap/compare/bs_list_median_h.RDA")
-                                                       
+which = c("lower", "upper", "mean", "median")
+side = c("wa", "h")
+
+for (i in 1:length(side)) {
+  for (j in 1:length(which)) {
+    load(paste0("./Bootstrap/compare/bs_list_", which[j], "_", side[i], ".RDA"))
+    load(paste0("./Bootstrap/compare/bs_list_", which[j], "_", side[i], ".RDA"))
+  }
+  }
+
 bs_dgp = tibble(bs_h_lower = bs_list_lower_h,
                   bs_h_mean = bs_list_mean_h,
                   bs_h_upper = bs_list_upper_h,
@@ -69,26 +66,49 @@ bs_dgp = bs_dgp %>%
          bs_wa_upper  = map(bs_wa_upper,  function(x) x[,2:5]),
          bs_wa_median = map(bs_wa_median, function(x) x[,2:5])) 
 
+#### Distribution on  predicted values ####
+for (j in 1:length(which)) {
+    load(paste0("./Bootstrap/compare/bs_list_", which[j], "_pred.RDA"))
+    load(paste0("./Bootstrap/compare/bs_list_", which[j], "_pred.RDA"))
+  }
+
+bs_pred = tibble(bs_pred_lower  = bs_list_lower_pred,
+                 bs_pred_mean   = bs_list_mean_pred,
+                 bs_pred_upper  = bs_list_upper_pred,
+                 bs_pred_median = bs_list_median_pred)
+rm(list = c("bs_list_lower_pred", "bs_list_upper_pred", "bs_list_mean_pred", "bs_list_median_pred"))
+
 #### Combine data ####
-all_dgp = bind_cols(sim_dgp, bs_dgp, vci_dgp) %>% 
+all_bs_vci = bind_cols(sim_dgp, bs_dgp, vci_dgp, bs_pred) %>% 
+  mutate(vci_pred_mean = map2(vci_wa_mean, vci_h_mean, function(x,y) as.matrix(x) %*% as.matrix(y)),
+         vci_pred_lower = map(vci_pred_mean, qpois, p = 0.025),
+         vci_pred_upper = map(vci_pred_mean, qpois, p = 0.975)) 
+
+bs_vci_metrics = all_bs_vci %>% 
+  # For VCI predicted values, take WA*H = mean of Poisson
+  # Take 2.5 and 97.5 percentiles of Poisson(WA*H) with inverse CDF
+  # Scaled vs non-scaled give same predicted value
+  # For bootstrapped predicted values
+  # Take predicted as WA*H of each bootstrap
+  # Take 2.5 and 97.5 percentiles of bootstrapped distribution (over 150 bootstraps)
   pivot_longer(c(grep("bs_", colnames(.)), grep("vci_", colnames(.))),
                names_to = c("method", "side", "matrix"),
                names_sep = "_") %>%
   mutate(value = map(value, as.matrix)) %>% 
   pivot_wider(names_from = matrix,
               values_from = value) %>% 
-  mutate(truth = pmap(list(side, patterns_scaled, scores_scaled),
-                      function(x, y, z) if(x == "h") {y} else {z}),
+  mutate(truth = pmap(list(side, patterns_scaled, scores_scaled, chem),
+                      function(x, y, z, a) if(x == "h") {y} else if (x == "wa") {z} else if (x == "pred") {a}),
          best = map2(median, mean, function(x,y) if(!is.null(x)) {x} else {y}),
          err  = map2(truth, best, function(x,y)
            if (ncol(x) == ncol(y)) {norm(x-y, "F")/norm(x, "F")} else {NA}),
          iqr  = map2(upper, lower, function(x, y) mean(x-y)),
          prop = pmap(list(truth, lower, upper),
                            function(x,y,z) sum(x >= y & x <= z)/(nrow(x)*ncol(x)) )) %>%
-  unnest(c(err, prop, iqr))
+  unnest(c(err, prop, iqr)) 
 
 #### Results Tables ####
-all_dgp %>% 
+bs_vci_metrics %>% 
   group_by(data, method, side) %>%
   summarise(qs = quantile(prop, c(0.25, 0.5, 0.75)), prob = c(0.25, 0.5, 0.75),
             mean = mean(prop),
@@ -99,7 +119,7 @@ all_dgp %>%
   dplyr::select(side, data, method, min, `0.25`, `0.5`, mean, `0.75`, max) %>% 
   arrange(side, data, method)
 
-all_dgp %>% 
+bs_vci_metrics %>% 
   group_by(data, method, side) %>% 
   summarise(qs = quantile(err, c(0.25, 0.5, 0.75)), prob = c(0.25, 0.5, 0.75),
             mean = mean(err),
@@ -110,7 +130,7 @@ all_dgp %>%
   dplyr::select(side, data, method, min, `0.25`, `0.5`, mean, `0.75`, max) %>% 
   arrange(side, data, method)
 
-all_dgp %>% 
+bs_vci_metrics %>% 
   group_by(data, method, side) %>% 
   summarise(qs = quantile(iqr, c(0.25, 0.5, 0.75)), prob = c(0.25, 0.5, 0.75),
             mean = mean(iqr),
@@ -121,396 +141,6 @@ all_dgp %>%
   dplyr::select(side, data, method, min, `0.25`, `0.5`, mean, `0.75`, max) %>% 
   arrange(side, data, method)
 
-#### Single Examples #####
-
-#### Read bootstrap distribution output ####
-#### Read VCI distribution output ####
-
-# ID: Dist = 2; Over = 102; Cor = 202
-type = c("dist", "over", "cor")
-id = c(2,102,202)
-bs_ex = tibble()
-
-for (i in 1:length(type)) {
-  load(paste0("./Bootstrap/example/bs_", id[i], "_ewa_array.RDA"))
-  load(paste0("./Bootstrap/example/bs_", id[i], "_eh_array.RDA"))
-
-  vci_wa_dist = readMat(paste0("./Bootstrap/example/dgp_distWA_", id[i], ".mat"))[[1]]
-  vci_h_dist  = readMat(paste0("./Bootstrap/example/dgp_distEH_", id[i], ".mat"))[[1]]
-
-  bs_row = bind_cols(tibble(id = id[i]), 
-           tibble(bs_wa_dist = list(save_ewa)),
-           tibble(bs_h_dist = list(save_eh)),
-           tibble(vci_wa_dist = list(vci_wa_dist)),
-           tibble(vci_h_dist = list(vci_h_dist)))
-    
-  bs_ex = bind_rows(bs_ex, bs_row)
-}
-rm(list = c("save_ewa", "save_eh", "bs_row", "vci_wa_dist", "vci_h_dist"))
-
-bs_ex = bs_ex %>% 
-  mutate(bs_wa_dist = map(bs_wa_dist, function(x) x[,2:5,])) %>% 
-  left_join(., bind_cols(bs_dgp, sim_dgp, vci_dgp))
-
-#### Example viz (Single Entry) ####
-#### Loop for each kind of simulation 
-
-#### EWA ####
-plot_wa = tibble()
-prop_wa = tibble()
-
-for (i in 1:3) {
-    truth   = bs_ex[i,]$scores_scaled[[1]][735, 2]
-    v_dist  = as.numeric(bs_ex[i,]$vci_wa_dist[[1]][735, 2,])
-    bs_dist = bs_ex[i,]$bs_wa_dist[[1]][735, 2,]
-    
-    bs_ewa    = bs_ex[i,]$bs_wa_median[[1]][735, 2]
-    bs_wa_25  = bs_ex[i,]$bs_wa_lower[[1]][735, 2]
-    bs_wa_75  = bs_ex[i,]$bs_wa_upper[[1]][735, 2]
-    
-    v_ewa   = as.numeric(bs_ex[i,]$vci_wa_mean[[1]][735, 2])
-    v_wa_25 = as.numeric(bs_ex[i,]$vci_wa_lower[[1]][735, 2])
-    v_wa_75 = as.numeric(bs_ex[i,]$vci_wa_upper[[1]][735, 2])
-    
-    v_prop = sum(bs_ex[i,]$scores_scaled[[1]] <= bs_ex[i,]$vci_wa_upper[[1]] & 
-          bs_ex[i,]$scores_scaled[[1]] >= bs_ex[i,]$vci_wa_lower[[1]])/4000
-    
-    bs_prop = sum(bs_ex[i,]$scores_scaled[[1]] <= bs_ex[i,]$bs_wa_upper[[1]] & 
-          bs_ex[i,]$scores_scaled[[1]] >= bs_ex[i,]$bs_wa_lower[[1]])/4000
-    
-    add_plot = tibble(Distribution = v_dist) %>% 
-                mutate(Type = "Variational") %>% 
-                rbind(., tibble(Distribution = bs_dist) %>% 
-                                mutate(Type = "Bootstrap"))  %>% 
-                drop_na(.) %>% 
-                mutate(sim_type = str_to_title(type[i]),
-                       bs_ewa   = bs_ewa  ,
-                       bs_wa_25 = bs_wa_25,
-                       bs_wa_75 = bs_wa_75,
-                       v_ewa    = v_ewa   ,
-                       v_wa_25  = v_wa_25 ,
-                       v_wa_75  = v_wa_75,
-                       truth = truth)
-    
-    plot_wa = bind_rows(plot_wa, add_plot)
-    prop_wa = bind_rows(prop_wa, bind_cols(bs = bs_prop, v = v_prop))
-}
-rm(list = c("bs_ewa", "bs_wa_75", "bs_wa_25",
-            "v_ewa", "v_wa_25", "v_wa_75", "truth"))
-prop_wa 
-plot_wa %>% dplyr::select(sim_type, bs_ewa:truth) %>% 
-  distinct( )
-
-plot_wa %>% 
-  mutate(sim_type = fct_inorder(sim_type)) %>% 
-  ggplot(aes(x = Distribution, fill = Type)) +
-  geom_rect(aes(xmin = v_wa_25,  xmax = v_wa_75,  ymin=0, ymax=Inf), fill="lightblue", alpha=0.025) +
-  geom_rect(aes(xmin = bs_wa_25, xmax = bs_wa_75, ymin=0, ymax=Inf), fill="pink",      alpha=0.025) +
-  geom_histogram(aes(y=..density..,fill = Type), bins = 100) +
-  #geom_density(aes(group = Type), alpha = 0.5) +
-  scale_fill_manual(values = c("red", "blue")) +
-  theme_bw() + 
-  geom_vline(aes(xintercept = truth),  linetype="dotted", color = "black") +
-  geom_vline(aes(xintercept = bs_ewa), linetype="dotted", color = "yellow") + 
-  geom_vline(aes(xintercept = v_ewa),  linetype="dotted", color = "yellow") + 
-  facet_grid(sim_type~., scales = "free") +
-  theme(legend.position = "bottom",
-        strip.background = element_rect(fill="white")) +
-  ylab("Density")
-
-#### EH ####
-plot_h = tibble()
-prop_h = tibble()
-
-for (i in 1:3) {
-  truth     = bs_ex[i,]$patterns_scaled[[1]][4, 34]
-  v_dist_h  = as.numeric(bs_ex[i,]$vci_h_dist[[1]][4, 34,])
-  bs_dist_h = bs_ex[i,]$bs_h_dist[[1]][4, 34,]
-  
-  bs_eh    = bs_ex[i,]$bs_h_median[[1]][4, 34]
-  bs_h_25  = bs_ex[i,]$bs_h_lower[[1]][4, 34]
-  bs_h_75  = bs_ex[i,]$bs_h_upper[[1]][4, 34]
-  
-  v_eh   = as.numeric(bs_ex[i,]$vci_h_mean[[1]][4, 34])
-  v_h_25 = as.numeric(bs_ex[i,]$vci_h_lower[[1]][4, 34])
-  v_h_75 = as.numeric(bs_ex[i,]$vci_h_upper[[1]][4, 34])
-  
-  v_prop = sum(bs_ex[i,]$patterns_scaled[[1]] <= bs_ex[i,]$vci_h_upper[[1]] & 
-                 bs_ex[i,]$patterns_scaled[[1]] >= bs_ex[i,]$vci_h_lower[[1]])/4000
-  
-  bs_prop = sum(bs_ex[i,]$patterns_scaled[[1]] <= bs_ex[i,]$bs_h_upper[[1]] & 
-                  bs_ex[i,]$patterns_scaled[[1]] >= bs_ex[i,]$bs_h_lower[[1]])/4000
-  
-  add_plot = tibble(Distribution = v_dist_h) %>% 
-    mutate(Type = "Variational") %>% 
-    rbind(., tibble(Distribution = bs_dist_h) %>% 
-            mutate(Type = "Bootstrap"))  %>% 
-    drop_na(.) %>% 
-    mutate(sim_type = str_to_title(type[i]),
-           bs_eh   = bs_eh  ,
-           bs_h_25 = bs_h_25,
-           bs_h_75 = bs_h_75,
-           v_eh    = v_eh   ,
-           v_h_25  = v_h_25 ,
-           v_h_75  = v_h_75,
-           truth = truth)
-  
-  plot_h = bind_rows(plot_h, add_plot)
-  prop_h = bind_rows(prop_h, bind_cols(bs = bs_prop, v = v_prop))
-}
-rm(list = c("bs_eh", "bs_h_75", "bs_h_25",
-            "v_eh", "v_h_25", "v_h_75", "truth"))
-prop_h 
-plot_h %>% dplyr::select(sim_type, bs_eh:truth) %>% 
-  distinct( )
-
-plot_h %>% 
-  mutate(sim_type = fct_inorder(sim_type)) %>% 
-  ggplot(aes(x = Distribution, fill = Type)) +
-  geom_rect(aes(xmin = bs_h_25, xmax = bs_h_75, ymin=0, ymax=Inf), fill="pink",      alpha=0.025) +
-  geom_rect(aes(xmin = v_h_25,  xmax = v_h_75,  ymin=0, ymax=Inf), fill="lightblue", alpha=0.025) +
-  geom_histogram(aes(y=..density..,fill = Type), bins = 100) +
-  #geom_density(aes(group = Type), alpha = 0.5) +
-  scale_fill_manual(values = c("red", "blue")) +
-  theme_bw() + 
-  geom_vline(aes(xintercept = truth),  linetype="dotted", color = "black") +
-  geom_vline(aes(xintercept = bs_eh), linetype="dotted", color = "yellow") + 
-  geom_vline(aes(xintercept = v_eh),  linetype="dotted", color = "yellow") + 
-  facet_grid(sim_type~., scales = "free") +
-  theme(legend.position = "bottom",
-        strip.background = element_rect(fill="white")) +
-  ylab("Density")
-
-
-
-
-  
-  
-
-#### Distribution on  predicted values ####
-load("./Bootstrap/compare/bs_list_lower_pred.RDA")
-load("./Bootstrap/compare/bs_list_upper_pred.RDA")
-load("./Bootstrap/compare/bs_list_mean_pred.RDA")
-load("./Bootstrap/compare/bs_list_median_pred.RDA")
-
-bs_pred = tibble(bs_pred_lower  = bs_list_lower_pred,
-                 bs_pred_mean   = bs_list_mean_pred,
-                 bs_pred_upper  = bs_list_upper_pred,
-                 bs_pred_median = bs_list_median_pred)
-
-all_pred = bind_cols(sim_dgp, bs_pred, vci_dgp) %>% 
-  ungroup() %>% 
-  dplyr::select(id, seed, data, chem, sim,
-                vci_wa_mean, vci_h_mean, 
-                # For VCI predicted values, take WA*H = mean of Poisson
-                # Take 2.5 and 97.5 percentiles of Poisson(WA*H) with inverse CDF
-                # Scaled vs non-scaled give same predicted value
-                bs_pred_mean, bs_pred_lower,
-                bs_pred_upper, bs_pred_median
-                # For bootstrapped predicted values
-                # Take predicted as WA*H of each bootstrap
-                # Take 2.5 and 97.5 percentiles of bootstrapped distribution (over 150 bootstraps)
-                ) %>% 
-  mutate(vci_pred_mean = map2(vci_wa_mean, vci_h_mean, function(x,y) as.matrix(x) %*% as.matrix(y)),
-         vci_pred_lower = map(vci_pred_mean, qpois, p = 0.025),
-         vci_pred_upper = map(vci_pred_mean, qpois, p = 0.975)) %>% 
-  dplyr::select(-vci_wa_mean, -vci_h_mean)
-
-#### Combine data ####
-see_pred = all_pred %>% 
-  pivot_longer(c(grep("bs_", colnames(.)), grep("vci_", colnames(.))),
-               names_to = c("method", "side", "matrix"),
-               names_sep = "_") %>%
-  mutate(value = map(value, as.matrix)) %>% 
-  pivot_wider(names_from = matrix,
-              values_from = value) %>% 
-  mutate(best = map2(median, mean, function(x,y) if(!is.null(x)) {x} else {y}),
-         err  = map2(chem, best, function(x,y)
-           if (ncol(x) == ncol(y)) {norm(x-y, "F")/norm(x, "F")} else {NA}),
-         iqr  = map2(upper, lower, function(x, y) mean(x-y)),
-         prop_true = pmap(list(chem, lower, upper),
-                     function(x,y,z) sum(x >= y & x <= z)/(nrow(x)*ncol(x)) ),
-         prop_sim = pmap(list(sim, lower, upper),
-                     function(x,y,z) sum(x >= y & x <= z)/(nrow(x)*ncol(x)) )) %>%
-  unnest(c(err, prop_true, prop_sim, iqr))
-
-#### Results Tables ####
-see_pred %>% 
-  group_by(data, method, side) %>%
-  summarise(qs = quantile(prop_true, c(0.25, 0.5, 0.75)), prob = c(0.25, 0.5, 0.75),
-            mean = mean(prop_true),
-            max = max(prop_true),
-            min = min(prop_true)) %>% 
-  pivot_wider(names_from = "prob",
-              values_from = "qs") %>% 
-  dplyr::select(side, data, method, min, `0.25`, `0.5`, mean, `0.75`, max) %>% 
-  arrange(side, data, method)
-
-see_pred %>% 
-  group_by(data, method, side) %>%
-  summarise(qs = quantile(prop_sim, c(0.25, 0.5, 0.75)), prob = c(0.25, 0.5, 0.75),
-            mean = mean(prop_sim),
-            max = max(prop_sim),
-            min = min(prop_sim)) %>% 
-  pivot_wider(names_from = "prob",
-              values_from = "qs") %>% 
-  dplyr::select(side, data, method, min, `0.25`, `0.5`, mean, `0.75`, max) %>% 
-  arrange(side, data, method)
-
-see_pred %>% 
-  group_by(data, method, side) %>% 
-  summarise(qs = quantile(err, c(0.25, 0.5, 0.75)), prob = c(0.25, 0.5, 0.75),
-            mean = mean(err),
-            max = max(err),
-            min = min(err)) %>% 
-  pivot_wider(names_from = "prob",
-              values_from = "qs") %>% 
-  dplyr::select(side, data, method, min, `0.25`, `0.5`, mean, `0.75`, max) %>% 
-  arrange(side, data, method)
-
-see_pred %>% 
-  group_by(data, method, side) %>% 
-  summarise(qs = quantile(iqr, c(0.25, 0.5, 0.75)), prob = c(0.25, 0.5, 0.75),
-            mean = mean(iqr),
-            max = max(iqr),
-            min = min(iqr)) %>% 
-  pivot_wider(names_from = "prob",
-              values_from = "qs") %>% 
-  dplyr::select(side, data, method, min, `0.25`, `0.5`, mean, `0.75`, max) %>% 
-  arrange(side, data, method)
-
-#### Example viz (Single Entry) ####
-#### Loop for each kind of simulation 
-
-#### EWA ####
-plot_pred = tibble()
-prop_pred = tibble()
-
-for (i in 1:3) {
-  truth   = bs_ex[i,]$scores_scaled[[1]][735, 2]
-  v_dist  = as.numeric(bs_ex[i,]$vci_wa_dist[[1]][735, 2,])
-  bs_dist = bs_ex[i,]$bs_wa_dist[[1]][735, 2,]
-  
-  bs_ewa    = bs_ex[i,]$bs_wa_median[[1]][735, 2]
-  bs_wa_25  = bs_ex[i,]$bs_wa_lower[[1]][735, 2]
-  bs_wa_75  = bs_ex[i,]$bs_wa_upper[[1]][735, 2]
-  
-  v_ewa   = as.numeric(bs_ex[i,]$vci_wa_mean[[1]][735, 2])
-  v_wa_25 = as.numeric(bs_ex[i,]$vci_wa_lower[[1]][735, 2])
-  v_wa_75 = as.numeric(bs_ex[i,]$vci_wa_upper[[1]][735, 2])
-  
-  v_prop = sum(bs_ex[i,]$scores_scaled[[1]] <= bs_ex[i,]$vci_wa_upper[[1]] & 
-                 bs_ex[i,]$scores_scaled[[1]] >= bs_ex[i,]$vci_wa_lower[[1]])/4000
-  
-  bs_prop = sum(bs_ex[i,]$scores_scaled[[1]] <= bs_ex[i,]$bs_wa_upper[[1]] & 
-                  bs_ex[i,]$scores_scaled[[1]] >= bs_ex[i,]$bs_wa_lower[[1]])/4000
-  
-  add_plot = tibble(Distribution = v_dist) %>% 
-    mutate(Type = "Variational") %>% 
-    rbind(., tibble(Distribution = bs_dist) %>% 
-            mutate(Type = "Bootstrap"))  %>% 
-    drop_na(.) %>% 
-    mutate(sim_type = str_to_title(type[i]),
-           bs_ewa   = bs_ewa  ,
-           bs_wa_25 = bs_wa_25,
-           bs_wa_75 = bs_wa_75,
-           v_ewa    = v_ewa   ,
-           v_wa_25  = v_wa_25 ,
-           v_wa_75  = v_wa_75,
-           truth = truth)
-  
-  plot_wa = bind_rows(plot_wa, add_plot)
-  prop_wa = bind_rows(prop_wa, bind_cols(bs = bs_prop, v = v_prop))
-}
-rm(list = c("bs_ewa", "bs_wa_75", "bs_wa_25",
-            "v_ewa", "v_wa_25", "v_wa_75", "truth"))
-prop_wa 
-plot_wa %>% dplyr::select(sim_type, bs_ewa:truth) %>% 
-  distinct( )
-
-plot_wa %>% 
-  mutate(sim_type = fct_inorder(sim_type)) %>% 
-  ggplot(aes(x = Distribution, fill = Type)) +
-  geom_rect(aes(xmin = v_wa_25,  xmax = v_wa_75,  ymin=0, ymax=Inf), fill="lightblue", alpha=0.025) +
-  geom_rect(aes(xmin = bs_wa_25, xmax = bs_wa_75, ymin=0, ymax=Inf), fill="pink",      alpha=0.025) +
-  geom_histogram(aes(y=..density..,fill = Type), bins = 100) +
-  #geom_density(aes(group = Type), alpha = 0.5) +
-  scale_fill_manual(values = c("red", "blue")) +
-  theme_bw() + 
-  geom_vline(aes(xintercept = truth),  linetype="dotted", color = "black") +
-  geom_vline(aes(xintercept = bs_ewa), linetype="dotted", color = "yellow") + 
-  geom_vline(aes(xintercept = v_ewa),  linetype="dotted", color = "yellow") + 
-  facet_grid(sim_type~., scales = "free") +
-  theme(legend.position = "bottom",
-        strip.background = element_rect(fill="white")) +
-  ylab("Density")
-
-#### EH ####
-plot_h = tibble()
-prop_h = tibble()
-
-for (i in 1:3) {
-  truth     = bs_ex[i,]$patterns_scaled[[1]][4, 34]
-  v_dist_h  = as.numeric(bs_ex[i,]$vci_h_dist[[1]][4, 34,])
-  bs_dist_h = bs_ex[i,]$bs_h_dist[[1]][4, 34,]
-  
-  bs_eh    = bs_ex[i,]$bs_h_median[[1]][4, 34]
-  bs_h_25  = bs_ex[i,]$bs_h_lower[[1]][4, 34]
-  bs_h_75  = bs_ex[i,]$bs_h_upper[[1]][4, 34]
-  
-  v_eh   = as.numeric(bs_ex[i,]$vci_h_mean[[1]][4, 34])
-  v_h_25 = as.numeric(bs_ex[i,]$vci_h_lower[[1]][4, 34])
-  v_h_75 = as.numeric(bs_ex[i,]$vci_h_upper[[1]][4, 34])
-  
-  v_prop = sum(bs_ex[i,]$patterns_scaled[[1]] <= bs_ex[i,]$vci_h_upper[[1]] & 
-                 bs_ex[i,]$patterns_scaled[[1]] >= bs_ex[i,]$vci_h_lower[[1]])/4000
-  
-  bs_prop = sum(bs_ex[i,]$patterns_scaled[[1]] <= bs_ex[i,]$bs_h_upper[[1]] & 
-                  bs_ex[i,]$patterns_scaled[[1]] >= bs_ex[i,]$bs_h_lower[[1]])/4000
-  
-  add_plot = tibble(Distribution = v_dist_h) %>% 
-    mutate(Type = "Variational") %>% 
-    rbind(., tibble(Distribution = bs_dist_h) %>% 
-            mutate(Type = "Bootstrap"))  %>% 
-    drop_na(.) %>% 
-    mutate(sim_type = str_to_title(type[i]),
-           bs_eh   = bs_eh  ,
-           bs_h_25 = bs_h_25,
-           bs_h_75 = bs_h_75,
-           v_eh    = v_eh   ,
-           v_h_25  = v_h_25 ,
-           v_h_75  = v_h_75,
-           truth = truth)
-  
-  plot_h = bind_rows(plot_h, add_plot)
-  prop_h = bind_rows(prop_h, bind_cols(bs = bs_prop, v = v_prop))
-}
-rm(list = c("bs_eh", "bs_h_75", "bs_h_25",
-            "v_eh", "v_h_25", "v_h_75", "truth"))
-prop_h 
-plot_h %>% dplyr::select(sim_type, bs_eh:truth) %>% 
-  distinct( )
-
-plot_h %>% 
-  mutate(sim_type = fct_inorder(sim_type)) %>% 
-  ggplot(aes(x = Distribution, fill = Type)) +
-  geom_rect(aes(xmin = bs_h_25, xmax = bs_h_75, ymin=0, ymax=Inf), fill="pink",      alpha=0.025) +
-  geom_rect(aes(xmin = v_h_25,  xmax = v_h_75,  ymin=0, ymax=Inf), fill="lightblue", alpha=0.025) +
-  geom_histogram(aes(y=..density..,fill = Type), bins = 100) +
-  #geom_density(aes(group = Type), alpha = 0.5) +
-  scale_fill_manual(values = c("red", "blue")) +
-  theme_bw() + 
-  geom_vline(aes(xintercept = truth),  linetype="dotted", color = "black") +
-  geom_vline(aes(xintercept = bs_eh), linetype="dotted", color = "yellow") + 
-  geom_vline(aes(xintercept = v_eh),  linetype="dotted", color = "yellow") + 
-  facet_grid(sim_type~., scales = "free") +
-  theme(legend.position = "bottom",
-        strip.background = element_rect(fill="white")) +
-  ylab("Density")
-
-
-
-
-
-
-
+#### save data ####
+all_bs_vci
+save(all_bs_vci, file = "./Bootstrap/all_bs_vci.RDA")
