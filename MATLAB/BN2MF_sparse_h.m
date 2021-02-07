@@ -79,8 +79,11 @@ for iter = 1:num_iter
       H2(idx_prune,:) = [];
     end
     K = length(A1);
+    
+    H_denom = sum(H1./H2, 2);
+    H_scaled = (H1./H2) ./ H_denom;
 
-    H_push = (H1./H2 > 10^-3);
+    H_push = (H_scaled > 10^-6); % <0.001%
     % Push values LESS THAN to zero
     % by keeping values GREATER THAN
     H1 = H1 .* H_push;
@@ -90,8 +93,6 @@ for iter = 1:num_iter
      if iter > 1 && abs(score(iter-1)-score(iter)) < 1e-5  
      break
      end
-     
- 
 
 end
 

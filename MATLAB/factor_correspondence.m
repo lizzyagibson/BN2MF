@@ -67,4 +67,5 @@ else
     cvx_enx
 end
 
+Pi = round(Pi);
 e = norm(B,'fro')^2 + norm(A,'fro')^2 - 2 * cvx_optval;

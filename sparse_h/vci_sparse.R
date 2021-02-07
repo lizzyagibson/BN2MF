@@ -18,30 +18,17 @@ sim_dgp = sim_dgp %>%
          id = 1:nrow(.))
 
 #### Read VCI data ####
-load("./sparse_h/vci_out.RDA")
-vci_hH <- dgp_vci %>% 
-  dplyr::select(vci_h_mean = eh_scaled,
-                vci_wa_mean = ewa_scaled,
-                vci_wa_lower = lowerWA,
-                vci_wa_upper = upperWA,
-                vci_h_lower = lowerH,
-                vci_h_upper = upperH) %>% 
-  mutate(version = "h & H")
-
 load("./sparse_h/sparse_vci_out.RDA")
-vci_h <- dgp_vci %>% 
+dgp_vci <- dgp_vci %>% 
   dplyr::select(vci_h_mean = eh_scaled,
                 vci_wa_mean = ewa_scaled,
                 vci_wa_lower = lowerWA,
                 vci_wa_upper = upperWA,
                 vci_h_lower = lowerH,
                 vci_h_upper = upperH) %>% 
-  mutate(version = "h")
+  mutate(version = "PUSH")
 
-vci_h = bind_cols(sim_dgp,vci_h)
-vci_hH = bind_cols(sim_dgp,vci_hH)
-
-sparse = full_join(vci_h, vci_hH)
+sparse = bind_cols(sim_dgp,dgp_vci)
 
 #### Combine data ####
 vci = sparse %>% 
@@ -111,6 +98,20 @@ vci %>%
   dplyr::select(data, side, version, min, `0.25`, `0.5`, mean, `0.75`, max) %>% 
   arrange(data, version)
   
-  
-  
-  
+## EX
+y = sparse$vci_h_lower[[201]]
+x = sparse$patterns_scaled[[201]]
+z = sparse$vci_h_upper[[201]]
+
+y[,1:5]
+x[,1:5]
+sparse$vci_h_mean[[201]][,1:5]
+z[,1:5]
+
+sum(x >= y & x <= z)/(nrow(x)*ncol(x))  
+
+sort(sparse$true_patterns[[201]][1,])
+sum(x[1,])
+sort(x[1,])
+sort(x[1,]) == 0
+sort(sparse$vci_h_mean[[201]][1,]) == 0
