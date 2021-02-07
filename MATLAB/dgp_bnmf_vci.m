@@ -27,7 +27,7 @@ scores   = table2array(scores);
 
 %% Run model
 [EWA0, EH0, varH0, alphaH0, betaH0, alphaW0, betaW0, ...
-    alphaA0, betaA0, varWA0, finalscore0, final_iter0] = BN2MF_sparse_h(simdata1);
+    alphaA0, betaA0, varWA0, finalscore0, final_iter0] = BN2MF(simdata1);
 
 % Save pattern number
 [kk,~] = size(EH0);

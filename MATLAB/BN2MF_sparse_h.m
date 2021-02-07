@@ -79,13 +79,20 @@ for iter = 1:num_iter
       H2(idx_prune,:) = [];
     end
     K = length(A1);
+
+    H_push = (H1./H2 > 10^-3);
+    % Push values LESS THAN to zero
+    % by keeping values GREATER THAN
+    H1 = H1 .* H_push;
     
      score(iter) = sum(sum(abs(X-(W1./W2)*diag(A1./A2)*(H1./H2))));
      
      if iter > 1 && abs(score(iter-1)-score(iter)) < 1e-5  
      break
      end
+     
  
+
 end
 
 end_score(i) = score(find(score,1,'last'));  
