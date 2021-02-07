@@ -66,11 +66,12 @@ for (i in 1:3) {
   v_wa_25 = as.numeric(bs_ex[i,]$vci_wa_lower[[1]][735, 2])
   v_wa_75 = as.numeric(bs_ex[i,]$vci_wa_upper[[1]][735, 2])
   
-  v_prop = sum(bs_ex[i,]$scores_scaled[[1]] <= bs_ex[i,]$vci_wa_upper[[1]] & 
-                 bs_ex[i,]$scores_scaled[[1]] >= bs_ex[i,]$vci_wa_lower[[1]])/4000
+  compare_to = bs_ex[i,]$scores_scaled[[1]]
+  v_prop = sum(compare_to <= bs_ex[i,]$vci_wa_upper[[1]] & 
+                 compare_to >= bs_ex[i,]$vci_wa_lower[[1]])/(nrow(compare_to)*ncol(compare_to))
   
-  bs_prop = sum(bs_ex[i,]$scores_scaled[[1]] <= bs_ex[i,]$bs_wa_upper[[1]] & 
-                  bs_ex[i,]$scores_scaled[[1]] >= bs_ex[i,]$bs_wa_lower[[1]])/4000
+  bs_prop = sum(compare_to <= bs_ex[i,]$bs_wa_upper[[1]] & 
+                  compare_to >= bs_ex[i,]$bs_wa_lower[[1]])/(nrow(compare_to)*ncol(compare_to))
   
   add_plot = tibble(Distribution = v_dist) %>% 
     mutate(Type = "Variational") %>% 
@@ -119,23 +120,25 @@ plot_h = tibble()
 prop_h = tibble()
 
 for (i in 1:3) {
-  truth     = bs_ex[i,]$patterns_scaled[[1]][4, 34]
-  v_dist_h  = as.numeric(bs_ex[i,]$vci_h_dist[[1]][4, 34,])
-  bs_dist_h = bs_ex[i,]$bs_h_dist[[1]][4, 34,]
   
-  bs_eh    = bs_ex[i,]$bs_h_median[[1]][4, 34]
-  bs_h_25  = bs_ex[i,]$bs_h_lower[[1]][4, 34]
-  bs_h_75  = bs_ex[i,]$bs_h_upper[[1]][4, 34]
+  truth     = bs_ex[i,]$patterns_scaled[[1]][1, 1]
+  v_dist_h  = as.numeric(bs_ex[i,]$vci_h_dist[[1]][1, 1,])
+  bs_dist_h = bs_ex[i,]$bs_h_dist[[1]][1, 1,]
   
-  v_eh   = as.numeric(bs_ex[i,]$vci_h_mean[[1]][4, 34])
-  v_h_25 = as.numeric(bs_ex[i,]$vci_h_lower[[1]][4, 34])
-  v_h_75 = as.numeric(bs_ex[i,]$vci_h_upper[[1]][4, 34])
+  bs_eh    = bs_ex[i,]$bs_h_median[[1]][1, 1]
+  bs_h_25  = bs_ex[i,]$bs_h_lower[[1]][1, 1]
+  bs_h_75  = bs_ex[i,]$bs_h_upper[[1]][1, 1]
   
-  v_prop = sum(bs_ex[i,]$patterns_scaled[[1]] <= bs_ex[i,]$vci_h_upper[[1]] & 
-                 bs_ex[i,]$patterns_scaled[[1]] >= bs_ex[i,]$vci_h_lower[[1]])/4000
+  v_eh   = as.numeric(bs_ex[i,]$vci_h_mean[[1]][1, 1])
+  v_h_25 = as.numeric(bs_ex[i,]$vci_h_lower[[1]][1, 1])
+  v_h_75 = as.numeric(bs_ex[i,]$vci_h_upper[[1]][1, 1])
   
-  bs_prop = sum(bs_ex[i,]$patterns_scaled[[1]] <= bs_ex[i,]$bs_h_upper[[1]] & 
-                  bs_ex[i,]$patterns_scaled[[1]] >= bs_ex[i,]$bs_h_lower[[1]])/4000
+  compare_to = bs_ex[i,]$patterns_scaled[[1]]
+  v_prop = sum(compare_to <= bs_ex[i,]$vci_h_upper[[1]] & 
+                 compare_to >= bs_ex[i,]$vci_h_lower[[1]])/(nrow(compare_to)*ncol(compare_to))
+  
+  bs_prop = sum(compare_to <= bs_ex[i,]$bs_h_upper[[1]] & 
+                  compare_to >= bs_ex[i,]$bs_h_lower[[1]])/(nrow(compare_to)*ncol(compare_to))
   
   add_plot = tibble(Distribution = v_dist_h) %>% 
     mutate(Type = "Variational") %>% 
@@ -178,6 +181,7 @@ h_look = plot_h %>%
   theme(legend.position = "bottom",
         strip.background = element_rect(fill="white")) +
   ylab("Density") + ggtitle("Distributions on Loadings (H)")
+h_look
 
 #### Predicted Values E[WAH] ####
 plot_pred = tibble()
@@ -196,11 +200,12 @@ for (i in 1:3) {
   v_pred_25 = as.numeric(bs_ex[i,]$vci_pred_lower[[1]][735, 2])
   v_pred_75 = as.numeric(bs_ex[i,]$vci_pred_upper[[1]][735, 2])
   
-  v_prop = sum(bs_ex[i,]$chem[[1]] <= bs_ex[i,]$vci_pred_upper[[1]] & 
-                 bs_ex[i,]$chem[[1]] >= bs_ex[i,]$vci_pred_lower[[1]])/50000
+  compare_to = bs_ex[i,]$chem[[1]]
+  v_prop = sum(compare_to <= bs_ex[i,]$vci_pred_upper[[1]] & 
+                 compare_to >= bs_ex[i,]$vci_pred_lower[[1]])/(nrow(compare_to)*ncol(compare_to))
   
-  bs_prop = sum(bs_ex[i,]$chem[[1]] <= bs_ex[i,]$bs_pred_upper[[1]] & 
-                  bs_ex[i,]$chem[[1]] >= bs_ex[i,]$bs_pred_lower[[1]])/50000
+  bs_prop = sum(compare_to <= bs_ex[i,]$bs_pred_upper[[1]] & 
+                  compare_to >= bs_ex[i,]$bs_pred_lower[[1]])/(nrow(compare_to)*ncol(compare_to))
   
   add_plot = tibble(Distribution = v_dist) %>% 
     mutate(Type = "Variational") %>% 
@@ -245,7 +250,7 @@ pred_look = plot_pred %>%
   ylab("Density") + ggtitle("Distributions on Predicted Values E[WAH]") + xlim(c(0, 17))
 
 #### Viz ####
-(wa_look + theme(legend.position = "none")) / h_look
+(wa_look + theme(legend.position = "none")) / (h_look + theme(legend.position = "none")) / pred_look
 
 
 
