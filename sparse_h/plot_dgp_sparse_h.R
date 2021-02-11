@@ -50,7 +50,6 @@ metrics %>%
 # Relative error on loadings and scores
 #####
 
-#pdf("./Figures/bnmf_loadscore_error.pdf", width = 10, height = 10)
 metrics %>%
   mutate(data = fct_inorder(data)) %>% 
   dplyr::select(seed, data, model, rel_err_loadings, rel_err_scores) %>%

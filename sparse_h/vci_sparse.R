@@ -87,7 +87,7 @@ vci$lower[[1]]
 # This is all scaled
 vci %>% 
   filter(side == "wa") %>% 
-  select(-grep("(scal|mean|lower|upper|tru|m)", colnames(.))) %>%
+  dplyr::select(-grep("(scal|mean|lower|upper|tru|m)", colnames(.))) %>%
   group_by(data, version, side) %>% 
   summarise(qs = quantile(err, c(0.25, 0.5, 0.75), na.rm=T), prob = c(0.25, 0.5, 0.75),
             mean = mean(err, na.rm=T),

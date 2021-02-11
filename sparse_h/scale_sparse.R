@@ -87,7 +87,7 @@ metrics %>%
   #filter(data != "Distinct") %>% 
   mutate(model = str_remove(str_c(model, "_", sparsity), "_reg")) %>% 
   mutate(data = fct_inorder(data)) %>% 
-  filter(name == "scores" & err_type == "l2") %>% 
+  filter(name == "loadings" & err_type == "l2") %>% 
   ggplot(aes(x = model, y = value)) +
   geom_boxplot(aes(color = model, fill = model), 
                alpha = 0.5, outlier.shape = NA) +
@@ -106,7 +106,7 @@ metrics %>%
   pivot_wider(names_from = "prob",
               values_from = "qs") %>% 
   dplyr::select(err_type, name, data, model, scaled, sparsity, min, `0.25`, `0.5`, mean, `0.75`, max) %>% 
-  arrange(err_type, name, data, model, scaled, sparsity) %>% View()
+  arrange(err_type, name, data, model, scaled, sparsity)
 
 ## Metrics here do not match metrics in vci_sparse
 ## Need to ID differences
