@@ -54,17 +54,17 @@ plot_wa = tibble()
 prop_wa = tibble()
 
 for (i in 1:3) {
-  truth   = bs_ex[i,]$scores_scaled[[1]][735, 2]
-  v_dist  = as.numeric(bs_ex[i,]$vci_wa_dist[[1]][735, 2,])
-  bs_dist = bs_ex[i,]$bs_wa_dist[[1]][735, 2,]
+  truth   = bs_ex[i,]$scores_scaled[[1]][1, 1]
+  v_dist  = as.numeric(bs_ex[i,]$vci_wa_dist[[1]][1, 1,])
+  bs_dist = bs_ex[i,]$bs_wa_dist[[1]][1, 1,]
   
-  bs_ewa    = bs_ex[i,]$bs_wa_median[[1]][735, 2]
-  bs_wa_25  = bs_ex[i,]$bs_wa_lower[[1]][735, 2]
-  bs_wa_75  = bs_ex[i,]$bs_wa_upper[[1]][735, 2]
+  bs_ewa    = bs_ex[i,]$bs_wa_median[[1]][1, 1]
+  bs_wa_25  = bs_ex[i,]$bs_wa_lower[[1]][1, 1]
+  bs_wa_75  = bs_ex[i,]$bs_wa_upper[[1]][1, 1]
   
-  v_ewa   = as.numeric(bs_ex[i,]$vci_wa_mean[[1]][735, 2])
-  v_wa_25 = as.numeric(bs_ex[i,]$vci_wa_lower[[1]][735, 2])
-  v_wa_75 = as.numeric(bs_ex[i,]$vci_wa_upper[[1]][735, 2])
+  v_ewa   = as.numeric(bs_ex[i,]$vci_wa_mean[[1]][1, 1])
+  v_wa_25 = as.numeric(bs_ex[i,]$vci_wa_lower[[1]][1, 1])
+  v_wa_75 = as.numeric(bs_ex[i,]$vci_wa_upper[[1]][1, 1])
   
   compare_to = bs_ex[i,]$scores_scaled[[1]]
   v_prop = sum(compare_to <= bs_ex[i,]$vci_wa_upper[[1]] & 
@@ -107,13 +107,14 @@ wa_look = plot_wa %>%
   geom_density(aes(group = Type)) +
   scale_fill_manual(values = c("red", "blue")) +
   theme_bw() + 
-  geom_vline(aes(xintercept = truth),  color = "darkgrey") +
+  geom_vline(aes(xintercept = truth),  linetype="dotted", color = "black") +
   geom_vline(aes(xintercept = bs_ewa), linetype="dotted", color = "pink") + 
   geom_vline(aes(xintercept = v_ewa),  linetype="dotted", color = "lightblue") + 
   facet_grid(sim_type~., scales = "free") +
   theme(legend.position = "bottom",
         strip.background = element_rect(fill="white")) +
-  ylab("Density") + ggtitle("Distributions on Scores (WA)") + xlim(c(0,33))
+  ylab("Density") + ggtitle("Distributions on Scores (WA)") + xlim(c(0,20))
+wa_look
 
 #### EH ####
 plot_h = tibble()
@@ -175,12 +176,12 @@ h_look = plot_h %>%
   scale_fill_manual(values = c("red", "blue")) +
   theme_bw() + 
   facet_grid(sim_type~., scales = "free") +
-  geom_vline(aes(xintercept = truth),  color = "darkgrey") +
+  geom_vline(aes(xintercept = truth),  linetype="dotted", color = "black") +
   geom_vline(aes(xintercept = bs_eh), linetype="dotted", color = "pink") + 
   geom_vline(aes(xintercept = v_eh),  linetype="dotted", color = "lightblue") + 
   theme(legend.position = "bottom",
         strip.background = element_rect(fill="white")) +
-  ylab("Density") + ggtitle("Distributions on Loadings (H)")
+  ylab("Density") + ggtitle("Distributions on Loadings (H)") + xlim(c(0,0.066))
 h_look
 
 #### Predicted Values E[WAH] ####
@@ -188,17 +189,17 @@ plot_pred = tibble()
 prop_pred = tibble()
 
 for (i in 1:3) {
-  truth   = bs_ex[i,]$chem[[1]][735, 2]
-  v_dist  = as.numeric(bs_ex[i,]$vci_pred_dist[[1]][735, 2,])
-  bs_dist = bs_ex[i,]$bs_pred_dist[[1]][735, 2,]
+  truth   = bs_ex[i,]$chem[[1]][1, 1]
+  v_dist  = as.numeric(bs_ex[i,]$vci_pred_dist[[1]][1, 1,])
+  bs_dist = bs_ex[i,]$bs_pred_dist[[1]][1, 1,]
   
-  bs_pred    = bs_ex[i,]$bs_pred_median[[1]][735, 2]
-  bs_pred_25  = bs_ex[i,]$bs_pred_lower[[1]][735, 2]
-  bs_pred_75  = bs_ex[i,]$bs_pred_upper[[1]][735, 2]
+  bs_pred    = bs_ex[i,]$bs_pred_median[[1]][1, 1]
+  bs_pred_25  = bs_ex[i,]$bs_pred_lower[[1]][1, 1]
+  bs_pred_75  = bs_ex[i,]$bs_pred_upper[[1]][1, 1]
   
-  v_pred   = as.numeric(bs_ex[i,]$vci_pred_mean[[1]][735, 2])
-  v_pred_25 = as.numeric(bs_ex[i,]$vci_pred_lower[[1]][735, 2])
-  v_pred_75 = as.numeric(bs_ex[i,]$vci_pred_upper[[1]][735, 2])
+  v_pred   = as.numeric(bs_ex[i,]$vci_pred_mean[[1]][1, 1])
+  v_pred_25 = as.numeric(bs_ex[i,]$vci_pred_lower[[1]][1, 1])
+  v_pred_75 = as.numeric(bs_ex[i,]$vci_pred_upper[[1]][1, 1])
   
   compare_to = bs_ex[i,]$chem[[1]]
   v_prop = sum(compare_to <= bs_ex[i,]$vci_pred_upper[[1]] & 
@@ -247,10 +248,11 @@ pred_look = plot_pred %>%
   facet_grid(sim_type~., scales = "free") +
   theme(legend.position = "bottom",
         strip.background = element_rect(fill="white")) +
-  ylab("Density") + ggtitle("Distributions on Predicted Values E[WAH]") + xlim(c(0, 17))
+  ylab("Density") + ggtitle("Distributions on Predicted Values E[WAH]") + xlim(c(0, 20))
 
 #### Viz ####
-(wa_look + theme(legend.position = "none")) / (h_look + theme(legend.position = "none")) / pred_look
+(wa_look + theme(legend.position = "none")) / (h_look + theme(legend.position = "right")) / 
+  (pred_look + theme(legend.position = "none"))
 
 
 

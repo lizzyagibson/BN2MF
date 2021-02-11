@@ -145,6 +145,6 @@ bs_vci_metrics %>%
 all_bs_vci
 #save(all_bs_vci, file = "./Bootstrap/all_bs_vci.RDA")
 
-all_bs_vci$bs_h_lower[[1]][,1:7]
-all_bs_vci$patterns_scaled[[1]][,1:7]
-all_bs_vci$bs_h_upper[[1]][,1:7]
+all_bs_vci$bs_h_lower[[201]][,1:7]
+all_bs_vci$patterns_scaled[[201]][,1:7]
+all_bs_vci$bs_h_upper[[201]][,1:7]
