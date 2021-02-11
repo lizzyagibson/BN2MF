@@ -12,7 +12,7 @@ theme_set(theme_bw(base_size = 26) +
                   legend.position = "none",
                   # legend.position = c(0.5, -0.05), # c(0,0) bottom left, c(1,1) top-right.
                   #axis.title.y = element_text(size = 30),
-                  plot.margin = unit(c(5.5, 30, 40, 5.5), "points")) # top, then right, bottom and left. 
+                  plot.margin = unit(c(5.5, 30, 50, 5.5), "points")) # top, then right, bottom and left. 
 )
 
 ggsci <- pal_nejm()(8)

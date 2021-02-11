@@ -14,6 +14,7 @@ options(scipen = 999)
 library(MASS)
 library(tidyverse)
 library(GGally)
+library(patchwork)
 ```
 
 ## 1: Distinct Patterns
@@ -214,6 +215,62 @@ cor <- sim_cor$sim[[1]]
 cor(cor)[1:15,1:7]
 
 ggcorr(cor)
+```
+
+```{r, save_plots}
+#pdf("/Users/lizzy/OneDrive/Columbia/Spring 2021/netflix/figures/sim_corr.pdf")
+ggcorr(cor, 
+       hjust = 0.85, size = 2.75, layout.exp = 1,
+       low = "steelblue", mid = "white", high = "red") +
+  labs(x = "Simulated Correlation Matrix") +
+  theme_minimal(base_size = 20)
+#dev.off()
+
+#pdf("/Users/lizzy/OneDrive/Columbia/Spring 2021/netflix/figures/sim_hist.pdf")
+as_tibble(sim_cor$chem[[1]][,1]) %>% 
+  #mutate(id = 1:nrow(.)) %>% 
+  #pivot_longer(V1:V50) %>% 
+  ggplot(aes(x = value)) +
+  geom_histogram(aes(y = stat(density)), bins = 50, fill = "#1976D2",col="white") + # HTML color code to match latex
+  theme_bw(base_size = 20) +
+  labs(x = "Simulated Chemical Distribution", y = "Density")
+#dev.off()
+
+pat = sim_dist$true_patterns[[1]]
+pato = sim_over$true_patterns[[1]]
+
+plot_dist = as_tibble(t(pat)) %>% 
+  mutate(chem = 1:nrow(.)) %>% 
+  pivot_longer(V1:V4) %>% 
+  mutate(name = str_c("Patttern ", str_remove(name, "V"))) %>% 
+  ggplot(aes(x = chem, y = value)) +
+  geom_col(fill = "#1976D2") + # HTML color code to match latex
+  facet_grid(.~name) +
+  theme_bw(base_size = 20) +
+  labs(x = "Simulated Chemicals", y = "Loadings") +
+    theme(axis.text.x = element_blank(),
+          strip.background = element_blank(),
+          axis.ticks.x = element_blank(),
+          plot.title = element_text(hjust = 0.5))  + 
+  ggtitle("Distinct Simulated Patterns")
+
+plot_over = as_tibble(t(pato)) %>% 
+  mutate(chem = 1:nrow(.)) %>% 
+  pivot_longer(V1:V4) %>% 
+  mutate(name = str_c("Patttern ", str_remove(name, "V"))) %>% 
+  ggplot(aes(x = chem, y = value)) +
+  geom_col(fill = "#1976D2") + 
+  facet_grid(.~name) +
+  theme_bw(base_size = 20) +
+  labs(x = "Simulated Chemicals", y = "Loadings") +
+    theme(axis.text.x = element_blank(),
+        strip.background = element_blank(),
+        axis.ticks.x = element_blank(),
+        plot.title = element_text(hjust = 0.5)) + ggtitle("Overlapping Simulated Patterns")
+
+pdf("/Users/lizzy/OneDrive/Columbia/Spring 2021/netflix/figures/sim_patterns.pdf")
+(plot_dist) / (plot_over)
+dev.off()
 ```
 
 ## Save
