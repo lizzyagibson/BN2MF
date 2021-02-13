@@ -98,6 +98,25 @@ applied %>%
 #dev.off()
 ```
 
+```{r}
+#pdf("Apply/mn_edc_loadings_flip.pdf", width = 15)
+applied %>% 
+  mutate(Chemicals = fct_inorder(Chemicals)) %>%
+  ggplot(aes(x = Loadings, y = Chemicals, color = Class)) + 
+  geom_point(size = 4) +
+  geom_segment(aes(yend = Chemicals, xend = 0), size = 1.5) +
+  facet_wrap(.~Pattern, scales = "free_x") +
+  theme_bw(base_size = 25) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 18),
+        strip.background = element_blank(),
+        strip.text = element_text(size = 30),
+        legend.position = c(0.225, 0.2), # c(1,0) right bottom, c(1,1) right top.
+        legend.background = element_rect(fill = "#ffffffaa", colour = NA)) +
+  expand_limits(y=0) +
+  scale_fill_nejm()
+dev.off()
+```
+
 ## Compare
 
 ### PCA
