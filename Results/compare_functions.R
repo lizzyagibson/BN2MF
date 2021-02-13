@@ -4,7 +4,7 @@
 ## & to choose number of factors/components
 
 # Packages
-if (getwd() == "/Users/lizzy/BN2MF") {
+if (here::here(getwd()) == "/Users/lizzy/BN2MF") {
   library(tidyverse)
   library(R.matlab)
   library(psych)
