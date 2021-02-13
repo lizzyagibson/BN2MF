@@ -1,5 +1,5 @@
 function [EWA, EH, varH, alphaH, betaH, alphaW, betaW, ...
-    alphaA, betaA, varWA, finalscore, final_iter, init_seed_struct] = BN2MF(X)
+    alphaA, betaA, varWA, finalscore, final_iter, init_seed_struct] = BN2MF(X, reps)
 % X is the data matrix of non-negative values
 % Kinit is the maximum allowable factorization (initial). The algorithm tries to reduce this number.
 %       the size of EWA and EH indicate the learned factorization.
@@ -14,7 +14,6 @@ randn(1000); % Warming up the mersenne twister rng
 [dim,N] = size(X);
 Kinit = N;
 
-reps = 10;
 end_score = zeros(reps, 1);
 
 for i = 1:reps % Choose best of 10 runs
@@ -108,3 +107,5 @@ if i == 1 || (i > 1 && (end_score(i) >= max(end_score)))
 end
 
 end
+
+disp(['Final Iter: ' num2str(final_iter), '. Final Iter Number: ' num2str(finalscore)]); 
