@@ -38,27 +38,24 @@ labels = ["mecpp", "mehhp", "meohp", "mcpp", "mibp", "mbp", "mbzp", "mep", "mehp
     "dcp_24", "dcp_25", "b_pb", "bp_3", "m_pb", "p_pb", "tcs", "bpa"];
  
 denom = sum(EH, 2);
-EH = EH ./ denom;
+EHp = EH ./ denom;
 
 %PLOT
-figure(2);
+figure(3);
 subplot(3,1,1);
-stem(EH(1,:));
-set(gca,'XTick',1:size(EH,2));
+stem(EHp(1,:));
+set(gca,'XTick',1:size(EHp,2));
 set(gca,'XTickLabels',labels);
 subplot(3,1,2);
-stem(EH(2,:));
-set(gca,'XTick',1:size(EH,2));
+stem(EHp(2,:));
+set(gca,'XTick',1:size(EHp,2));
 set(gca,'XTickLabels',labels);
 subplot(3,1,3);
-stem(EH(3,:));
-set(gca,'XTick',1:size(EH,2));
+stem(EHp(3,:));
+set(gca,'XTick',1:size(EHp,2));
 set(gca,'XTickLabels',labels);
-% 1: Final Iter: 357. Final Iter Number: 2598.8308
-% 2: 
-% 3: 
-% 4: 
-% 5: 
+% 2: Final Iter: 352. Final Iter Number: 2533.9419
+
 
 % save("/Users/lizzy/nmf/MATLAB/Output/isee_2020_ewa1.mat", 'ewa_cc');
 % save("/Users/lizzy/nmf/MATLAB/Output/isee_2020_eh1.mat", 'eh_cc');

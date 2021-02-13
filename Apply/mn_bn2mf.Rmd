@@ -1,0 +1,192 @@
+---
+title: "EDCs in M&N"
+author: "Lizzy Gibson"
+date: "2/13/2021"
+output: 
+  html_document:
+    toc: TRUE
+    toc_float: TRUE
+---
+
+```{r setup, include=FALSE}
+options(scipen = 999)
+knitr::opts_chunk$set(message = FALSE, warning = FALSE)
+
+library(tidyverse)
+library(GGally)
+library(R.matlab)
+library(MNdata) # my data
+library(janitor)
+library(NMF)
+
+#source(here::here("./Results/compare_functions.R"))
+source(here::here("./Results/fig_set.R"))
+```
+
+## Mothers & Newborns Cohort
+
+* 5 phenols
+* 3 parabens
+* 9 phthalates
+
+### Correlation
+
+```{r}
+edc <- 
+  mn_edc %>% 
+  dplyr::select(grep("sg_adj", colnames(.))) %>% 
+  drop_na() %>% 
+  clean_names()
+
+names(edc) <- str_remove(names(edc), "_sg_adj")
+edc_std <- apply(edc, 2, function(x) x/sd(x)) %>% as_tibble()
+
+# rearrange to pht, phenol, parabens
+edc_re <- edc %>% dplyr::select(1:11, 13, 16:17, 12, 14:15)
+
+# corr does not care if you standardize
+ggc <- ggcorr(edc_re, c("everything", "spearman"),
+       size = 0,  # set this to zero
+       layout.exp = 3) + 
+       theme_minimal()
+
+# Create labels and plot
+lbs = str_pad(str_replace(str_to_upper(names(edc_re)), "_", "-"), 7)
+cor_names <- tibble(x = seq(edc_re), y = seq(edc_re), 
+                  lbs = lbs)
+
+#pdf("./Apply/mn_edc_corr.pdf", width = 7, height = 5)
+ggc + geom_text(data=cor_names, aes(x, y, label=lbs), 
+                nudge_x = 2.25, nudge_y = 0.05, size = 4, color = "grey50")
+#dev.off()
+```
+
+## BN2MF
+
+```{r}
+eh <- readMat(here::here("./Apply/mn_eh_scaled.mat"))[[1]]
+colnames(eh) <- toupper(names(edc))
+
+applied <- eh[c(2,1,3),] %>% 
+  as_tibble() %>% 
+  dplyr::select(1:11, 13, 16:17, 12, 14:15) %>% 
+  mutate(Pattern = 1:3) %>% 
+  gather(key = Chemicals, value = Loadings, -Pattern) %>%
+  mutate(Class = case_when(Chemicals == "TCS" | Chemicals == "BPA" ~ "Phenols", 
+                           grepl("PB", Chemicals) ~ "Parabens",
+                           grepl("_", Chemicals) ~ "Phenols",
+                           grepl("^M[A-Z]", Chemicals) ~ "Phthalates"),
+         Chemicals = str_replace(Chemicals, "_", "-")) %>% 
+  mutate(Pattern = paste0("Pattern ", Pattern))
+```
+
+```{r, fig.width=18}
+#pdf("Apply/mn_edc_loadings.pdf", width = 18)
+applied %>% 
+  mutate(Chemicals = fct_inorder(Chemicals)) %>%
+  ggplot(aes(x = Chemicals, y = Loadings, color = Class)) + 
+  geom_point(size = 4) +
+  geom_segment(aes(xend = Chemicals, yend = 0), size = 1.5) +
+  facet_wrap(.~Pattern, scales = "free") +
+  theme_bw(base_size = 25) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 18),
+        strip.background = element_blank(),
+        strip.text = element_text(size = 30),
+        legend.position = c(0.065, 0.8), # c(1,0) right bottom, c(1,1) right top.
+        legend.background = element_rect(fill = "#ffffffaa", colour = NA)) +
+  expand_limits(y=0) +
+  scale_fill_nejm()
+#dev.off()
+```
+
+## Compare
+
+### PCA
+
+```{r}
+prcomp(edc_std)$sdev
+sum( prcomp(edc_std)$sdev[1:11]/sum(prcomp(edc_std)$sdev) )
+# 11 > 80% var
+# no obvious elbow
+# 6 singular values > 1
+
+plot(prcomp(edc_std))
+
+as_tibble(prcomp(edc_std)$rotation) %>% 
+  mutate(edc = colnames(edc)) %>% 
+  pivot_longer(1:17) %>% 
+  mutate(name = as.factor(name)) %>% 
+  filter(name %in% c("PC1", "PC2", "PC3", "PC4", "PC5", "PC6")) %>% 
+  ggplot(aes(x = edc, y = value)) + 
+  geom_col() +
+  facet_wrap(.~ name)
+```
+
+### NMF
+
+```{r}
+nmf_1 <- nmf(edc_std, rank = 1, nrun = 100, method = "lee")
+nmf_2 <- nmf(edc_std, rank = 2, nrun = 100, method = "lee")
+nmf_3 <- nmf(edc_std, rank = 3, nrun = 100, method = "lee")
+nmf_4 <- nmf(edc_std, rank = 4, nrun = 100, method = "lee")
+nmf_5 <- nmf(edc_std, rank = 5, nrun = 100, method = "lee")
+nmf_6 <- nmf(edc_std, rank = 6, nrun = 100, method = "lee")
+
+nmf_1p <- nmf(edc_std, rank = 1, nrun = 100)
+nmf_2p <- nmf(edc_std, rank = 2, nrun = 100)
+nmf_3p <- nmf(edc_std, rank = 3, nrun = 100)
+nmf_4p <- nmf(edc_std, rank = 4, nrun = 100)
+nmf_5p <- nmf(edc_std, rank = 5, nrun = 100)
+nmf_6p <- nmf(edc_std, rank = 6, nrun = 100)
+# default value is ‘brunet’ == KL
+
+  bic_1 <- sum((edc_std - (basis(nmf_1)%*%coef(nmf_1)))^2) + 
+    (1/2)*(nrow(edc_std) + ncol(edc_std)) * 1 * log(nrow(edc_std) * ncol(edc_std))
+  bic_2 <- sum((edc_std - (basis(nmf_2)%*%coef(nmf_2)))^2) + 
+    (1/2)*(nrow(edc_std) + ncol(edc_std)) * 2 * log(nrow(edc_std) * ncol(edc_std))
+  bic_3 <- sum((edc_std - (basis(nmf_3)%*%coef(nmf_3)))^2) + 
+    (1/2)*(nrow(edc_std) + ncol(edc_std)) * 3 * log(nrow(edc_std) * ncol(edc_std))
+  bic_4 <- sum((edc_std - (basis(nmf_4)%*%coef(nmf_4)))^2) + 
+    (1/2)*(nrow(edc_std) + ncol(edc_std)) * 4 * log(nrow(edc_std) * ncol(edc_std))
+  bic_5 <- sum((edc_std - (basis(nmf_5)%*%coef(nmf_5)))^2) +  
+    (1/2)*(nrow(edc_std) + ncol(edc_std)) * 5 * log(nrow(edc_std) * ncol(edc_std))
+  bic_6 <- sum((edc_std - (basis(nmf_6)%*%coef(nmf_6)))^2) +  
+    (1/2)*(nrow(edc_std) + ncol(edc_std)) * 5 * log(nrow(edc_std) * ncol(edc_std))
+  
+bic_1
+bic_2
+bic_3
+bic_4
+bic_5
+bic_6
+ 
+lee_3 <- nmf(edc_std, rank = 3, nrun = 100, method = "lee")
+brunet_3 <- nmf(edc_std, rank = 3, nrun = 100, method = "brunet")
+
+coef(nmf_3) %>% 
+  as_tibble() %>% 
+  mutate(pattern = 1:nrow(.)) %>% 
+  pivot_longer(1:17) %>% 
+  mutate(name = as.factor(name)) %>% 
+  ggplot(aes(x = name, y = value)) + 
+  geom_col() +
+  facet_wrap(.~ pattern) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+coef(brunet_3) %>% 
+  as_tibble() %>% 
+  mutate(Pattern = 1:3) %>% 
+  gather(key = Chemicals, value = Loadings, -Pattern) %>%
+  mutate(Group = ifelse(str_detect(Chemicals, "PB"), "Parabens",
+                        ifelse(str_detect(Chemicals, "^M"), "Phthalates", "Phenols"))) %>% 
+  arrange(Group) %>% 
+  mutate(Chemicals = fct_inorder(Chemicals)) %>% 
+  ggplot(aes(x = Chemicals, y = Loadings)) + geom_col(aes(fill = Group)) +
+  facet_wrap(.~Pattern) + theme_bw() +
+  theme(legend.position = "bottom",
+        strip.background = element_blank(),
+        axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
