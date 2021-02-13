@@ -8,7 +8,7 @@ if (getwd() == "/Users/lizzy/BN2MF") {
   library(tidyverse)
   library(R.matlab)
   library(psych)
-  #library(NMF)
+  library(NMF)
   library(CVXR)
 } else {
   library(tidyverse, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")

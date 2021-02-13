@@ -1,0 +1,32 @@
+---
+title: "VCI & Bootstraps"
+author: "Lizzy Gibson"
+date: "2/13/2021"
+output: 
+  html_document:
+    toc: TRUE
+    toc_float: TRUE
+---
+
+```{r setup, include=FALSE}
+options(scipen = 999)
+knitr::opts_chunk$set(message = FALSE, warning = FALSE)
+
+library(tidyverse)
+library(GGally)
+library(R.matlab)
+
+source("./Results/factor_correspondence.R")
+source("./Results/compare_functions.R")
+source("./Results/fig_set.R")
+```
+
+## Variational Confidence Intervals
+
+```{r}
+load("./Bootstrap/bs_vci_metrics.RDA")
+bs_vci_metrics
+
+
+```
+
