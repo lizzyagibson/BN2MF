@@ -72,10 +72,9 @@ applied <- eh[c(2,1,3),] %>%
   dplyr::select(1:11, 13, 16:17, 12, 14:15) %>% 
   mutate(Pattern = 1:3) %>% 
   gather(key = Chemicals, value = Loadings, -Pattern) %>%
-  mutate(Class = case_when(Chemicals == "TCS" | Chemicals == "BPA" ~ "Phenols", 
-                           grepl("PB", Chemicals) ~ "Parabens",
-                           grepl("_", Chemicals) ~ "Phenols",
-                           grepl("^M[A-Z]", Chemicals) ~ "Phthalates"),
+  mutate(Class = case_when(grepl("PB", Chemicals) ~ "Parabens",
+                           grepl("^M[A-Z]", Chemicals) ~ "Phthalates"
+                           TRUE ~ "Phenols"),
          Chemicals = str_replace(Chemicals, "_", "-")) %>% 
   mutate(Pattern = paste0("Pattern ", Pattern))
 ```
@@ -140,18 +139,22 @@ nmf_5p <- nmf(edc_std, rank = 5, nrun = 100)
 nmf_6p <- nmf(edc_std, rank = 6, nrun = 100)
 # default value is ‘brunet’ == KL
 
-  bic_1 <- sum((edc_std - (basis(nmf_1)%*%coef(nmf_1)))^2) + 
-    (1/2)*(nrow(edc_std) + ncol(edc_std)) * 1 * log(nrow(edc_std) * ncol(edc_std))
-  bic_2 <- sum((edc_std - (basis(nmf_2)%*%coef(nmf_2)))^2) + 
-    (1/2)*(nrow(edc_std) + ncol(edc_std)) * 2 * log(nrow(edc_std) * ncol(edc_std))
-  bic_3 <- sum((edc_std - (basis(nmf_3)%*%coef(nmf_3)))^2) + 
-    (1/2)*(nrow(edc_std) + ncol(edc_std)) * 3 * log(nrow(edc_std) * ncol(edc_std))
-  bic_4 <- sum((edc_std - (basis(nmf_4)%*%coef(nmf_4)))^2) + 
-    (1/2)*(nrow(edc_std) + ncol(edc_std)) * 4 * log(nrow(edc_std) * ncol(edc_std))
-  bic_5 <- sum((edc_std - (basis(nmf_5)%*%coef(nmf_5)))^2) +  
-    (1/2)*(nrow(edc_std) + ncol(edc_std)) * 5 * log(nrow(edc_std) * ncol(edc_std))
-  bic_6 <- sum((edc_std - (basis(nmf_6)%*%coef(nmf_6)))^2) +  
-    (1/2)*(nrow(edc_std) + ncol(edc_std)) * 5 * log(nrow(edc_std) * ncol(edc_std))
+n = nrow(edc_std)
+p = ncol(edc_std)
+
+bic_1 <- sum((edc_std - (basis(nmf_1)%*%coef(nmf_1)))^2) + (1/2)*(n + p) * 1 * log(n * p)
+bic_2 <- sum((edc_std - (basis(nmf_2)%*%coef(nmf_2)))^2) + (1/2)*(n + p) * 2 * log(n * p)
+bic_3 <- sum((edc_std - (basis(nmf_3)%*%coef(nmf_3)))^2) + (1/2)*(n + p) * 3 * log(n * p)
+bic_4 <- sum((edc_std - (basis(nmf_4)%*%coef(nmf_4)))^2) + (1/2)*(n + p) * 4 * log(n * p)
+bic_5 <- sum((edc_std - (basis(nmf_5)%*%coef(nmf_5)))^2) + (1/2)*(n + p) * 5 * log(n * p)
+bic_6 <- sum((edc_std - (basis(nmf_6)%*%coef(nmf_6)))^2) + (1/2)*(n + p) * 5 * log(n * p)
+
+bic_1p <- sum((edc_std - (basis(nmf_1p)%*%coef(nmf_1p)))^2) + (1/2)*(n + p) * 1 * log(n * p)
+bic_2p <- sum((edc_std - (basis(nmf_2p)%*%coef(nmf_2p)))^2) + (1/2)*(n + p) * 2 * log(n * p)
+bic_3p <- sum((edc_std - (basis(nmf_3p)%*%coef(nmf_3p)))^2) + (1/2)*(n + p) * 3 * log(n * p)
+bic_4p <- sum((edc_std - (basis(nmf_4p)%*%coef(nmf_4p)))^2) + (1/2)*(n + p) * 4 * log(n * p)
+bic_5p <- sum((edc_std - (basis(nmf_5p)%*%coef(nmf_5p)))^2) + (1/2)*(n + p) * 5 * log(n * p)
+bic_6p <- sum((edc_std - (basis(nmf_6p)%*%coef(nmf_6p)))^2) + (1/2)*(n + p) * 5 * log(n * p)
   
 bic_1
 bic_2
@@ -159,27 +162,34 @@ bic_3
 bic_4
 bic_5
 bic_6
- 
-lee_3 <- nmf(edc_std, rank = 3, nrun = 100, method = "lee")
-brunet_3 <- nmf(edc_std, rank = 3, nrun = 100, method = "brunet")
+
+bic_1p
+bic_2p
+bic_3p
+bic_4p
+bic_5p
+bic_6p
 
 coef(nmf_3) %>% 
   as_tibble() %>% 
-  mutate(pattern = 1:nrow(.)) %>% 
-  pivot_longer(1:17) %>% 
-  mutate(name = as.factor(name)) %>% 
-  ggplot(aes(x = name, y = value)) + 
-  geom_col() +
-  facet_wrap(.~ pattern) + 
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-
-coef(brunet_3) %>% 
-  as_tibble() %>% 
-  mutate(Pattern = 1:3) %>% 
+  mutate(Pattern = 1:nrow(.)) %>% 
   gather(key = Chemicals, value = Loadings, -Pattern) %>%
-  mutate(Group = ifelse(str_detect(Chemicals, "PB"), "Parabens",
-                        ifelse(str_detect(Chemicals, "^M"), "Phthalates", "Phenols"))) %>% 
+  mutate(Group = ifelse(str_detect(Chemicals, "pb"), "Parabens",
+                        ifelse(str_detect(Chemicals, "^m"), "Phthalates", "Phenols"))) %>% 
+  arrange(Group) %>% 
+  mutate(Chemicals = fct_inorder(Chemicals)) %>% 
+  ggplot(aes(x = Chemicals, y = Loadings)) + geom_col(aes(fill = Group)) +
+  facet_wrap(.~Pattern) + theme_bw() +
+  theme(legend.position = "bottom",
+        strip.background = element_blank(),
+        axis.text.x = element_text(angle = 45, hjust = 1))
+
+coef(nmf_3p) %>% 
+  as_tibble() %>% 
+  mutate(Pattern = 1:nrow(.)) %>% 
+  gather(key = Chemicals, value = Loadings, -Pattern) %>%
+  mutate(Group = ifelse(str_detect(Chemicals, "pb"), "Parabens",
+                        ifelse(str_detect(Chemicals, "^m"), "Phthalates", "Phenols"))) %>% 
   arrange(Group) %>% 
   mutate(Chemicals = fct_inorder(Chemicals)) %>% 
   ggplot(aes(x = Chemicals, y = Loadings)) + geom_col(aes(fill = Group)) +
