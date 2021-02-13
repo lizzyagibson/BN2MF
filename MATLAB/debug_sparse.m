@@ -9,15 +9,15 @@ patterns = table2array(patterns);
 scores   = table2array(scores);
 true    = table2array(true);
 
-tic()
-[EWA1, EH1, varH1, alphaH1, betaH1, alphaW1, betaW1, ...
-    alphaA1, betaA1, varWA1, finalscore1, final_iter1] = BN2MF(simdata1);
-toc()
-
-norm(simdata1 - (EWA1 * EH1), 'fro')/norm(simdata1, 'fro')
-%    0.1558
-norm(true - (EWA1 * EH1), 'fro')/norm(simdata1, 'fro')
-%    0.0582
+% tic()
+% [EWA1, EH1, varH1, alphaH1, betaH1, alphaW1, betaW1, ...
+%     alphaA1, betaA1, varWA1, finalscore1, final_iter1] = BN2MF(simdata1);
+% toc()
+% 
+% norm(simdata1 - (EWA1 * EH1), 'fro')/norm(simdata1, 'fro')
+% %    0.1558
+% norm(true - (EWA1 * EH1), 'fro')/norm(simdata1, 'fro')
+% %    0.0582
 
 %% Run model
 tic()
@@ -211,7 +211,7 @@ norm(scores - EWA, 'fro')/norm(scores, 'fro')
 %    2.1845
 norm(scores - EWA11, 'fro')/norm(scores, 'fro')
 %    0.5743
-norm(scores - EWAp, 'fro')/norm(scores, 'fro')
+%norm(scores - EWAp, 'fro')/norm(scores, 'fro')
 %    0.0713
     
 norm(patterns_scaled - EH_scaled, 'fro')/norm(patterns_scaled, 'fro')

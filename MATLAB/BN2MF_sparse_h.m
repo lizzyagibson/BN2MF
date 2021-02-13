@@ -80,10 +80,15 @@ for iter = 1:num_iter
     end
     K = length(A1);
     
-    H_denom = sum(H1./H2, 2);
+    % scale patterns, rows
+    %H_denom = sum(H1./H2, 2);
+    %H_scaled = (H1./H2) ./ H_denom;
+    
+    % scale columns instead
+    H_denom = sum(H1./H2);
     H_scaled = (H1./H2) ./ H_denom;
-
-    H_push = (H_scaled > 10^-6); % <0.001%
+    
+    H_push = (H_scaled > 10^-7); % <0.001%
     % Push values LESS THAN to zero
     % by keeping values GREATER THAN
     H1 = H1 .* H_push;
