@@ -254,5 +254,7 @@ pred_look = plot_pred %>%
 (wa_look + theme(legend.position = "none")) / (h_look + theme(legend.position = "right")) / 
   (pred_look + theme(legend.position = "none"))
 
-
+#save(plot_wa, file = "./Bootstrap/plot_wa.RDA")
+#save(plot_h, file = "./Bootstrap/plot_h.RDA")
+#save(plot_pred, file = "./Bootstrap/plot_pred.RDA")
 
