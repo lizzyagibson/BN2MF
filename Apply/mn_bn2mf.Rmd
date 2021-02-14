@@ -80,7 +80,7 @@ applied <- eh[c(2,1,3),] %>%
 ```
 
 ```{r, fig.width=18}
-#pdf("Apply/mn_edc_loadings.pdf", width = 18)
+pdf("Apply/mn_edc_loadings.pdf", width = 18)
 applied %>% 
   mutate(Chemicals = fct_inorder(Chemicals)) %>%
   ggplot(aes(x = Chemicals, y = Loadings, color = Class)) + 
@@ -91,11 +91,12 @@ applied %>%
   theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 18),
         strip.background = element_blank(),
         strip.text = element_text(size = 30),
-        legend.position = c(0.065, 0.8), # c(1,0) right bottom, c(1,1) right top.
+        legend.title = element_blank(),
+        legend.position = c(0.065, 0.85), # c(1,0) right bottom, c(1,1) right top.
         legend.background = element_rect(fill = "#ffffffaa", colour = NA)) +
   expand_limits(y=0) +
   scale_fill_nejm()
-#dev.off()
+dev.off()
 ```
 
 ```{r}
@@ -110,7 +111,26 @@ applied %>%
   theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 18),
         strip.background = element_blank(),
         strip.text = element_text(size = 30),
-        legend.position = c(0.225, 0.2), # c(1,0) right bottom, c(1,1) right top.
+        legend.title = element_blank(),
+        legend.position = c(0.24, 0.15), # c(1,0) right bottom, c(1,1) right top.
+        legend.background = element_rect(fill = "#ffffffaa", colour = NA)) +
+  expand_limits(y=0) +
+  scale_fill_nejm()
+#dev.off()
+
+#pdf("Apply/mn_edc_loadings_tall.pdf", height = 15)
+applied %>% 
+  mutate(Chemicals = fct_inorder(Chemicals)) %>%
+  ggplot(aes(x = Loadings, y = Chemicals, color = Class)) + 
+  geom_point(size = 4) +
+  geom_segment(aes(yend = Chemicals, xend = 0), size = 1.5) +
+  facet_grid(Pattern~., scales = "free") +
+  theme_bw(base_size = 25) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 18),
+        strip.background = element_blank(),
+        strip.text = element_text(size = 30),
+        legend.title = element_blank(),
+        legend.position = c(0.725, 0.05), # c(1,0) right bottom, c(1,1) right top.
         legend.background = element_rect(fill = "#ffffffaa", colour = NA)) +
   expand_limits(y=0) +
   scale_fill_nejm()

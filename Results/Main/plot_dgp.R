@@ -18,10 +18,8 @@ source("./Results/compare_functions.R")
 # Source ggplot settings
 source("./Results/fig_set.R") 
 
-#####
-# Relative Preditive Error
+##### Relative Preditive Error #####
 # L2 Norm (Truth - Predicted) / L2 Norm (Truth)
-#####
 
 # pdf("./Figures/bnmf_error.pdf", width = 10)
 metrics %>%
@@ -36,9 +34,7 @@ metrics %>%
   theme(legend.position = "none") + 
   labs(y = "Relative Predictive Error")
 
-#####
-# Relative error on loadings and scores
-#####
+##### Relative error on loadings and scores #####
 
 #pdf("./Figures/bnmf_loadscore_error.pdf", width = 10, height = 10)
 metrics %>%
@@ -54,11 +50,9 @@ metrics %>%
   scale_y_log10() +
   labs(y = "Relative Predictive Error")
 
-#####
-# Subspace Distance
+##### Subspace Distance ####
 # Distance between linear subspaces (orthonormal bases)
 # Loadging and scores
-#####
 
 #pdf("./Figures/bnmf_ssd.pdf", width = 10, height = 10)
 metrics %>%
@@ -73,10 +67,7 @@ metrics %>%
   facet_grid(name ~ data) + 
   labs(y = "Symmetric Subspace Distance")
 
-#####
-# Cosine distance
-#####
-
+##### Cosine distance #####
 metrics %>%
   mutate(data = fct_inorder(data)) %>% 
   dplyr::select(seed, data, model, cos_dist_loadings, cos_dist_scores) %>%
@@ -105,14 +96,9 @@ metrics %>%
   labs(y = "Cosine Distance on Vectors")
 # dev.off()
 
-#####
-# Tables
-#####
+##### Tables #####
 
-#####
-# Rank
-#####
-
+##### Rank #####
 metrics %>%
   dplyr::select(seed, data, model, rank) %>%
   group_by(data, model, rank) %>%
@@ -125,11 +111,8 @@ metrics %>%
 100+100+10
 # this accounts for the 420 missing values (loadings and scores) in the plots above
 
-#####
-# Relative Preditive Error
+##### Relative Preditive Error ####
 # L2 Norm (Truth - Predicted) / L2 Norm (Truth)
-#####
-
 table_l2 = metrics %>%
   dplyr::select(seed, data, model, rel_err_all) %>%
   group_by(data, model) %>% 
@@ -145,10 +128,7 @@ table_l2
 
 as_data_frame(table_l2) %>% stargazer(summary = FALSE)
 
-#####
-# Relative error on loadings and scores
-#####
-
+##### Relative error on loadings and scores #####
 table_ls = metrics %>%
   dplyr::select(seed, data, model, rel_err_loadings, rel_err_scores) %>%
   pivot_longer(c(rel_err_loadings, rel_err_scores)) %>% 
@@ -164,12 +144,9 @@ table_ls %>% print(n = 30)
 
 as_data_frame(table_ls) %>% stargazer(summary = FALSE)
 
-#####
-# Subspace Distance
+##### Subspace Distance ####
 # Distance between linear subspaces (orthonormal bases)
-# Loadging and scores
-#####
-
+# Loading and scores
 table_ssd = metrics %>%
   dplyr::select(seed, data, model, ssd_loadings, ssd_scores) %>%
   pivot_longer(c(ssd_loadings, ssd_scores)) %>% 
@@ -184,10 +161,7 @@ table_ssd
 
 as_data_frame(table_ssd) %>% stargazer(summary = FALSE)
 
-#####
-# Cosine distance
-#####
-
+##### Cosine distance #####
 table_cos = metrics %>%
   dplyr::select(seed, data, model, cos_dist_loadings, cos_dist_scores) %>%
   pivot_longer(c(cos_dist_loadings, cos_dist_scores)) %>% 
@@ -202,17 +176,35 @@ table_cos = metrics %>%
 
 table_cos %>% print(n = 30)
 
-as_data_frame(table_cs) %>% stargazer(summary = FALSE)
+as_data_frame(table_cos) %>% stargazer(summary = FALSE)
+
+#### Mean (SD) ####
+meansd = metrics %>%
+  dplyr::select(-rank, -rel_err_all, -cos_dist_v_scores, -cos_dist_v_loadings) %>%
+  pivot_longer(c(rel_err_loadings:ssd_scores),
+               names_to = c("method", "x", "side"),
+               names_sep = "_") %>% 
+  mutate(side = ifelse(x %in% c("loadings", "scores"), x, side)) %>% 
+  group_by(data, model, side, method) %>% 
+  summarise(mean = mean(value, na.rm = T),
+            sd = sd(value, na.rm = T)) %>% 
+  pivot_wider(names_from = "method",
+              values_from = c("mean", "sd")) %>% 
+  arrange(side, data) %>% 
+  mutate_if(is.numeric, round, 2) %>% 
+  dplyr::select(side, data, model, mean_rel, sd_rel, mean_cos, sd_cos, mean_ssd, sd_ssd)
+
+as_data_frame(meansd) %>% stargazer(summary = FALSE)
 
 
-#### SAVE ####
 
-#####
-# Relative Preditive Error
+
+
+#### SAVE Figures ####
+
+# Relative Predictive Error
 # L2 Norm (Truth - Predicted) / L2 Norm (Truth)
-#####
-
-#pred_error = metrics %>%
+pred_error = metrics %>%
   filter(model != "NMFP") %>% 
   mutate(model = str_remove(model, "L2"),
          model = ifelse(model == "FA", "Factor Analysis", model)) %>% 
@@ -238,10 +230,7 @@ as_data_frame(table_cs) %>% stargazer(summary = FALSE)
 pred_error
 #dev.off()
 
-#####
 # Relative error on loadings and scores
-#####
-
 score_error = metrics %>%
   filter(model != "NMFP") %>% 
   mutate(model = str_remove(model, "L2"),
