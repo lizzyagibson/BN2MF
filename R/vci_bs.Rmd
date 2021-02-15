@@ -28,7 +28,7 @@ source(here::here("./Results/fig_set.R"))
 
 Steps to assess coverage:
 
-1. BN^2MF outputs:
+1. BN$^2$MF outputs:
     a. expected values (means) for W, a, H
     b. $\alpha$ and $\beta$ parameters for W, a, H Gamma distributions
 2. Factor correspondence
@@ -86,7 +86,7 @@ For each simulated data set:
 
 1. Repeat steps 150 times,
     a. Take random sample with replacement
-    b. Run BN^2MF on bootstrapped sample
+    b. Run BN$^2$MF on bootstrapped sample
     c. Factor correspondence
         i. Match EH with simulated pattern matrix (truth)
         ii. Use permutation matrix to rearrange EH and $E[Wa]$
@@ -138,39 +138,39 @@ load("./Bootstrap/plot_pred.RDA")
 wa_look = plot_wa %>% 
   mutate(sim_type = fct_inorder(sim_type)) %>% 
   ggplot(aes(x = Distribution)) +
-  geom_rect(aes(xmin = v_wa_25,  xmax = v_wa_75,  ymin=0, ymax=Inf), 
-            color="lightblue", linetype="dotted", alpha = 0) +
-  geom_rect(aes(xmin = bs_wa_25, xmax = bs_wa_75, ymin=0, ymax=Inf), 
-            color="pink", linetype="dotted", alpha = 0) +
+  geom_rect(aes(xmin = v_wa_25,  xmax = v_wa_75,  ymin=-Inf, ymax=Inf), 
+            color="blue", linetype="dotted", alpha = 0) +
+  geom_rect(aes(xmin = bs_wa_25, xmax = bs_wa_75, ymin=-Inf, ymax=Inf), 
+            color="red", linetype="dotted", alpha = 0) +
   geom_histogram(aes(y= after_stat(density),fill = Type), 
                  position = "identity", bins = 100, alpha = 0.5) +
   geom_density(aes(group = Type)) +
   scale_fill_manual(values = c("red", "blue")) +
   theme_bw() + 
-  geom_vline(aes(xintercept = truth),  linetype="dotted", color = "black") +
-  geom_vline(aes(xintercept = bs_ewa), linetype="dotted", color = "red") + 
-  geom_vline(aes(xintercept = v_ewa),  linetype="dotted", color = "blue") + 
+  geom_vline(aes(xintercept = truth),  linetype="dashed", color = "black") +
+  geom_vline(aes(xintercept = bs_ewa), linetype="dashed", color = "red") + 
+  geom_vline(aes(xintercept = v_ewa),  linetype="dashed", color = "blue") + 
   facet_grid(sim_type~., scales = "free") +
   theme(legend.position = "bottom",
         strip.background = element_rect(fill="white")) +
-  ylab("Density") + ggtitle("Distributions on Scores (WA)") + xlim(c(0,20))
+  ylab("Density") + ggtitle("Distributions on Scores (Wa)") + xlim(c(0,20))
 
 h_look = plot_h %>% 
   mutate(sim_type = fct_inorder(sim_type)) %>% 
   ggplot(aes(x = Distribution)) +
-  geom_rect(aes(xmin = v_h_25,  xmax = v_h_75,  ymin=0, ymax=Inf), 
-            color="lightblue", linetype="dotted", alpha = 0) +
-  geom_rect(aes(xmin = bs_h_25, xmax = bs_h_75, ymin=0, ymax=Inf), 
-            color="pink", linetype="dotted", alpha = 0) +
+  geom_rect(aes(xmin = v_h_25,  xmax = v_h_75,  ymin=-Inf, ymax=Inf), 
+            color="blue", linetype="dotted", alpha = 0) +
+  geom_rect(aes(xmin = bs_h_25, xmax = bs_h_75, ymin=-Inf, ymax=Inf), 
+            color="red", linetype="dotted", alpha = 0) +
   geom_histogram(aes(y=after_stat(density),fill = Type), 
                  position = "identity", bins = 100, alpha = 0.5) +
   geom_density(aes(group = Type)) +
   scale_fill_manual(values = c("red", "blue")) +
   theme_bw() + 
   facet_grid(sim_type~., scales = "free") +
-  geom_vline(aes(xintercept = truth),  linetype="dotted", color = "black") +
-  geom_vline(aes(xintercept = bs_eh), linetype="dotted", color = "red") + 
-  geom_vline(aes(xintercept = v_eh),  linetype="dotted", color = "blue") + 
+  geom_vline(aes(xintercept = truth),  linetype="dashed", color = "black") +
+  geom_vline(aes(xintercept = bs_eh), linetype="dashed", color = "red") + 
+  geom_vline(aes(xintercept = v_eh),  linetype="dashed", color = "blue") + 
   theme(legend.position = "bottom",
         strip.background = element_rect(fill="white")) +
   ylab("Density") + ggtitle("Distributions on Loadings (H)") + xlim(c(0,0.066))
@@ -179,22 +179,22 @@ pred_look =
   plot_pred %>% 
   mutate(sim_type = fct_inorder(sim_type)) %>% 
   ggplot(aes(x = Distribution)) +
-  geom_rect(aes(xmin = v_pred_25,  xmax = v_pred_75,  ymin=0, ymax=Inf), 
-            color="lightblue", linetype="dotted", alpha = 0) +
-  geom_rect(aes(xmin = bs_pred_25, xmax = bs_pred_75, ymin=0, ymax=Inf), 
-            color="pink", linetype="dotted", alpha = 0) +
+  geom_rect(aes(xmin = v_pred_25,  xmax = v_pred_75,  ymin=-Inf, ymax=Inf), 
+            color="blue", linetype="dotted", alpha = 0) +
+  geom_rect(aes(xmin = bs_pred_25, xmax = bs_pred_75, ymin=-Inf, ymax=Inf), 
+            color="red", linetype="dotted", alpha = 0) +
   geom_histogram(aes(y = after_stat(density), fill = Type), 
                  position = "identity", bins = 100, alpha = 0.5) +
   geom_density(aes(group = Type)) +
   scale_fill_manual(values = c("red", "blue")) +
   theme_bw() + 
-  geom_vline(aes(xintercept = truth),  linetype="dotted", color = "black") +
-  geom_vline(aes(xintercept = bs_pred), linetype="dotted", color = "red") + 
-  geom_vline(aes(xintercept = v_pred),  linetype="dotted", color = "blue") + 
+  geom_vline(aes(xintercept = truth),  linetype="dashed", color = "black") +
+  geom_vline(aes(xintercept = bs_pred), linetype="dashed", color = "red") + 
+  geom_vline(aes(xintercept = v_pred),  linetype="dashed", color = "blue") + 
   facet_grid(sim_type~., scales = "free") +
   theme(legend.position = "bottom",
         strip.background = element_rect(fill="white")) +
-  ylab("Density") + ggtitle("Distributions on Predicted Values E[WAH]") + xlim(c(0, 20))
+  ylab("Density") + ggtitle("Distributions on Predicted Values (WaH)") + xlim(c(0, 20))
 ```
 
 ```{r, fig.width=12, fig.height=15}
@@ -202,7 +202,7 @@ pred_look =
   (pred_look + theme(legend.position = "none"))
 ```
 
-## H & E[WaH]
+## H & WaH
 
 ### Coverage for H
 
@@ -224,7 +224,7 @@ bs_vci_metrics %>%
   knitr::kable(caption = "Coverage for BN2MF loadings")
 ```
 
-### Coverage for E[WaH]
+### Coverage for WaH
 
 ```{r}
 bs_vci_metrics %>% 
