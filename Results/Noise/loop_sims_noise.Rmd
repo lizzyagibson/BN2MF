@@ -87,7 +87,7 @@ add_noise <- function (seed, chemx) {
   noise <- matrix(NA, nrow = n, ncol = p)
 
   for (i in 1:p) {
-    noise[,i] <- (rnorm(n, mean = 0, sd = var(chemx[,i])/5))
+    noise[,i] <- (rnorm(n, mean = 0, sd = sd(chemx[,i])/2))
   }
   sim = pmax(chemx + noise, 0)
   sim
@@ -98,10 +98,10 @@ sim_dist <- sim_dist %>%
 ```  
 
 ```{r}
-apply(sim_dist$sim[[1]], 2, var)/5
+sort(apply(sim_dist$chem[[1]], 2, var)/5)  
+sort(apply(sim_dist$sim[[1]], 2, sd)/2)
 
 dist <- sim_dist$sim[[1]]
-hist(dist[,45])
 ggcorr(as_tibble(dist))
 cor(dist)[1:15,1:7]
 ```
@@ -268,9 +268,9 @@ plot_over = as_tibble(t(pato)) %>%
         axis.ticks.x = element_blank(),
         plot.title = element_text(hjust = 0.5)) + ggtitle("Overlapping Simulated Patterns")
 
-pdf("/Users/lizzy/OneDrive/Columbia/Spring 2021/netflix/figures/sim_patterns.pdf")
+#pdf("/Users/lizzy/OneDrive/Columbia/Spring 2021/netflix/figures/sim_patterns.pdf")
 (plot_dist) / (plot_over)
-dev.off()
+#dev.off()
 ```
 
 ## Save
