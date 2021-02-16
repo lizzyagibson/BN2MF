@@ -10,7 +10,7 @@ library(R.matlab)
 #### For all sims ####
 
 #### Read data ####
-load("./Sims/Main/sim_dgp.RDA")
+load("./Sims/sim_dgp.RDA")
 
 #### Normalize truth ####
 sim_dgp = sim_dgp %>% 
