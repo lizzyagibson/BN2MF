@@ -87,7 +87,7 @@ add_noise <- function (seed, chemx) {
   noise <- matrix(NA, nrow = n, ncol = p)
 
   for (i in 1:p) {
-    noise[,i] <- (rnorm(n, mean = 0, sd = var(chemx[,i])/4))
+    noise[,i] <- (rnorm(n, mean = 0, sd = var(chemx[,i])/5))
   }
   sim = pmax(chemx + noise, 0)
   sim
@@ -98,7 +98,7 @@ sim_dist <- sim_dist %>%
 ```  
 
 ```{r}
-apply(sim_dist$sim[[1]], 2, var)/4
+apply(sim_dist$sim[[1]], 2, var)/5
 
 dist <- sim_dist$sim[[1]]
 hist(dist[,45])
@@ -280,7 +280,7 @@ sim_noise <- rbind(sim_dist %>% mutate(data = "Distinct"),
       sim_over %>% mutate(data = "Overlapping"),
       sim_cor %>% mutate(data = "Correlated"))
 
-# save(sim_noise, file = "./Sims/Noise/sim_noise.RDA")
+# save(sim_noise, file = "./Sims/sim_noise.RDA")
 
 # for (i in 1:nrow(sim_noise)) {
 #   write_csv(as_tibble(sim_noise$sim[[i]]),           paste0("./Sims/Noise/sim_noise_", i, ".csv"))
