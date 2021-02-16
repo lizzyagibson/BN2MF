@@ -14,6 +14,10 @@ scores_scaled       = scores * diag(patterns_denom);
 
 bootstraps = 1:150;
 
+ewa_dist_array = cell(150,1);
+eh_dist_array  = cell(150,1);
+sam_dist_array = cell(150,1);
+
 [ewa_scaled, ewa, upper_wa, lower_wa] = deal(zeros(1000, 5, 150));
 [eh_scaled, eh, upper_h, lower_h] = deal(zeros(4, 50, 150));
 
@@ -117,20 +121,11 @@ for j = bootstraps
     upper_h(:,:,j) = upper_ci_H; 
     lower_h(:,:,j) = lower_ci_H;
     
-    if j == 1
-        WA_dist_1 = WA_scaled;
-        H_dist_1  = H_scaled;
-    end
-    if j == 2
-        WA_dist_2 = WA_scaled;
-        H_dist_2  = H_scaled;
-    end
-    if j == 3
-        WA_dist_3 = WA_scaled;
-        H_dist_3  = H_scaled;
-    end
+    ewa_dist_array(j, 1) = {WA_scaled};
+    eh_dist_array(j, 1)  = {H_scaled};
+    sam_dist_array(j, 1) = {sam'};
     
-    disp(["Bootstrap number:", num2str(j)])
+    disp(["Bootstrap number: ", num2str(j)])
 end
 
 %% Save
@@ -148,12 +143,7 @@ save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/upper_h.mat", 'upper_h');
 save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/lower_h.mat", 'lower_h');
 
 % Save variational distribution arrays, too
-save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/WA_dist_1.mat", 'WA_dist_1');
-save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/H_dist_1.mat", 'H_dist_1');
-
-save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/WA_dist_2.mat", 'WA_dist_2');
-save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/H_dist_2.mat", 'H_dist_2');
-
-save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/WA_dist_3.mat", 'WA_dist_3');
-save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/H_dist_3.mat", 'H_dist_3');
+save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/WA_dist.mat", 'ewa_dist_array');
+save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/H_dist.mat", 'eh_dist_array');
+save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/sam_dist.mat", 'sam_dist_array');
 
