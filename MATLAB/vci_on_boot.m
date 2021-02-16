@@ -143,7 +143,7 @@ save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/upper_h.mat", 'upper_h');
 save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/lower_h.mat", 'lower_h');
 
 % Save variational distribution arrays, too
-save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/WA_dist.mat", 'ewa_dist_array');
+save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/WA_dist.mat", 'ewa_dist_array', '-v7.3');
 save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/H_dist.mat", 'eh_dist_array');
 save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/sam_dist.mat", 'sam_dist_array');
 
