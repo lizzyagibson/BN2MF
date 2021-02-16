@@ -179,23 +179,44 @@ table_cos %>% print(n = 30)
 as_data_frame(table_cos) %>% stargazer(summary = FALSE)
 
 #### Mean (SD) ####
-meansd = metrics %>%
-  dplyr::select(-rank, -rel_err_all, -cos_dist_v_scores, -cos_dist_v_loadings) %>%
-  pivot_longer(c(rel_err_loadings:ssd_scores),
+table_mean = metrics %>%
+  dplyr::select(-rank, -grep("rel_err", colnames(.)), -cos_dist_v_scores, -cos_dist_v_loadings) %>%
+  pivot_longer(c(cos_dist_loadings:ssd_scores),
                names_to = c("method", "x", "side"),
                names_sep = "_") %>% 
   mutate(side = ifelse(x %in% c("loadings", "scores"), x, side)) %>% 
   group_by(data, model, side, method) %>% 
   summarise(mean = mean(value, na.rm = T),
             sd = sd(value, na.rm = T)) %>% 
-  pivot_wider(names_from = "method",
+  pivot_wider(names_from = c("method", "side"),
               values_from = c("mean", "sd")) %>% 
-  arrange(side, data) %>% 
+  arrange(data) %>% 
   mutate_if(is.numeric, round, 2) %>% 
-  dplyr::select(side, data, model, mean_rel, sd_rel, mean_cos, sd_cos, mean_ssd, sd_ssd)
+  dplyr::select(data, model, grep("cos_score", colnames(.)), grep("ssd_score", colnames(.)),
+                grep("cos_load", colnames(.)), grep("ssd_load", colnames(.)))
 
-as_data_frame(meansd) %>% stargazer(summary = FALSE)
+table_mean
 
+as_data_frame(table_mean) %>% stargazer(summary = FALSE)
+
+table_rel = metrics %>%
+  dplyr::select(seed, data, model, grep("rel_err", colnames(.))) %>%
+  pivot_longer(grep("rel_err", colnames(.)),
+               names_to = c("method", "x", "side"),
+               names_sep = "_") %>% 
+  group_by(data, model, side, method) %>% 
+  summarise(mean = mean(value, na.rm = T),
+            sd = sd(value, na.rm = T)) %>% 
+  pivot_wider(names_from = c("method", "side"),
+              values_from = c("mean", "sd")) %>% 
+  arrange(data) %>% 
+  mutate_if(is.numeric, round, 2) %>% 
+  dplyr::select(data, model, grep("rel_all", colnames(.)), grep("score", colnames(.)),
+                grep("load", colnames(.)))
+
+table_rel
+
+as_data_frame(table_rel) %>% stargazer(summary = FALSE)
 
 
 
