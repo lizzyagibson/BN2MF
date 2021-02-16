@@ -147,3 +147,18 @@ save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/WA_dist.mat", 'ewa_dist_array', '-v
 save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/H_dist.mat", 'eh_dist_array');
 save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/sam_dist.mat", 'sam_dist_array');
 
+% Cut ewa VCI in half
+ewa_dist_array_1_3 = ewa_dist_array(1:3,:);
+
+ewa_dist_array_1 = ewa_dist_array(1:50,:);
+ewa_dist_array_2 = ewa_dist_array(51:100,:);
+ewa_dist_array_3 = ewa_dist_array(101:150,:);
+
+save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/WA_dist_1_3.mat", 'ewa_dist_array_1_3');
+
+save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/WA_dist_1.mat", 'ewa_dist_array_1');
+save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/WA_dist_2.mat", 'ewa_dist_array_2');
+save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/WA_dist_3.mat", 'ewa_dist_array_3');
+
+%% Get BS+VCI
+ewa_dist_array
