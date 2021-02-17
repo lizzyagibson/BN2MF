@@ -1,0 +1,116 @@
+---
+title: "Loop Simulations: Separable"
+author: "Lizzy Gibson"
+date: "2/17/2021"
+output: 
+  html_document:
+    toc: TRUE
+    toc_float: TRUE
+---
+
+```{r setup, include=FALSE}
+options(scipen = 999)
+
+library(tidyverse)
+library(GGally)
+library(LearnBayes)
+```
+
+## 1: Distinct Patterns
+
+### Simulate Patterns
+
+```{r}
+## Construct a matrix for 4 TRUE exposure patterns
+create_patterns <- function (seed) {
+  set.seed(seed)
+  pat1=c(0,0,5,10)
+  pat2=c(0,5,10,0)
+  pat3=c(5,10,0,0)
+  pat4=c(10,0,0,5)
+  rdirichlet(1,pat1)
+
+  patterns = cbind(diag(1,4), t(rdirichlet(12, pat1)), t(rdirichlet(12, pat2)),
+                   t(rdirichlet(12, pat3)), t(rdirichlet(12, pat4)))
+  patterns
+}
+
+patterns_iter <- tibble(seed = 1:100) %>% 
+ mutate(true_patterns = map(seed, create_patterns))
+```
+
+### Simulate Scores
+   
+```{r}
+create_scores <- function (seed) {
+  set.seed(seed)
+  scores <- matrix(exp(rnorm(1000*4)), ncol = 4)
+  #scores_norm = apply(scores, 1, function(x) x/sum(x))*100
+  #scores_norm
+  scores
+}
+
+scores_iter <- patterns_iter %>% 
+ mutate(true_scores = map(seed, create_scores))
+```
+
+### Simulate Chemical Exposures
+
+* Matrix multiple scores and pattern loadings
+
+```{r}
+sim_iter <- scores_iter %>% 
+  mutate(chem = map2(true_scores, true_patterns, `%*%`))
+```
+
+### Simulate Noise
+
+* Add noise
+* Noise distribution Normal(0, 1)
+    
+```{r}
+add_noise <- function (seed, chemx) {
+  n = nrow(chemx)
+  p = ncol(chemx)
+  noise <- matrix(rnorm(n*p, mean = 0, sd = 1), nrow = n, ncol = p)
+  sim = pmax(chemx + noise, 0)
+  sim
+}
+
+sims <- sim_iter %>% 
+ mutate(sim = map2(seed, chem, add_noise))
+```  
+
+```{r}
+dist <- sims$chem[[1]]
+
+sims$true_patterns[[1]]
+head(sims$true_scores[[1]])
+
+cor(dist)[1:10, 45:52]
+
+summary(dist)
+
+ggcorr(dist)
+```
+
+
+
+## Save
+
+```{r} 
+sims
+  
+# for (i in 1:nrow(sim_dgp)) {
+#   write_csv(as_tibble(sim_dgp$sim[[i]]),           paste0("./Sims/Main/sim_dgp_", i, ".csv"))
+#   write_csv(as_tibble(sim_dgp$chem[[i]]),          paste0("./Sims/Main/chem_dgp_", i, ".csv"))
+#   write_csv(as_tibble(sim_dgp$true_patterns[[i]]), paste0("./Sims/Main/patterns_dgp_", i, ".csv"))
+#   write_csv(as_tibble(sim_dgp$true_scores[[i]]),   paste0("./Sims/Main/scores_dgp_", i, ".csv"))
+# }
+
+# save(sim_dgp, file = "./Sims/Main/sim_dgp.RDA")
+
+
+
+```
+
