@@ -1,6 +1,6 @@
-simdata1 = readtable("/Users/lizzy/BN2MF/Sims/Main/sim_dgp_201.csv");
-patterns = readtable("/Users/lizzy/BN2MF/Sims/Main/patterns_dgp_201.csv");
-scores   = readtable("/Users/lizzy/BN2MF/Sims/Main/scores_dgp_201.csv");
+simdata1 = readtable("/Users/lizzy/BN2MF/Sims/Main/sim_dgp_102.csv");
+patterns = readtable("/Users/lizzy/BN2MF/Sims/Main/patterns_dgp_102.csv");
+scores   = readtable("/Users/lizzy/BN2MF/Sims/Main/scores_dgp_102.csv");
 
 %% Convert to output type
 simdata1 = table2array(simdata1);
@@ -129,36 +129,36 @@ for j = bootstraps
 end
 
 %% Save
-save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/ewa.mat", 'ewa');
-save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/ewa_scaled.mat", 'ewa_scaled');
+save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/over_ewa.mat", 'ewa');
+save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/over_ewa_scaled.mat", 'ewa_scaled');
 
-save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/eh.mat", 'eh');
-save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/eh_scaled.mat", 'eh_scaled');
+save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/over_eh.mat", 'eh');
+save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/over_eh_scaled.mat", 'eh_scaled');
 
 % CI are for scaled WA and norm H
-save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/upper_wa.mat", 'upper_wa');
-save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/ower_wa.mat", 'lower_wa');
+save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/over_upper_wa.mat", 'upper_wa');
+save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/over_lower_wa.mat", 'lower_wa');
 
-save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/upper_h.mat", 'upper_h');
-save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/lower_h.mat", 'lower_h');
+save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/over_upper_h.mat", 'upper_h');
+save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/over_lower_h.mat", 'lower_h');
 
 % Save variational distribution arrays, too
-save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/WA_dist.mat", 'ewa_dist_array', '-v7.3');
-save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/H_dist.mat", 'eh_dist_array');
-save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/sam_dist.mat", 'sam_dist_array');
+save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/over_WA_dist.mat", 'ewa_dist_array', '-v7.3');
+save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/over_H_dist.mat", 'eh_dist_array');
+save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/over_sam_dist.mat", 'sam_dist_array');
 
 % Cut ewa VCI in half
-ewa_dist_array_1_3 = ewa_dist_array(1:3,:);
+ewa_dist_array_1 = ewa_dist_array(1:25,:);
+ewa_dist_array_2 = ewa_dist_array(26:50,:);
+ewa_dist_array_3 = ewa_dist_array(51:75,:);
+ewa_dist_array_4 = ewa_dist_array(76:100,:);
+ewa_dist_array_5 = ewa_dist_array(101:125,:);
+ewa_dist_array_6 = ewa_dist_array(126:150,:);
 
-ewa_dist_array_1 = ewa_dist_array(1:50,:);
-ewa_dist_array_2 = ewa_dist_array(51:100,:);
-ewa_dist_array_3 = ewa_dist_array(101:150,:);
+save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/over_WA_dist_1.mat", 'ewa_dist_array_1');
+save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/over_WA_dist_2.mat", 'ewa_dist_array_2');
+save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/over_WA_dist_3.mat", 'ewa_dist_array_3');
+save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/over_WA_dist_4.mat", 'ewa_dist_array_4');
+save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/over_WA_dist_5.mat", 'ewa_dist_array_5');
+save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/over_WA_dist_6.mat", 'ewa_dist_array_6');
 
-save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/WA_dist_1_3.mat", 'ewa_dist_array_1_3');
-
-save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/WA_dist_1.mat", 'ewa_dist_array_1');
-save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/WA_dist_2.mat", 'ewa_dist_array_2');
-save("/Users/lizzy/BN2MF/Bootstrap/vci_on_bs/WA_dist_3.mat", 'ewa_dist_array_3');
-
-%% Get BS+VCI
-ewa_dist_array
