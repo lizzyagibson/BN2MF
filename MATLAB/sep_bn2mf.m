@@ -3,10 +3,10 @@
 % All H matrices are L1 normed
 % All WA matrices are scaled by the corresponding normalization constant
 
-for j = 1:100
-    simdata1 = readtable(strcat("/Users/lizzy/BN2MF/Sims/Sep/sim_sep_", num2str(j), ".csv"));
-    patterns = readtable(strcat("/Users/lizzy/BN2MF/Sims/Sep/patterns_sep_", num2str(j), ".csv"));
-    scores   = readtable(strcat("/Users/lizzy/BN2MF/Sims/Sep/scores_sep_", num2str(j), ".csv"));
+for j = 1:50
+    simdata1 = readtable(strcat("/Users/lizzy/BN2MF/Sims/troubleshoot/sim_q_", num2str(j), "_0.5.csv"));
+    patterns = readtable(strcat("/Users/lizzy/BN2MF/Sims/troubleshoot/patterns_q_", num2str(j), "_0.5.csv"));
+    scores   = readtable(strcat("/Users/lizzy/BN2MF/Sims/troubleshoot/scores_q_", num2str(j), "_0.5.csv"));
 
     %% Convert to output type
     simdata1 = table2array(simdata1);
@@ -102,23 +102,23 @@ for j = 1:100
     EWA_scaled = EWA * diag(EH_denom);
 
     % Save matrices
-    save(strcat("/Users/lizzy/BN2MF/Sep/sep_ewa_NOTscaled", num2str(j), ".mat"), 'EWA');
-    save(strcat("/Users/lizzy/BN2MF/Sep/sep_eh_NOTscaled",  num2str(j), ".mat"), 'EH');
+    save(strcat("/Users/lizzy/BN2MF/trouble_out/q_ewa_NOTscaled", num2str(j), "_0.5.mat"), 'EWA');
+    save(strcat("/Users/lizzy/BN2MF/trouble_out/q_eh_NOTscaled",  num2str(j), "_0.5.mat"), 'EH');
 
     % Save scaled versions, too
-    save(strcat("/Users/lizzy/BN2MF/Sep/sep_ewa_scaled", num2str(j), ".mat"), 'EWA_scaled');
-    save(strcat("/Users/lizzy/BN2MF/Sep/sep_eh_scaled",  num2str(j), ".mat"), 'EH_scaled');
+    save(strcat("/Users/lizzy/BN2MF/trouble_out/q_ewa_scaled", num2str(j), "_0.5.mat"), 'EWA_scaled');
+    save(strcat("/Users/lizzy/BN2MF/trouble_out/q_eh_scaled",  num2str(j), "_0.5.mat"), 'EH_scaled');
 
     % CI are for scaled WA and norm H
-    save(strcat("/Users/lizzy/BN2MF/Sep/sep_upperWA_", num2str(j), ".mat"), 'upper_ci_WA');
-    save(strcat("/Users/lizzy/BN2MF/Sep/sep_lowerWA_", num2str(j), ".mat"), 'lower_ci_WA');
+    save(strcat("/Users/lizzy/BN2MF/trouble_out/q_upperWA_", num2str(j), "_0.5.mat"), 'upper_ci_WA');
+    save(strcat("/Users/lizzy/BN2MF/trouble_out/q_lowerWA_", num2str(j), "_0.5.mat"), 'lower_ci_WA');
 
-    save(strcat("/Users/lizzy/BN2MF/Sep/sep_upperH_", num2str(j), ".mat"), 'upper_ci_H');
-    save(strcat("/Users/lizzy/BN2MF/Sep/sep_lowerH_", num2str(j), ".mat"), 'lower_ci_H');
+    save(strcat("/Users/lizzy/BN2MF/trouble_out/q_upperH_", num2str(j), "_0.5.mat"), 'upper_ci_H');
+    save(strcat("/Users/lizzy/BN2MF/trouble_out/q_lowerH_", num2str(j), "_0.5.mat"), 'lower_ci_H');
 
     % Save variational distribution arrays, too
-    save(strcat("/Users/lizzy/BN2MF/Sep/sep_distWA_", num2str(j), ".mat"), 'WA_scaled');
-    save(strcat("/Users/lizzy/BN2MF/Sep/sep_distEH_", num2str(j), ".mat"), 'H_scaled');
+    save(strcat("/Users/lizzy/BN2MF/trouble_out/q_distWA_", num2str(j), "_0.5.mat"), 'WA_scaled');
+    save(strcat("/Users/lizzy/BN2MF/trouble_out/q_distEH_", num2str(j), "_0.5.mat"), 'H_scaled');
 
     disp(j)
 end

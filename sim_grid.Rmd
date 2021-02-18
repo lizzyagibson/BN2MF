@@ -1,0 +1,117 @@
+---
+title: "Simulate Grid"
+author: "Lizzy Gibson"
+date: "3/5/2020"
+output: 
+  html_document:
+    toc: TRUE
+    toc_float: TRUE
+---
+
+```{r setup, include=FALSE}
+options(scipen = 999)
+
+library(MASS)
+library(tidyverse)
+library(GGally)
+library(openssl)
+library(LearnBayes)
+```
+
+## 1: Distinct Patterns
+
+### Simulate Patterns
+
+* Generate 4 non-negative vectors of length 40
+* Pattern matrix is 4*40, patterns by chemicals
+
+```{r}
+create_patterns <- function (seed, reps) {
+  set.seed(seed)
+  pat1=c(0,0,5,10)
+  pat2=c(0,5,10,0)
+  pat3=c(5,10,0,0)
+  pat4=c(10,0,0,5)
+  
+  start = c()
+  for (i in 1:reps) {
+    start = cbind(start,diag(1,4))
+  }
+  
+  patterns = cbind(start, t(rdirichlet(10-reps, pat1)), t(rdirichlet(10-reps, pat2)),
+                   t(rdirichlet(10-reps, pat3)), t(rdirichlet(10-reps, pat4)))
+  return(patterns)
+}
+
+seed = 1:10
+sep_num = 1:10
+noise_level = seq(0,1, 0.1)
+all_comb = expand_grid(seed, sep_num, noise_level)
+
+patterns_iter <- all_comb %>% 
+                   mutate(true_patterns = map2(seed, sep_num, create_patterns))
+```
+
+### Simulate Scores
+   
+```{r}
+create_scores <- function (seed) {
+  set.seed(seed)
+  scores <- matrix(exp(rnorm(1000*4)), ncol = 4)
+  return(as.matrix(scores))
+}
+
+scores_iter <- patterns_iter %>% 
+                mutate(true_scores = map(seed, create_scores))
+```
+
+### Simulate Chemical Exposures
+
+* Matrix multiple scores and pattern loadings
+
+```{r}
+sim_sep <- scores_iter %>% 
+            mutate(chem = map2(true_scores, true_patterns, `%*%`))
+```
+
+### Simulate Noise
+    
+```{r}
+add_noise <- function (seed, chem, noise_level) {
+  n = nrow(chem)
+  p = ncol(chem)
+  noise <- matrix(NA, nrow = n, ncol = p)
+  stdev = apply(chem, 2, sd)
+  
+  for (i in 1:p) {
+    noise[,i] <- (rnorm(n, mean = 0, sd = (stdev[i]*noise_level)))
+  }
+  
+  sim = pmax(chem + noise, 0)
+  sim
+}
+
+sim_dist <- sim_sep %>% 
+              mutate(sim = pmap(list(seed, chem, noise_level), add_noise))
+```  
+
+```{r}
+dist <- sim_dist$sim[[41]]
+ggcorr(dist)
+cor(dist)[1:5,1:5]
+```
+
+## Save
+
+```{r} 
+sim_dist
+
+# for (i in 1:nrow(sim_dist)) {
+#   write_csv(as_tibble(sim_dist$sim[[i]]),           paste0("./Sims/troubleshoot/sim_q_", i, "_0.5.csv"))
+#   write_csv(as_tibble(sim_dist$chem[[i]]),          paste0("./Sims/troubleshoot/chem_q_", i, "_0.5.csv"))
+#   write_csv(as_tibble(sim_dist$true_patterns[[i]]), paste0("./Sims/troubleshoot/patterns_q_", i, "_0.5.csv"))
+#   write_csv(as_tibble(sim_dist$true_scores[[i]]),   paste0("./Sims/troubleshoot/scores_q_", i, "_0.5.csv"))
+# }
+
+# save(sim_dist, file = "./Sims/sim_trouble_0.5.RDA")
+```
