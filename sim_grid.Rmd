@@ -34,9 +34,11 @@ create_patterns <- function (seed, reps) {
   pat4=c(10,0,0,5)
   
   start = c()
-  for (i in 1:reps) {
+  
+  if (reps != 0) { 
+    for (i in 1:reps) {
     start = cbind(start,diag(1,4))
-  }
+  }}
   
   patterns = cbind(start, t(rdirichlet(10-reps, pat1)), t(rdirichlet(10-reps, pat2)),
                    t(rdirichlet(10-reps, pat3)), t(rdirichlet(10-reps, pat4)))
