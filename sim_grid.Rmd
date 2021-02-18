@@ -44,7 +44,7 @@ create_patterns <- function (seed, reps) {
 }
 
 seed = 1:10
-sep_num = 1:10
+sep_num = 0:10
 noise_level = seq(0,1, 0.1)
 all_comb = expand_grid(seed, sep_num, noise_level)
 
@@ -91,12 +91,12 @@ add_noise <- function (seed, chem, noise_level) {
   sim
 }
 
-sim_dist <- sim_sep %>% 
+sim_sep <- sim_sep %>% 
               mutate(sim = pmap(list(seed, chem, noise_level), add_noise))
 ```  
 
 ```{r}
-dist <- sim_dist$sim[[41]]
+dist <- sim_sep$sim[[41]]
 ggcorr(dist)
 cor(dist)[1:5,1:5]
 ```
@@ -104,14 +104,14 @@ cor(dist)[1:5,1:5]
 ## Save
 
 ```{r} 
-sim_dist
+sim_sep
 
-# for (i in 1:nrow(sim_dist)) {
-#   write_csv(as_tibble(sim_dist$sim[[i]]),           paste0("./Sims/troubleshoot/sim_q_", i, "_0.5.csv"))
-#   write_csv(as_tibble(sim_dist$chem[[i]]),          paste0("./Sims/troubleshoot/chem_q_", i, "_0.5.csv"))
-#   write_csv(as_tibble(sim_dist$true_patterns[[i]]), paste0("./Sims/troubleshoot/patterns_q_", i, "_0.5.csv"))
-#   write_csv(as_tibble(sim_dist$true_scores[[i]]),   paste0("./Sims/troubleshoot/scores_q_", i, "_0.5.csv"))
+# for (i in 1:nrow(sim_sep)) {
+#   write_csv(as_tibble(sim_sep$sim[[i]]),           paste0("./Sims/Sep/sim_q_", i, ".csv"))
+#   write_csv(as_tibble(sim_sep$chem[[i]]),          paste0("./Sims/Sep/chem_q_", i, ".csv"))
+#   write_csv(as_tibble(sim_sep$true_patterns[[i]]), paste0("./Sims/Sep/patterns_q_", i, ".csv"))
+#   write_csv(as_tibble(sim_sep$true_scores[[i]]),   paste0("./Sims/Sep/scores_q_", i, ".csv"))
 # }
 
-# save(sim_dist, file = "./Sims/sim_trouble_0.5.RDA")
+# save(sim_sep, file = "./Sims/sim_sep.RDA")
 ```
