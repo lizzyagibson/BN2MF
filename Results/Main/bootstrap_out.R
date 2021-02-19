@@ -151,3 +151,9 @@ bs_vci_metrics
 all_bs_vci$bs_h_lower[[201]][,1:7]
 all_bs_vci$patterns_scaled[[201]][,1:7]
 all_bs_vci$bs_h_upper[[201]][,1:7]
+
+load("./Bootstrap/all_bs_vci.RDA")
+
+sum( all_bs_vci$scores_scaled[[1]] >= all_bs_vci$vci_wa_lower[[1]] & 
+       all_bs_vci$scores_scaled[[1]] <= all_bs_vci$vci_wa_upper[[1]]) / 4000
+
