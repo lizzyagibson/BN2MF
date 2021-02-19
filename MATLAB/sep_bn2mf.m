@@ -123,4 +123,3 @@ j = getenv('SGE_TASK_ID')
     save(strcat("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/sep_vci_out/q_distEH_", num2str(j), "_.mat"), 'H_scaled');
 
     disp(j)
-end
