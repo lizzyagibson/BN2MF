@@ -41,8 +41,17 @@ prop_table = metrics %>%
 
 prop_table %>% 
   ggplot(aes(x = sep_num, y = noise_level, fill = median)) +
-  geom_tile()
-  
+  geom_tile() +
+  geom_text(aes(label = round(median, 2)), size = 3.5, col = "coral") + 
+  scale_x_discrete(limits = rev) +
+  labs(x = "Number of distinct chemicals per pattern",
+       y = "Noise level (as proportion of true SD)",
+       fill = "Median coverage") +
+  theme_minimal() +
+  theme(legend.position = "bottom") + 
+  scale_fill_distiller(palette = "YlGnBu", direction = 1)
+
+
 
 
 
