@@ -104,22 +104,22 @@ j = getenv('SGE_TASK_ID')
     EWA_scaled = EWA * diag(EH_denom);
 
     % Save matrices
-    save(strcat("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/sep_vci_out/q_ewa_NOTscaled", num2str(j), "_.mat"), 'EWA');
-    save(strcat("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/sep_vci_out/q_eh_NOTscaled",  num2str(j), "_.mat"), 'EH');
+    save(strcat("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/sep_vci_out/q_ewa_NOTscaled", num2str(j), ".mat"), 'EWA');
+    save(strcat("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/sep_vci_out/q_eh_NOTscaled",  num2str(j), ".mat"), 'EH');
 
     % Save scaled versions, too
-    save(strcat("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/sep_vci_out/q_ewa_scaled", num2str(j), "_.mat"), 'EWA_scaled');
-    save(strcat("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/sep_vci_out/q_eh_scaled",  num2str(j), "_.mat"), 'EH_scaled');
+    save(strcat("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/sep_vci_out/q_ewa_scaled", num2str(j), ".mat"), 'EWA_scaled');
+    save(strcat("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/sep_vci_out/q_eh_scaled",  num2str(j), ".mat"), 'EH_scaled');
 
     % CI are for scaled WA and norm H
-    save(strcat("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/sep_vci_out/q_upperWA_", num2str(j), "_.mat"), 'upper_ci_WA');
-    save(strcat("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/sep_vci_out/q_lowerWA_", num2str(j), "_.mat"), 'lower_ci_WA');
+    save(strcat("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/sep_vci_out/q_upperWA_", num2str(j), ".mat"), 'upper_ci_WA');
+    save(strcat("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/sep_vci_out/q_lowerWA_", num2str(j), ".mat"), 'lower_ci_WA');
 
-    save(strcat("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/sep_vci_out/q_upperH_", num2str(j), "_.mat"), 'upper_ci_H');
-    save(strcat("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/sep_vci_out/q_lowerH_", num2str(j), "_.mat"), 'lower_ci_H');
+    save(strcat("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/sep_vci_out/q_upperH_", num2str(j), ".mat"), 'upper_ci_H');
+    save(strcat("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/sep_vci_out/q_lowerH_", num2str(j), ".mat"), 'lower_ci_H');
 
     % Save variational distribution arrays, too
-    save(strcat("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/sep_vci_out/q_distWA_", num2str(j), "_.mat"), 'WA_scaled');
-    save(strcat("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/sep_vci_out/q_distEH_", num2str(j), "_.mat"), 'H_scaled');
+    save(strcat("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/sep_vci_out/q_distWA_", num2str(j), ".mat"), 'WA_scaled');
+    save(strcat("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/sep_vci_out/q_distEH_", num2str(j), ".mat"), 'H_scaled');
 
     disp(j)
