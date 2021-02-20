@@ -4,7 +4,7 @@
 ## & to choose number of factors/components
 
 # Packages
-if (here::here(getwd()) == "/Users/lizzy/BN2MF") {
+if (getwd() == "/Users/lizzy/BN2MF") {
   library(tidyverse)
   library(R.matlab)
   library(psych)
@@ -55,30 +55,52 @@ get_fa <- function (sim, patterns) {
   patternsm1 = ifelse(patterns == 1, 3, patterns - 1)
   patternsp1 = patterns+1
   
-  fa_3 <- try(fa(sim, patternsm1, scores = "regression", rotate = "promax", fm = "ml"))
-  fa_4 <- try(fa(sim, patterns,   scores = "regression", rotate = "promax", fm = "ml"))
-  fa_5 <- try(fa(sim, patternsp1, scores = "regression", rotate = "promax", fm = "ml"))
+  my_fa <- function(x, px){
+    tryCatch(
+      expr = {
+        fa_xx <- fa(x, px, scores = "regression", rotate = "promax", fm = "ml")
+        return(fa_xx)
+      },
+      error = function(e){
+        return(NA)
+      },
+      warning = function(w){
+        return(NA)
+      })}
+  
+  fa_3 <- my_fa(sim, patternsm1)
+  fa_4 <- my_fa(sim, patterns)   
+  fa_5 <- my_fa(sim, patternsp1) 
   
   # Choose the model with the LOWEST BIC
-  if(all(class(fa_3) == "try-error")) {fa_3$BIC = NA}
-  if(all(class(fa_4) == "try-error")) {fa_4$BIC = NA}
-  if(all(class(fa_5) == "try-error")) {fa_5$BIC = NA}
+  if(any(is.na(fa_3))) {fa_3BIC = NA} else {fa_3BIC = fa_3$BIC}
+  if(any(is.na(fa_4))) {fa_4BIC = NA} else {fa_4BIC = fa_4$BIC}
+  if(any(is.na(fa_5))) {fa_5BIC = NA} else {fa_5BIC = fa_5$BIC}
   
-  if (min(fa_5$BIC, fa_4$BIC, fa_3$BIC, na.rm = T) == fa_5$BIC & !is.na(fa_5$BIC)) {
-    fa_out <- fa_5
-    rank <- patternsm1
-  } else if (min(fa_5$BIC, fa_4$BIC, fa_3$BIC, na.rm = T) == fa_4$BIC & !is.na(fa_4$BIC)) {
-    fa_out <- fa_4
-    rank <- patterns
-  } else {
-    fa_out <- fa_3
-    rank <- patternsp1
+  if (!any(is.na(fa_3BIC)) | !any(is.na(fa_4BIC)) | !any(is.na(fa_5BIC))) {
+      if (min(fa_5BIC, fa_4BIC, fa_3BIC, na.rm = T) == fa_5BIC & !is.na(fa_5BIC)) {
+        fa_out <- fa_5
+        rank <- patternsm1
+      } else if (min(fa_5BIC, fa_4BIC, fa_3BIC, na.rm = T) == fa_4BIC & !is.na(fa_4BIC)) {
+        fa_out <- fa_4
+        rank <- patterns
+      } else {
+        fa_out <- fa_3
+        rank <- patternsp1
+      }
+    } else {
+    fa_out = NA
+    rank = NA
   }
   
-  loadings <- matrix(fa_out$loadings, ncol = ncol(fa_out$scores))
-  fa_scores <- fa_out$scores
-  pred <- fa_scores %*% t(loadings)
-  return(list(loadings = loadings, fa_scores = fa_scores, pred = pred, rank = rank))
+  if (!any(is.na(fa_out))) {
+    loadings <- matrix(fa_out$loadings, ncol = ncol(fa_out$scores))
+    fa_scores <- fa_out$scores
+    pred <- fa_scores %*% t(loadings)
+    return(list(loadings = loadings, fa_scores = fa_scores, pred = pred, rank = rank))
+  } else {
+    return(list(loadings = NA, fa_scores = NA, pred = NA, rank = NA))
+  }
 }
 
 # Calculate BIC
@@ -161,6 +183,8 @@ get_nmfp <- function (sim, patterns) {
 # Symmetric Subspace Distance 
 symm_subspace_dist <- function(U, V) {
   
+  if(any(is.na(U)) | any(is.na(V))) {return(NA)} else {
+    
     U = as.matrix(U)
     V = as.matrix(V)
     
@@ -174,10 +198,21 @@ symm_subspace_dist <- function(U, V) {
     m <- ncol(U)
     n <- ncol(V)
   
-    dUV <- sqrt( max(m,n) - sum((t(qrU) %*% qrV)^2) )
-  
-    ratio <- dUV/sqrt( max(m,n))
+    tryCatch(
+      {dUV <- sqrt( max(m,n) - sum((t(qrU) %*% qrV)^2) )
+      },
+      error = function(er){
+        dUV = NA
+      },
+      warning = function(cond){
+        dUV = NA
+      })
+    
+    if(round((max(m,n) - sum((t(qrU) %*% qrV)^2)),10) == 0) {dUV = 0} # if sqrt(0), make zero
+    
+    if (!is.na(dUV)) {ratio <- dUV/sqrt( max(m,n))} else {ratio = NA}
     return(ratio)
+  }
 }
 
 # Cosine distance (matrix version)
