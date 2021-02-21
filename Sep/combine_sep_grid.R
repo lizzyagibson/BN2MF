@@ -1,8 +1,7 @@
 #### Packages ####
+
 library(tidyverse)
 source("./Results/compare_functions.R")
-library(furrr)
-plan(strategy = multiprocess)
 
 #### Load Data ####
 
