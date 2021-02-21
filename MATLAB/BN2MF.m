@@ -88,7 +88,7 @@ for iter = 1:num_iter
 end
 
 end_score(i) = score(find(score,1,'last'));  
-disp(['Run Number: ' num2str(i) '. Iter Number: ' num2str(iter) '. Iter Score: ' num2str(end_score(i))]); 
+%disp(['Run Number: ' num2str(i) '. Iter Number: ' num2str(iter) '. Iter Score: ' num2str(end_score(i))]); 
 
 % Among the results, use the fitted variational parameters that achieve the HIGHEST ELBO
 if i == 1 || (i > 1 && (end_score(i) >= max(end_score)))
