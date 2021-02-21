@@ -121,5 +121,3 @@ metrics_sum %>%
        y = "Noise level (as proportion of true SD)") +
   theme(legend.position = "bottom") + 
   scale_fill_distiller(palette = "YlGnBu", direction = -1)
-
-
