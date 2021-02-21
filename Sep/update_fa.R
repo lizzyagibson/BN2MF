@@ -16,3 +16,5 @@ sep_out_fa <- sim_sep %>%
          fa_perm      = map2(true_patterns, fa_loadings, get_perm, nn = FALSE), # Rearrange
          fa_loadings  = map2(fa_loadings, fa_perm, get_perm_product),
          fa_scores    = map2(fa_scores, fa_perm, get_perm_product))
+
+save(sep_out_fa, file = "./Sep/sep_out_fa.RDA")
