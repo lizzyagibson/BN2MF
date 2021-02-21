@@ -96,7 +96,8 @@ get_fa <- function (sim, patterns) {
   if (!any(is.na(fa_out))) {
     loadings <- matrix(fa_out$loadings, ncol = ncol(fa_out$scores))
     fa_scores <- fa_out$scores
-    pred <- fa_scores %*% t(loadings)
+    # Pred should include mean
+    pred <- fa_scores %*% t(loadings) + matrix(rep(apply(sim, 2, mean), each= nrow(fa_scores)), nrow = nrow(fa_scores))
     return(list(loadings = loadings, fa_scores = fa_scores, pred = pred, rank = rank))
   } else {
     return(list(loadings = NA, fa_scores = NA, pred = NA, rank = NA))
