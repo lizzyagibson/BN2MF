@@ -4,7 +4,7 @@
 ## & to choose number of factors/components
 
 # Packages
-if (getwd() == "/Users/lizzy/BN2MF") {
+if (grepl("/Users/lizzy/", getwd())) {
   library(tidyverse)
   library(R.matlab)
   library(psych)
