@@ -18,3 +18,14 @@ sep_out_fa <- sim_sep %>%
          fa_scores    = map2(fa_scores, fa_perm, get_perm_product))
 
 save(sep_out_fa, file = "./Sep/sep_out_fa.RDA")
+
+sep_out_fa = sep_out_fa %>% 
+  dplyr::select(seed:noise_level, fa_pred)
+
+load("./Sep/combined_models.RDA")
+sep_r = sep_r %>% 
+  dplyr::select(-fa_pred) %>% 
+  full_join(., sep_out_fa) %>% 
+  dplyr::select(1:10, fa_pred, 11:22)
+
+save(sep_r, file = "./Sep/combined_models.RDA")
