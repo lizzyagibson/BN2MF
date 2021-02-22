@@ -13,17 +13,11 @@ job_num
 
 sim <- read_csv(paste0("/ifs/scratch/msph/ehs/eag2186/Data/sep_csv_sim/sim_sep_", job_num, ".csv")) %>% 
             as_tibble() %>% 
-            nest(sim = c(V1, V2, V3, V4, V5, V6, V7, V8, V9, V10, V11, V12, V13, V14, 
-                          V15, V16, V17, V18, V19, V20, V21, V22, V23, V24, V25, V26, 
-                          V27, V28, V29, V30, V31, V32, V33, V34, V35, V36, V37, V38, 
-                          V39, V40))
+            nest(sim = c(V1:V40))
 
 true_patterns <- read_csv(paste0("/ifs/scratch/msph/ehs/eag2186/Data/sep_csv_patterns/patterns_sep_", job_num, ".csv")) %>% 
   as_tibble() %>% 
-  nest(true_partterns = c(V1, V2, V3, V4, V5, V6, V7, V8, V9, V10, V11, V12, V13, V14, 
-               V15, V16, V17, V18, V19, V20, V21, V22, V23, V24, V25, V26, 
-               V27, V28, V29, V30, V31, V32, V33, V34, V35, V36, V37, V38, 
-               V39, V40))
+  nest(true_patterns = c(V1:V40))
 
 sim_sep = bind_cols(sim, true_patterns)
 
