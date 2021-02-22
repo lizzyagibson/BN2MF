@@ -1,0 +1,122 @@
+---
+title: "BN2MF Patterns <> Sources"
+author: "Lizzy Gibson"
+date: "2/21/2021"
+output:
+  html_document:
+    toc: yes
+    toc_float: yes
+    toc_depth: 4
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE)
+options(scipen = 999)
+library(haven)
+library(tidyverse)
+library(janitor)
+library(broom)
+library(tableone)
+library(knitr)
+library(R.matlab)
+library(MNdata)
+library(gplots)
+```
+
+## Read Data
+
+```{r read}
+bn2mf_scores <- readMat("./Apply/mn2_EWA.mat")[[1]] %>% as_tibble() 
+cor(bn2mf_scores)
+
+personal <- mn_edc %>% 
+  drop_na(MECPP_sg_adj:bpa_sg_adj) %>% # complete case edcs to match with scores
+  select(sid, eth:creme_rinse) # covariates and personal care products
+```
+
+### Merge Data
+
+```{r}
+dat <- bind_cols(personal, bn2mf_scores)
+
+dat <- dat %>% drop_na()
+#write_csv(scores_pcp, "./Data/scores_pcp.csv")
+```
+
+## Exposure Model
+
+Put 2 BN2mF-identified patterns (continuous outcomes) into linear regression w/ age, ethnicity to estimate association with personal care product use (count or binary exposures).
+
+```{r}
+#function to take component and binary personal care product, regress, and output as tibble
+product_model <- function(V, product) {
+
+model <- lm(get(V) ~ get(product) + eth + age, data = dat)
+
+betas_confint <- as.data.frame(model$coefficient[2]) %>% rownames_to_column() %>% 
+  cbind(., as_tibble(confint(model))[2,]) %>%
+  mutate(pvalue = summary(model)$coefficients[2, 4]) %>% 
+  rename(beta = 2, lower = 3, upper = 4) %>% 
+  mutate(product = product,
+         pattern = V) %>% 
+  as_tibble()
+
+betas_confint
+
+}
+
+product_model("V1", "care")
+#This works
+
+#Create lists of components and products
+patterns = c("V1", "V2")
+products = colnames(scores[, 6:19])
+
+models = tibble()
+#loop through lm for each pattern/product combo
+for (i in 1:length(patterns)) {
+  for (j in 1:length(products)) {
+  model_out <- product_model(patterns[i], products[j])
+  models = bind_rows(models, model_out)
+  }
+}
+
+models = models %>% 
+          dplyr::select(-rowname) %>% 
+          mutate(product = str_to_title(str_replace_all(product, "_", " ")))
+```
+
+### Associations
+
+```{r}
+models
+
+models %>% 
+  filter(pvalue < 0.05) %>% arrange(pattern)
+```
+
+### Heat Map
+
+```{r}
+heat <- models %>% select(beta, pattern, product) %>% 
+  spread(pattern, beta) %>%
+  select(-product) %>% 
+  as.matrix()
+
+row.names(heat) <- models %>% select(beta, pattern, product) %>% 
+  spread(pattern, beta) %>% 
+  select(product) %>% as.matrix(.)
+
+## Plot heatmap 
+cool = rainbow(50, start=rgb2hsv(col2rgb('cyan'))[1], end=rgb2hsv(col2rgb('blue'))[1])
+warm = rainbow(50, start=rgb2hsv(col2rgb('red'))[1], end=rgb2hsv(col2rgb('yellow'))[1])
+cols = c(rev(cool), rev(warm))
+
+pcp_model_heatmap <- heatmap.2(heat, key.xlab = "Beta Coefficients", 
+                               margins =c(4,8), Colv = FALSE, keysize = 1.25,
+          col = cols, density.info="none", trace="none", dendrogram = "none", key.title = "")
+#dev.off()
+```
+
+
+

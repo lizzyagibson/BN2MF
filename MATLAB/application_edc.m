@@ -33,6 +33,8 @@ tic()
 [EWA, EH, varH, alphaH, betaH, alphaW, betaW, ...
     alphaA, betaA, varWA, finalscore, final_iter, init_seed_struct] = BN2MF(dataNorm, 500);
 toc()
+% Final Iter Score: 2598.8304
+% ~10min
 
 labels = ["mecpp", "mehhp", "meohp", "mcpp", "mibp", "mbp", "mbzp", "mep", "mehp", ...
     "dcp_24", "dcp_25", "b_pb", "bp_3", "m_pb", "p_pb", "tcs", "bpa"];
@@ -50,7 +52,7 @@ subplot(2,1,2);
 stem(EHp(2,:));
 set(gca,'XTick',1:size(EHp,2));
 set(gca,'XTickLabels',labels);
-% 2Final Iter Score: 2638.712
+
 
 %% Get VCI
 
@@ -106,12 +108,12 @@ EH_scaled = EH ./ EH_denom;
 EWA_scaled = EWA * diag(EH_denom);
 
 %% SAVE 
-% [EWA, EH, varH, alphaH, betaH, alphaW, betaW, alphaA, betaA, varWA]
+%[EWA, EH, varH, alphaH, betaH, alphaW, betaW, alphaA, betaA, varWA]
 
 % save("/Users/lizzy/BN2MF/Apply/mn2_EWA.mat", 'EWA_scaled');
 % save("/Users/lizzy/BN2MF/Apply/mn2_EH.mat", 'EH_scaled');
 % 
-% save("/Users/lizzy/BN2MF/Apply/mn_WA_upper.mat", 'upper_ci_WA');
-% save("/Users/lizzy/BN2MF/Apply/mn_WA_lower.mat", 'lower_ci_WA');
+% save("/Users/lizzy/BN2MF/Apply/mn2_WA_upper.mat", 'upper_ci_WA');
+% save("/Users/lizzy/BN2MF/Apply/mn2_WA_lower.mat", 'lower_ci_WA');
 % 
-% save("/Users/lizzy/BN2MF/Apply/mn_all.mat");
+% save("/Users/lizzy/BN2MF/Apply/mn2_all.mat");
