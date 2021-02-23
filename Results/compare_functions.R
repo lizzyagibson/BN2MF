@@ -20,6 +20,7 @@ if (grepl("/Users/lizzy/", getwd())) {
   library(NMF, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
   library(CVXR, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
   library(GPArotation, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
+  library(ellipsis,lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
 }
 
 # PCA

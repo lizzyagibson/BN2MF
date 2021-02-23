@@ -52,6 +52,7 @@ sep_metrics = all_sep %>%
   mutate(truth = case_when(matrix == "loadings" ~ true_patterns,
                            matrix == "scores" ~ true_scores,
                            matrix == "pred" ~ chem),
+         truth = map(truth, function(df) df[,colSums(is.na(df))<nrow(df)]),
          relerr  = map2(truth, value, get_relerror),
          ssdist  = map2(truth, value, symm_subspace_dist),
          cosdist = map2(truth, value, cos_dist)) %>%
