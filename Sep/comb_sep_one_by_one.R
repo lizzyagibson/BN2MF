@@ -60,5 +60,5 @@ sep_metrics = all_sep %>%
 
 #### Save ####
 
-save(sep_rank,    file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/sep_metrics/sep_rank_", job_num, ".RDA"))
+save(sep_rank,    file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/sep_rank/sep_rank_", job_num, ".RDA"))
 save(sep_metrics, file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/sep_metrics/sep_metrics_", job_num, ".RDA"))
