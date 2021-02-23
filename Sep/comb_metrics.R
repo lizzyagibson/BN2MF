@@ -24,7 +24,7 @@ rm(all_rank)
 for (j in 1:12100) {
   load(paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/sep_metrics/sep_metrics_", j, ".RDA"))
   all_metrics = bind_rows(all_metrics, sep_metrics)
-  if (i %% 100 == 0) {print(j)}
+  if (j %% 100 == 0) {print(j)}
 }
 
 save(all_metrics, file = "/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/all_metrics.RDA")
