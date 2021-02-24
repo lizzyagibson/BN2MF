@@ -1,9 +1,9 @@
-#### Packages ####
+# Packages ####
 
 source("./Results/compare_functions.R")
 source("./Results/fig_set.R")
 
-#### Load Data ####
+# Load Data ####
 
 # BN2MF output
 load("./Sep/m_rank.RDA")
@@ -24,7 +24,7 @@ load("./Sep/all_rank.RDA")
 all_metrics
 all_rank
 
-#### VCI ####
+# VCI ####
 sep_vci = bind_cols(sim_sep, m_rank, m_prop[,1])
 sep_vci
 
@@ -51,7 +51,7 @@ prop_table %>%
   theme(legend.text = element_text(size = 10))
 #dev.off()
 
-#### Rank ####
+# Rank ####
 bn2mf_rank = bind_cols(sim_sep, m_rank)
 
 sim_sep_4 = bind_rows(sim_sep, sim_sep, sim_sep, sim_sep)
@@ -110,7 +110,7 @@ get_rank %>%
   mutate_if(is_integer, ~replace_na(., 0)) %>% 
   knitr::kable()
 
-#### ERROR ####
+# Metrics ####
 sim_sep_3 = bind_rows(sim_sep, sim_sep, sim_sep)
 
 bn2mf_metrics = m_metrics %>% 
@@ -122,45 +122,27 @@ sim_sep_12 = bind_rows(sim_sep_4, sim_sep_4, sim_sep_4)
 get_metrics = all_metrics %>% 
                 arrange(model, matrix) %>% 
                 bind_cols(., sim_sep_12) %>% 
-                bind_rows(bn2mf_metrics)
+                bind_rows(bn2mf_metrics) %>% 
+                mutate(model = str_to_upper(model),
+                       matrix = str_to_title(matrix))
+get_metrics
 
-###
-sep_all = sep_r %>% 
-  mutate_at(vars(1:3), as.factor) %>% 
-  full_join(., sep_bn2mf) %>% 
-  dplyr::select(!grep("(scaled|upper|lower|denom)", colnames(.))) %>% 
-  dplyr::select(true_scores, id, everything())
-sep_all
-
-##### Metrics ####
-# metrics = sep_all %>%
-#   dplyr::select(!grep("rank", colnames(.))) %>% 
-#     pivot_longer(pca_pred:bn2mf_pred,
-#                  names_to = c("model", "matrix"),
-#                  names_sep = "_") %>% 
-#   mutate(truth = case_when(matrix == "loadings" ~ true_patterns,
-#                            matrix == "scores" ~ true_scores,
-#                            matrix == "pred" ~ chem),
-#          relerr  = map2(truth, value, get_relerror),
-#          ssdist  = map2(truth, value, symm_subspace_dist),
-#          cosdist = map2(truth, value, cos_dist)) %>% 
-#   unnest(c(relerr, ssdist, cosdist)) %>% 
-#   dplyr::select(-true_scores, -id, -true_patterns, -chem, -sim, -value, -truth)
-
-#save(metrics, file = "./Sep/sep_grid_metrics.RDA")
-load("./Sep/sep_grid_metrics.RDA")
-metrics = metrics %>% 
-  mutate(model = str_to_upper(model)) %>% 
-  filter(sep_num %in% c(0, 10) & noise_level %in% c(0.5, 1)) %>% 
-  mutate(sep = ifelse(sep_num == 10, "Distinct Patterns", "Overlapping Patterns"),
-         noise = ifelse(noise_level == 0.5, "Noise +50%", "Noise +100%"))
+metrics = get_metrics %>% 
+          filter(sep_num %in% c(0, 10) & noise_level %in% c(0.2, 0.5, 1)) %>% 
+          mutate(sep = ifelse(sep_num == 10, "Distinct Patterns", "Overlapping Patterns"),
+                 noise = case_when(noise_level == 0.2 ~ "Noise +20%",
+                                   noise_level == 0.5 ~ "Noise +50%", 
+                                   TRUE ~ "Noise +100%"))
 
 metrics %>% 
   ggplot(aes(x = model, y = relerr, fill = model)) +
   geom_boxplot() +
   facet_wrap(.~matrix, scales = "free_y") +
   scale_y_log10() +
-  theme_bw()
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(x = "", y = "Relative error", fill = "",
+       title = "Across all simulations (noise levels and separability)")
 
 pdf("./Figures/sep_loadings_pred.pdf", height = 10, width = 5)
 metrics %>% 
