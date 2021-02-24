@@ -204,21 +204,45 @@ metrics %>%
 
 # Tables ####
 metrics_sum =  metrics %>%
-                group_by(sep_num, noise_level, model, matrix) %>% 
+                group_by(sep, noise, model, matrix) %>% 
                 summarize(mean_relerr = mean(relerr, na.rm=TRUE),
                           sd_relerr  = sd(relerr, na.rm = TRUE),
                           mean_ssdist = mean(ssdist, na.rm=T),
                           sd_ssdist  = sd(ssdist, na.rm = T),
                           mean_cosdist = mean(cosdist, na.rm=T),
                           sd_cosdist  = sd(cosdist, na.rm = T))
+metrics_sum
 
-metrics_sum %>% 
-  mutate_if(is.numeric, ~round(., 3)) %>% 
-  mutate_all(as.character) %>% 
-  mutate_at(vars(5:10), ~ifelse(. == "0", "<0.001", .)) %>% 
-  mutate_at(vars(5:10), ~ifelse(grepl("(\\.\\d\\d)$", .), str_c(., "0"), .)) %>%  # if #.##, add zero to end
-  mutate_at(vars(5:10), ~ifelse(grepl("(\\.\\d)$", .), str_c(., "00"), .)) %>% 
-  mutate(RelErr = str_c(mean_relerr, " (", sd_relerr, ")"),
-         CosDist = str_c(mean_cosdist, " (", sd_cosdist, ")"),
-         SSDist = str_c(mean_ssdist, " (", sd_ssdist, ")")) %>% 
-  dplyr::select(-grep("(mean|sd)", colnames(.)))
+for_table = metrics_sum %>% 
+            ungroup() %>% 
+            mutate_if(is.numeric, ~round(., 2)) %>% 
+            mutate_all(as.character) %>% 
+            mutate_at(vars(5:10), ~ifelse(. == "0", "<0.01", .)) %>% 
+            mutate_at(vars(5:10), ~ifelse(grepl("(\\.\\d)$", .), str_c(., "0"), .)) %>% # if #.#, add zero to end
+            mutate_at(vars(5:10), ~ifelse(!grepl("(\\.)", .), str_c(., ".00"), .)) %>%
+            mutate(RelErr = str_c(mean_relerr, " (", sd_relerr, ")"),
+                   CosDist = str_c(mean_cosdist, " (", sd_cosdist, ")"),
+                   SSDist = str_c(mean_ssdist, " (", sd_ssdist, ")")) %>% 
+            dplyr::select(-grep("(mean|sd)", colnames(.))) %>% 
+            mutate_at(vars(5:7), ~ifelse(is.na(.), "---", .))
+
+# relative error table ####
+error_table = for_table %>% 
+              dplyr::select(-CosDist, -SSDist) %>% 
+              pivot_wider(names_from = matrix,
+                          values_from = RelErr) %>% 
+              arrange(sep, noise, model) %>% 
+              dplyr::select(sep:model, Pred, Scores, Loadings)
+
+xtable::xtable(error_table)
+
+# other metrics table ####
+other_table = for_table %>% 
+  dplyr::select(-RelErr) %>% 
+  pivot_wider(names_from = matrix,
+              values_from = c(CosDist, SSDist)) %>% 
+  arrange(sep, noise, model) %>% 
+  dplyr::select(sep:model, CosDist_Pred, CosDist_Scores, CosDist_Loadings, 
+                SSDist_Pred, SSDist_Scores, SSDist_Loadings)
+
+xtable::xtable(other_table)
