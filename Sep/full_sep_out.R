@@ -53,13 +53,14 @@ prop_table %>%
 
 #### Rank ####
 bn2mf_rank = bind_cols(sim_sep, m_rank)
-pca_rank   = all_rank %>% filter(model == "pca")   %>% bind_cols(., sim_sep)
-fa_rank    = all_rank %>% filter(model == "fa")    %>% bind_cols(., sim_sep)
-nmfl2_rank = all_rank %>% filter(model == "nmfl2") %>% bind_cols(., sim_sep)
-nmfp_rank  = all_rank %>% filter(model == "nmfp")  %>% bind_cols(., sim_sep)
 
-get_rank = bind_rows(bn2mf_rank, pca_rank, fa_rank, nmfl2_rank, nmfp_rank) %>% 
-  dplyr::select(-drop) %>% mutate(model = str_to_upper(model))
+sim_sep_4 = bind_rows(sim_sep, sim_sep, sim_sep, sim_sep)
+
+get_rank = all_rank %>% 
+              arrange(model) %>% 
+              bind_cols(., sim_sep_4) %>% 
+              bind_rows(bn2mf_rank) %>% 
+              dplyr::select(-drop)
 get_rank
 
 get_rank %>% 
@@ -82,10 +83,48 @@ get_rank %>%
   dplyr::select(Model, `0`, everything()) %>% 
   knitr::kable()
 
-#### ERROR ####
-m_metrics
-all_metrics
+get_rank %>%
+  filter(rank != 4) %>% 
+  group_by(model) %>% 
+  summarise(n = n()) %>% 
+  mutate(prop_right = 1 - n/12100)
 
+get_rank %>%
+  filter(rank != 4) %>% 
+  group_by(model, noise_level) %>% 
+  summarise(n = n()) %>% 
+  pivot_wider(names_from = noise_level,
+              values_from = "n") %>% 
+  rename_all(str_to_title) %>% 
+  mutate_if(is_integer, ~replace_na(., 0)) %>% 
+  dplyr::select(Model:`0.1`, `0.2`:`0.3`, `0.4`:`0.6`, `0.7`, everything()) %>% 
+  knitr::kable()
+
+get_rank %>%
+  filter(rank != 4) %>% 
+  group_by(model, sep_num) %>% 
+  summarise(n = n()) %>% 
+  pivot_wider(names_from = sep_num,
+              values_from = "n") %>% 
+  rename_all(str_to_title) %>% 
+  mutate_if(is_integer, ~replace_na(., 0)) %>% 
+  knitr::kable()
+
+#### ERROR ####
+sim_sep_3 = bind_rows(sim_sep, sim_sep, sim_sep)
+
+bn2mf_metrics = m_metrics %>% 
+                  arrange(matrix) %>% 
+                  bind_cols(., sim_sep_3)
+
+sim_sep_12 = bind_rows(sim_sep_4, sim_sep_4, sim_sep_4)
+
+get_metrics = all_metrics %>% 
+                arrange(model, matrix) %>% 
+                bind_cols(., sim_sep_12) %>% 
+                bind_rows(bn2mf_metrics)
+
+###
 sep_all = sep_r %>% 
   mutate_at(vars(1:3), as.factor) %>% 
   full_join(., sep_bn2mf) %>% 
