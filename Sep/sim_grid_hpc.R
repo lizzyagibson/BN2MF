@@ -67,12 +67,13 @@ sim_sep <- sim_sep %>%
 ## Save
 sim_sep
 
-for (i in 1:nrow(sim_sep)) {
-  write_csv(as_tibble(sim_sep$sim[[i]]),           paste0("/ifs/scratch/msph/ehs/eag2186/Data/sep_csv/sim_sep_", i, ".csv"))
-  write_csv(as_tibble(sim_sep$chem[[i]]),          paste0("/ifs/scratch/msph/ehs/eag2186/Data/sep_csv/chem_sep_", i, ".csv"))
-  write_csv(as_tibble(sim_sep$true_patterns[[i]]), paste0("/ifs/scratch/msph/ehs/eag2186/Data/sep_csv/patterns_sep_", i, ".csv"))
-  write_csv(as_tibble(sim_sep$true_scores[[i]]),   paste0("/ifs/scratch/msph/ehs/eag2186/Data/sep_csv/scores_sep_", i, ".csv"))
-}
-
-save(sim_sep, file = "/ifs/scratch/msph/ehs/eag2186/Data/sim_sep_grid.RDA")
+# for (i in 1:nrow(sim_sep)) {
+#   write_csv(as_tibble(sim_sep$sim[[i]]),           paste0("/ifs/scratch/msph/ehs/eag2186/Data/sep_csv/sim_sep_", i, ".csv"))
+#   write_csv(as_tibble(sim_sep$chem[[i]]),          paste0("/ifs/scratch/msph/ehs/eag2186/Data/sep_csv/chem_sep_", i, ".csv"))
+#   write_csv(as_tibble(sim_sep$true_patterns[[i]]), paste0("/ifs/scratch/msph/ehs/eag2186/Data/sep_csv/patterns_sep_", i, ".csv"))
+#   write_csv(as_tibble(sim_sep$true_scores[[i]]),   paste0("/ifs/scratch/msph/ehs/eag2186/Data/sep_csv/scores_sep_", i, ".csv"))
+# }
+# 
+# save(sim_sep, file = "/ifs/scratch/msph/ehs/eag2186/Data/sim_sep_grid.RDA")
+save(sim_sep, file = "./Sims/sim_full.RDA")
 
