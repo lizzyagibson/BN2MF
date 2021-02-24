@@ -1,6 +1,5 @@
 #### Packages ####
 
-library(tidyverse)
 source("./Results/compare_functions.R")
 source("./Results/fig_set.R")
 
@@ -10,7 +9,6 @@ source("./Results/fig_set.R")
 load("./Sep/m_rank.RDA")
 load("./Sep/m_metrics.RDA")
 load("./Sep/m_prop.RDA")
-m_prop = m_prop %>% dplyr::select(-`NA`) %>% slice(-1) # First row repeats
 
 m_metrics
 m_rank
@@ -18,25 +16,16 @@ m_prop
 
 # Simulations
 load("./Sims/sim_full.RDA")
-sim_sep
+sim_sep = sim_sep %>% dplyr::select(1:3) %>% mutate_all(as.factor)
 
 # R output of comparison models
-#load("./Sep/combined_models.RDA")
-#sep_r
-
-#### Normalize truth ####
-sim_sep = sim_sep %>% 
-  mutate(denom = map(true_patterns, function(x) apply(x, 1, sum)),
-         true_patternsscaled = map2(true_patterns, denom, function(x,y) x/y),
-         true_scoresscaled = map2(true_scores, denom, function(x,y) as.matrix(x) %*% diag(y)),
-         id = 1:nrow(.)) %>% 
-  mutate_at(vars(1:3), as.factor)
-
+load("./Sep/all_metrics.RDA")
+load("./Sep/all_rank.RDA")
+all_metrics
+all_rank
 
 #### VCI ####
-sep_vci = bind_cols(sim_sep, m_rank, m_prop[,1]) %>% 
-          dplyr::select(-true_patterns, -true_scores, -chem, -denom, -true_patternsscaled, 
-                -true_scoresscaled)
+sep_vci = bind_cols(sim_sep, m_rank, m_prop[,1])
 sep_vci
 
 prop_table = sep_vci %>%
@@ -48,7 +37,7 @@ prop_table = sep_vci %>%
   rename(median = `0.5`)
 
 #pdf("./Figures/sep_noise_heat_100.pdf")
-prop_table %>% 
+prop_table %>%
   ggplot(aes(x = sep_num, y = noise_level, fill = median)) +
   geom_tile() +
   geom_text(aes(label = median), size = 3.5, col = "coral") + 
@@ -62,7 +51,40 @@ prop_table %>%
   theme(legend.text = element_text(size = 10))
 #dev.off()
 
+#### Rank ####
+bn2mf_rank = bind_cols(sim_sep, m_rank)
+pca_rank   = all_rank %>% filter(model == "pca")   %>% bind_cols(., sim_sep)
+fa_rank    = all_rank %>% filter(model == "fa")    %>% bind_cols(., sim_sep)
+nmfl2_rank = all_rank %>% filter(model == "nmfl2") %>% bind_cols(., sim_sep)
+nmfp_rank  = all_rank %>% filter(model == "nmfp")  %>% bind_cols(., sim_sep)
+
+get_rank = bind_rows(bn2mf_rank, pca_rank, fa_rank, nmfl2_rank, nmfp_rank) %>% 
+  dplyr::select(-drop) %>% mutate(model = str_to_upper(model))
+get_rank
+
+get_rank %>% 
+  group_by(model, rank_bin) %>% 
+  summarise(n = n()) %>% 
+  pivot_wider(names_from = "rank_bin",
+              values_from = "n") %>% 
+  rename_all(str_to_title) %>% 
+  knitr::kable()
+
+get_rank %>% 
+  mutate(rank_f = case_when(rank > 6 ~ ">6",
+                            TRUE ~ as.character(rank))) %>% 
+  group_by(model, rank_f) %>% 
+  summarise(n = n()) %>% 
+  pivot_wider(names_from = "rank_f",
+              values_from = "n") %>% 
+  rename_all(str_to_title) %>% 
+  mutate_if(is_integer, ~replace_na(., 0)) %>% 
+  dplyr::select(Model, `0`, everything()) %>% 
+  knitr::kable()
+
 #### ERROR ####
+m_metrics
+all_metrics
 
 sep_all = sep_r %>% 
   mutate_at(vars(1:3), as.factor) %>% 
@@ -70,21 +92,6 @@ sep_all = sep_r %>%
   dplyr::select(!grep("(scaled|upper|lower|denom)", colnames(.))) %>% 
   dplyr::select(true_scores, id, everything())
 sep_all
-
-#### Rank ####
-sep_rank = sep_all %>% 
-  dplyr::select(seed, sep_num, noise_level, grep("rank", colnames(.))) %>% 
-  pivot_longer(pca_rank:bn2mf_rank,
-               names_to = c("model", "drop"),
-               names_sep = "_",
-               values_to = "rank") %>% 
-  unnest(rank) %>% 
-  mutate(rank = ifelse(is.na(rank), 0, rank),
-         rank_bin = ifelse(rank ==4, "right", "wrong"))
-
-sep_rank %>% 
-  group_by(model, rank_bin) %>% 
-  summarise(n = n())
 
 ##### Metrics ####
 # metrics = sep_all %>%

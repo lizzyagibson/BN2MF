@@ -9,11 +9,11 @@ job_num
 
 chem <- read_csv(paste0("/ifs/scratch/msph/ehs/eag2186/Data/sep_csv_chem/chem_sep_", job_num, ".csv")) %>% 
   as_tibble() %>% 
-  nest(chem = c(V1:V40))
+  nest(data = c(V1:V40)) %>% rename(chem = data)
 
 true_scores <- read_csv(paste0("/ifs/scratch/msph/ehs/eag2186/Data/sep_csv_scores/scores_sep_", job_num, ".csv")) %>% 
   as_tibble() %>% 
-  nest(true_scores = c(V1:V4))
+  nest(data = c(V1:V4)) %>% rename(true_scores = data)
 
 load(paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/sep_models_out/sep_out_", job_num, ".RDA"))
 
