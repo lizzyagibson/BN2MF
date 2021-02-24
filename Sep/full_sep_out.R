@@ -2,6 +2,7 @@
 
 source("./Results/compare_functions.R")
 source("./Results/fig_set.R")
+options(scipen = 999)
 
 # Load Data ####
 
@@ -36,7 +37,7 @@ prop_table = sep_vci %>%
   mutate_if(is.numeric, round, 2) %>% 
   rename(median = `0.5`)
 
-#pdf("./Figures/sep_noise_heat_100.pdf")
+##pdf("./Figures/sep_noise_heat_100.#pdf")
 prop_table %>%
   ggplot(aes(x = sep_num, y = noise_level, fill = median)) +
   geom_tile() +
@@ -49,7 +50,7 @@ prop_table %>%
   theme(legend.position = "bottom") + 
   scale_fill_distiller(palette = "YlGnBu", direction = 1) +
   theme(legend.text = element_text(size = 10))
-#dev.off()
+##dev.off()
 
 # Rank ####
 bn2mf_rank = bind_cols(sim_sep, m_rank)
@@ -134,6 +135,7 @@ metrics = get_metrics %>%
                                    noise_level == 0.5 ~ "Noise +50%", 
                                    TRUE ~ "Noise +100%"))
 
+# Plots ####
 metrics %>% 
   ggplot(aes(x = model, y = relerr, fill = model)) +
   geom_boxplot() +
@@ -144,9 +146,10 @@ metrics %>%
   labs(x = "", y = "Relative error", fill = "",
        title = "Across all simulations (noise levels and separability)")
 
-pdf("./Figures/sep_loadings_pred.pdf", height = 10, width = 5)
+#pdf("./Figures/sep_loadings_pred_100.#pdf")
 metrics %>% 
-  filter(matrix == "loadings") %>% 
+  filter(matrix == "Loadings") %>% 
+  mutate(noise = fct_inorder(noise)) %>% 
   ggplot(aes(x = model, y = relerr, fill = model, col = model)) +
   geom_boxplot(alpha = 0.5, outlier.size = 0.5) +
   facet_grid(sep~noise) +
@@ -157,14 +160,15 @@ metrics %>%
   theme(axis.text.x = element_blank(),
         strip.background =element_rect(fill="white"),
         legend.direction = "horizontal",
-        legend.position = c(0.365, -0.04), # c(0,0) bottom left, c(1,1) top-right.
+        legend.position = c(0.5, -0.05), # c(0,0) bottom left, c(1,1) top-right.
         legend.text = element_text(size = 14))
-dev.off()
+#dev.off()
 
-pdf("./Figures/sep_scores_pred.pdf", height = 10, width = 5)
+#pdf("./Figures/sep_scores_pred_100.#pdf")
 metrics %>% 
-  filter(sep_num %in% c(0, 10) & noise_level %in% c(0.5, 1)) %>% 
-  filter(matrix == "scores") %>% 
+  filter(sep_num %in% c(0, 10) & noise_level %in% c(0.2, 0.5, 1)) %>% 
+  filter(matrix == "Scores") %>% 
+  mutate(noise = fct_inorder(noise)) %>%
   ggplot(aes(x = model, y = relerr, fill = model, col = model)) +
   geom_boxplot(alpha = 0.5, outlier.size = 0.5) +
   facet_grid(sep~noise, scales = "free_y") +
@@ -175,14 +179,15 @@ metrics %>%
   theme(axis.text.x = element_blank(),
         strip.background =element_rect(fill="white"),
         legend.direction = "horizontal",
-        legend.position = c(0.44, -0.04), # c(0,0) bottom left, c(1,1) top-right.
+        legend.position = c(0.5, -0.05), # c(0,0) bottom left, c(1,1) top-right.
         legend.text = element_text(size = 14))
-dev.off()
+#dev.off()
 
-pdf("./Figures/sep_overall_pred.pdf", height = 10, width = 5)
+#pdf("./Figures/sep_overall_pred100.#pdf")
 metrics %>% 
-  filter(sep_num %in% c(0, 10) & noise_level %in% c(0.5, 1)) %>% 
-  filter(matrix == "pred") %>% 
+  filter(sep_num %in% c(0, 10) & noise_level %in% c(0.2, 0.5, 1)) %>% 
+  filter(matrix == "Pred") %>% 
+  mutate(noise = fct_inorder(noise)) %>%
   ggplot(aes(x = model, y = relerr, fill = model, col = model)) +
   geom_boxplot(alpha = 0.5, outlier.size = 0.5) +
   facet_grid(sep~noise, scales = "free_y") +
@@ -193,26 +198,27 @@ metrics %>%
   theme(axis.text.x = element_blank(),
         strip.background =element_rect(fill="white"),
         legend.direction = "horizontal",
-        legend.position = c(0.425, -0.04), # c(0,0) bottom left, c(1,1) top-right.
+        legend.position = c(0.5, -0.05), # c(0,0) bottom left, c(1,1) top-right.
         legend.text = element_text(size = 14))
-dev.off()
+#dev.off()
 
-# Summary ####
-# Can make a heatmap for everything, but not ideal
-metrics_sum = metrics %>%
-  group_by(sep_num, noise_level, model, matrix) %>% 
-  summarize(relerr = mean(relerr, na.rm=T),
-            ssdist = mean(ssdist, na.rm=T),
-            cosdist = mean(cosdist, na.rm=T))
+# Tables ####
+metrics_sum =  metrics %>%
+                group_by(sep_num, noise_level, model, matrix) %>% 
+                summarize(mean_relerr = mean(relerr, na.rm=TRUE),
+                          sd_relerr  = sd(relerr, na.rm = TRUE),
+                          mean_ssdist = mean(ssdist, na.rm=T),
+                          sd_ssdist  = sd(ssdist, na.rm = T),
+                          mean_cosdist = mean(cosdist, na.rm=T),
+                          sd_cosdist  = sd(cosdist, na.rm = T))
 
-metrics_sum %>%   
-  filter(model == "nmfp" & matrix == "scores") %>% 
-  ggplot(aes(x = sep_num, y = noise_level, fill = relerr)) +
-  geom_tile() +
-  geom_text(aes(label = round(relerr, 2)), size = 3.5, col = "coral") + 
-  scale_x_discrete(limits = rev) +
-  theme_minimal() +
-  labs(x = "Number of distinct chemicals per pattern",
-       y = "Noise level (as proportion of true SD)") +
-  theme(legend.position = "bottom") + 
-  scale_fill_distiller(palette = "YlGnBu", direction = -1)
+metrics_sum %>% 
+  mutate_if(is.numeric, ~round(., 3)) %>% 
+  mutate_all(as.character) %>% 
+  mutate_at(vars(5:10), ~ifelse(. == "0", "<0.001", .)) %>% 
+  mutate_at(vars(5:10), ~ifelse(grepl("(\\.\\d\\d)$", .), str_c(., "0"), .)) %>%  # if #.##, add zero to end
+  mutate_at(vars(5:10), ~ifelse(grepl("(\\.\\d)$", .), str_c(., "00"), .)) %>% 
+  mutate(RelErr = str_c(mean_relerr, " (", sd_relerr, ")"),
+         CosDist = str_c(mean_cosdist, " (", sd_cosdist, ")"),
+         SSDist = str_c(mean_ssdist, " (", sd_ssdist, ")")) %>% 
+  dplyr::select(-grep("(mean|sd)", colnames(.)))
