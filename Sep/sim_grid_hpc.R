@@ -77,3 +77,13 @@ sim_sep
 # save(sim_sep, file = "/ifs/scratch/msph/ehs/eag2186/Data/sim_sep_grid.RDA")
 save(sim_sep, file = "./Sims/sim_full.RDA")
 
+# Bootstrap subsample ####
+bs_sample = sim_sep %>% 
+              mutate(id = 1:nrow(.)) %>% 
+              filter(sep_num %in% c(0,10) & noise_level %in% c(0.2, 0.5, 1))
+
+bs_ids = as_tibble(bs_sample$id)
+#write_csv(bs_ids, "./Sep/bs_ids.csv")
+
+boots = 1:150
+expand_grid(bs_ids, boots)
