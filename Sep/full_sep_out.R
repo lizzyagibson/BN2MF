@@ -25,6 +25,12 @@ load("./Sep/all_rank.RDA")
 all_metrics
 all_rank
 
+# Bootstrapped output
+load("./Sep/bs_prop.RDA")
+load("./Sep/bs_sample.RDA")
+bs_prop
+bs_sample
+
 # VCI ####
 sep_vci = bind_cols(sim_sep, m_rank, m_prop[,1])
 sep_vci
@@ -35,9 +41,10 @@ prop_table = sep_vci %>%
   pivot_wider(names_from = "prob",
               values_from = "qs") %>% 
   mutate_if(is.numeric, round, 2) %>% 
-  rename(median = `0.5`)
+  rename(median = `0.5`) %>% 
+  mutate_at(vars(1:2), as.factor)
 
-##pdf("./Figures/sep_noise_heat_100.#pdf")
+##pdf("./Figures/sep_noise_heat_100.pdf")
 prop_table %>%
   ggplot(aes(x = sep_num, y = noise_level, fill = median)) +
   geom_tile() +
@@ -51,6 +58,34 @@ prop_table %>%
   scale_fill_distiller(palette = "YlGnBu", direction = 1) +
   theme(legend.text = element_text(size = 10))
 ##dev.off()
+
+# Bootstrapped CI ####
+
+sep_bs = bind_cols(bs_sample, bs_prop)
+sep_bs
+
+bs_table = sep_bs %>%
+  group_by(sep_num, noise_level) %>% 
+  summarise(qs = quantile(prop, c(0.25, 0.5, 0.75), na.rm = TRUE), prob = c(0.25, "median", 0.75)) %>% 
+  pivot_wider(names_from = "prob",
+              values_from = "qs") %>% 
+  mutate_if(is.numeric, round, 2) %>% 
+  mutate_at(vars(1:2), as.factor)
+
+pdf("./Figures/bs_heat_100.pdf")
+bs_table %>%
+  ggplot(aes(x = sep_num, y = noise_level, fill = median)) +
+  geom_tile() +
+  geom_text(aes(label = median), size = 7, col = "coral") + 
+  scale_x_discrete(limits = rev) +
+  labs(x = "Number of distinct chemicals per pattern",
+       y = "Noise level (as proportion of true SD)",
+       fill = "Median coverage") +
+  theme_test(20) +
+  theme(legend.position = "bottom") + 
+  scale_fill_distiller(palette = "YlGnBu", direction = 1) +
+  theme(legend.text = element_text(size = 10))
+dev.off()
 
 # Rank ####
 bn2mf_rank = bind_cols(sim_sep, m_rank)

@@ -84,6 +84,7 @@ bs_sample = sim_sep %>%
 
 bs_ids = as_tibble(bs_sample$id)
 #write_csv(bs_ids, "./Sep/bs_ids.csv")
+#save(bs_sample, file = "./Sep/bs_sample.RDA")
 
 boots = 1:150
 expand_grid(bs_ids, boots)
