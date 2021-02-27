@@ -77,4 +77,6 @@ EWA_sam = [sam' EWA_final];
 
 path = "/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/bs/";
 save(strcat(path, "bootstrap_ewa/ewa_bs_sim_",   num2str(runn), "_bs_", num2str(boot),  ".mat"), 'EWA_sam');
+save(strcat(path, "bootstrap_ewa/eh_bs_sim_",   num2str(runn), "_bs_", num2str(boot),  ".mat"), 'EH_scaled');
+save(strcat(path, "bootstrap_ewa/pred_bs_sim_",   num2str(runn), "_bs_", num2str(boot),  ".mat"), 'pred');
 % Results go into `get_ex_bootstrap.R`, and `bootstrap_combo.R`

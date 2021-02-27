@@ -48,10 +48,10 @@ prop_table = sep_vci %>%
 prop_table %>%
   ggplot(aes(x = sep_num, y = noise_level, fill = median)) +
   geom_tile() +
-  geom_text(aes(label = median), size = 3.5, col = "coral") + 
+  geom_text(aes(label = median), size = 4.5, col = "coral") + 
   scale_x_discrete(limits = rev) +
   labs(x = "Number of distinct chemicals per pattern",
-       y = "Noise level (as proportion of true SD)",
+       y = expression("Noise level as proportion of true "*sigma),
        fill = "Median coverage") +
   theme_test(base_size = 20) +
   theme(legend.position = "bottom") + 
@@ -62,7 +62,7 @@ prop_table %>%
 # Bootstrapped CI ####
 
 sep_bs = bind_cols(bs_sample, bs_prop)
-sep_bs
+sep_bs %>% arrange(desc(prop))
 
 bs_table = sep_bs %>%
   group_by(sep_num, noise_level) %>% 
@@ -72,7 +72,7 @@ bs_table = sep_bs %>%
   mutate_if(is.numeric, round, 2) %>% 
   mutate_at(vars(1:2), as.factor)
 
-pdf("./Figures/bs_heat_100.pdf")
+#pdf("./Figures/bs_heat_100.pdf")
 bs_table %>%
   ggplot(aes(x = sep_num, y = noise_level, fill = median)) +
   geom_tile() +
@@ -85,7 +85,7 @@ bs_table %>%
   theme(legend.position = "bottom") + 
   scale_fill_distiller(palette = "YlGnBu", direction = 1) +
   theme(legend.text = element_text(size = 10))
-dev.off()
+#dev.off()
 
 # Rank ####
 bn2mf_rank = bind_cols(sim_sep, m_rank)
@@ -146,6 +146,16 @@ get_rank %>%
   mutate_if(is_integer, ~replace_na(., 0)) %>% 
   knitr::kable()
 
+get_rank %>%
+  filter(rank == 4 & model == "pca") %>% 
+  group_by(model, sep_num, noise_level) %>% 
+  summarise(n = n()) %>% 
+  pivot_wider(names_from = sep_num,
+              values_from = "n") %>% 
+  rename_all(str_to_title) %>% 
+  mutate_if(is_integer, ~replace_na(., 0)) %>% 
+  knitr::kable()
+
 # Metrics ####
 sim_sep_3 = bind_rows(sim_sep, sim_sep, sim_sep)
 
@@ -181,7 +191,7 @@ metrics %>%
   labs(x = "", y = "Relative error", fill = "",
        title = "Across all simulations (noise levels and separability)")
 
-#pdf("./Figures/sep_loadings_pred_100.#pdf")
+#pdf("./Figures/sep_loadings_pred_100.pdf")
 metrics %>% 
   filter(matrix == "Loadings") %>% 
   mutate(noise = fct_inorder(noise)) %>% 
@@ -190,8 +200,7 @@ metrics %>%
   facet_grid(sep~noise) +
   scale_y_log10() + 
   theme_bw(base_size = 20) + 
-  labs(x = "", y = "Relative error", fill = "", col = "",
-       title = "Loadings") + 
+  labs(x = "", y = "Relative Prediction Error", fill = "", col = "") + 
   theme(axis.text.x = element_blank(),
         strip.background =element_rect(fill="white"),
         legend.direction = "horizontal",
@@ -199,7 +208,7 @@ metrics %>%
         legend.text = element_text(size = 14))
 #dev.off()
 
-#pdf("./Figures/sep_scores_pred_100.#pdf")
+#pdf("./Figures/sep_scores_pred_100.pdf")
 metrics %>% 
   filter(sep_num %in% c(0, 10) & noise_level %in% c(0.2, 0.5, 1)) %>% 
   filter(matrix == "Scores") %>% 
@@ -209,8 +218,7 @@ metrics %>%
   facet_grid(sep~noise, scales = "free_y") +
   scale_y_log10() + 
   theme_bw(base_size = 20) + 
-  labs(x = "", y = "Relative error", fill = "", col = "",
-       title = "Scores") + 
+  labs(x = "", y = "Relative Prediction Error", fill = "", col = "") + 
   theme(axis.text.x = element_blank(),
         strip.background =element_rect(fill="white"),
         legend.direction = "horizontal",
@@ -218,7 +226,7 @@ metrics %>%
         legend.text = element_text(size = 14))
 #dev.off()
 
-#pdf("./Figures/sep_overall_pred100.#pdf")
+#pdf("./Figures/sep_overall_pred100.pdf")
 metrics %>% 
   filter(sep_num %in% c(0, 10) & noise_level %in% c(0.2, 0.5, 1)) %>% 
   filter(matrix == "Pred") %>% 
@@ -228,8 +236,7 @@ metrics %>%
   facet_grid(sep~noise, scales = "free_y") +
   scale_y_log10() + 
   theme_bw(base_size = 20) + 
-  labs(x = "", y = "Relative error", fill = "", col = "",
-       title = "Overall") + 
+  labs(x = "", y = "Relative Prediction Error", fill = "", col = "") + 
   theme(axis.text.x = element_blank(),
         strip.background =element_rect(fill="white"),
         legend.direction = "horizontal",
