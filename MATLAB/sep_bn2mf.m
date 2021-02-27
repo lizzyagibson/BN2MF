@@ -104,8 +104,8 @@ j = getenv('SGE_TASK_ID')
     EWA_scaled = EWA * diag(EH_denom);
 
     % Save matrices
-    save(strcat("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/sep_vci_out/q_ewa_NOTscaled", num2str(j), ".mat"), 'EWA');
-    save(strcat("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/sep_vci_out/q_eh_NOTscaled",  num2str(j), ".mat"), 'EH');
+    %save(strcat("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/sep_vci_out/q_ewa_NOTscaled", num2str(j), ".mat"), 'EWA');
+    %save(strcat("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/sep_vci_out/q_eh_NOTscaled",  num2str(j), ".mat"), 'EH');
 
     % Save scaled versions, too
     save(strcat("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/sep_vci_out/q_ewa_scaled", num2str(j), ".mat"), 'EWA_scaled');
@@ -121,5 +121,8 @@ j = getenv('SGE_TASK_ID')
     % Save variational distribution arrays, too
     save(strcat("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/sep_vci_out/q_distWA_", num2str(j), ".mat"), 'WA_scaled');
     save(strcat("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/sep_vci_out/q_distEH_", num2str(j), ".mat"), 'H_scaled');
+
+    % Save pred
+    save(strcat("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/sep_vci_out/q_pred_", num2str(j), ".mat"), 'pred');
 
     disp(j)
