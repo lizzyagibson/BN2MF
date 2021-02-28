@@ -2,6 +2,7 @@
 # Packages
 library(tidyverse, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
 library(LearnBayes, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
+library(Matrix)
 
 ## 1: Distinct Patterns
 ### Simulate Patterns
@@ -66,6 +67,10 @@ sim_sep <- sim_sep %>%
 
 ## Save
 sim_sep
+
+sim_sep %>% 
+  mutate(rank = map(chem, rankMatrix)) %>% 
+  unnest(rank) %>% pull(rank) %>% table()
 
 # for (i in 1:nrow(sim_sep)) {
 #   write_csv(as_tibble(sim_sep$sim[[i]]),           paste0("/ifs/scratch/msph/ehs/eag2186/Data/sep_csv/sim_sep_", i, ".csv"))

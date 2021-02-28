@@ -145,17 +145,17 @@ ewa_plot = tibble(Distribution = plot_wa_v_dist) %>%
   drop_na(.)
 
 # EH ####
-plot_true_patterns  = patterns_scaled[4,4]
-plot_h_v_dist  = vci_eh_dist[4,4,]
-plot_h_bs_dist = bs_eh[4,4,]
+plot_true_patterns  = patterns_scaled[4,7]
+plot_h_v_dist  = vci_eh_dist[4,7,]
+plot_h_bs_dist = bs_eh[4,7,]
 
 plot_bs_eh    = median(plot_h_bs_dist, na.rm = T)
 plot_bs_h_25  = quantile(plot_h_bs_dist, 0.025, na.rm = T)
 plot_bs_h_75  = quantile(plot_h_bs_dist, 0.975, na.rm = T)
 
-plot_v_eh   = vci_eh[4,4]
-plot_v_h_25 = vci_eh_lower[4,4]
-plot_v_h_75 = vci_eh_upper[4,4]
+plot_v_eh   = vci_eh[4,7]
+plot_v_h_25 = vci_eh_lower[4,7]
+plot_v_h_75 = vci_eh_upper[4,7]
 
 eh_plot = tibble(Distribution = plot_h_v_dist) %>% 
   mutate(Type = "Variational") %>% 
@@ -183,65 +183,70 @@ pred_plot = tibble(Distribution = plot_pred_v_dist) %>%
   drop_na(.)
 
 # Viz ####
+red = "#BC3C29FF"
+blue = "#0072B5FF"
+
 wa_look = ewa_plot %>% 
   ggplot(aes(x = Distribution)) +
   geom_histogram(aes(y= after_stat(density),fill = Type), 
-                 position = "identity", bins = 100, alpha = 0.5) +
+                 position = "identity", bins = 100, alpha = 0.75) +
   geom_density(aes(group = Type)) +
-  scale_fill_manual(values = c("red", "blue")) +
-  theme_bw() + 
+  scale_fill_manual(values = c(red, blue)) +
+  theme_bw(base_size = 15) + 
   geom_vline(aes(xintercept = plot_true_score),  linetype="dashed", color = "black") +
-  geom_vline(aes(xintercept = plot_bs_ewa), linetype="dashed", color = "red") + 
-  geom_vline(aes(xintercept = plot_v_ewa),  linetype="dashed", color = "blue") + 
-  geom_vline(aes(xintercept = plot_bs_wa_25), linetype="dotted", color = "red") + 
-  geom_vline(aes(xintercept = plot_v_wa_25),  linetype="dotted", color = "blue") + 
-  geom_vline(aes(xintercept = plot_bs_wa_75), linetype="dotted", color = "red") + 
-  geom_vline(aes(xintercept = plot_v_wa_75),  linetype="dotted", color = "blue") + 
+  geom_vline(aes(xintercept = plot_bs_ewa), linetype="dashed", color = red) + 
+  geom_vline(aes(xintercept = plot_v_ewa),  linetype="dashed", color = blue) + 
+  geom_vline(aes(xintercept = plot_bs_wa_25), linetype="dotted", color = red) + 
+  geom_vline(aes(xintercept = plot_v_wa_25),  linetype="dotted", color = blue) + 
+  geom_vline(aes(xintercept = plot_bs_wa_75), linetype="dotted", color = red) + 
+  geom_vline(aes(xintercept = plot_v_wa_75),  linetype="dotted", color = blue) + 
   theme(legend.position = "bottom",
         strip.background = element_rect(fill="white")) +
-  ylab("Density") + ggtitle("Distributions on Scores E[Wa}") #+ xlim(c(0,20))
+  ylab("Density") + ggtitle("Distributions on Scores E[Wa]")
 wa_look    
 
 h_look = eh_plot %>% 
   ggplot(aes(x = Distribution)) +
   geom_histogram(aes(y= after_stat(density),fill = Type), 
-                 position = "identity", bins = 100, alpha = 0.5) +
+                 position = "identity", bins = 100, alpha = 0.75) +
   geom_density(aes(group = Type)) +
-  scale_fill_manual(values = c("red", "blue")) +
-  theme_bw() + 
+  scale_fill_manual(values = c(red, blue)) +
+  theme_bw(base_size = 15) + 
   geom_vline(aes(xintercept = plot_true_patterns),  linetype="dashed", color = "black") +
-  geom_vline(aes(xintercept = plot_bs_eh), linetype="dashed", color = "red") + 
-  geom_vline(aes(xintercept = plot_v_eh),  linetype="dashed", color = "blue") + 
-  geom_vline(aes(xintercept = plot_bs_h_25), linetype="dotted", color = "red") + 
-  geom_vline(aes(xintercept = plot_v_h_25),  linetype="dotted", color = "blue") + 
-  geom_vline(aes(xintercept = plot_bs_h_75), linetype="dotted", color = "red") + 
-  geom_vline(aes(xintercept = plot_v_h_75),  linetype="dotted", color = "blue") + 
+  geom_vline(aes(xintercept = plot_bs_eh), linetype="dashed", color = red) + 
+  geom_vline(aes(xintercept = plot_v_eh),  linetype="dashed", color = blue) + 
+  geom_vline(aes(xintercept = plot_bs_h_25), linetype="dotted", color = red) + 
+  geom_vline(aes(xintercept = plot_v_h_25),  linetype="dotted", color = blue) + 
+  geom_vline(aes(xintercept = plot_bs_h_75), linetype="dotted", color = red) + 
+  geom_vline(aes(xintercept = plot_v_h_75),  linetype="dotted", color = blue) + 
   theme(legend.position = "bottom",
         strip.background = element_rect(fill="white")) +
-  ylab("Density") + ggtitle("Distributions on Patterns E[H]") #+ xlim(c(0,20))
+  ylab("Density") + ggtitle("Distributions on Patterns E[H]") 
 h_look    
 
 pred_look = 
   pred_plot %>% 
   ggplot(aes(x = Distribution)) +
   geom_histogram(aes(y= after_stat(density),fill = Type), 
-                 position = "identity", bins = 100, alpha = 0.5) +
+                 position = "identity", bins = 100, alpha = 0.75) +
   geom_density(aes(group = Type), adjust = 2) +
-  scale_fill_manual(values = c("red", "blue")) +
-  theme_bw() + 
+  scale_fill_manual(values = c(red, blue)) +
+  theme_bw(base_size = 15) + 
   geom_vline(aes(xintercept = plot_chem),  linetype="dashed", color = "black") +
-  geom_vline(aes(xintercept = plot_bs_pred), linetype="dashed", color = "red") + 
-  geom_vline(aes(xintercept = plot_v_pred),  linetype="dashed", color = "blue") + 
-  geom_vline(aes(xintercept = plot_bs_pred_25), linetype="dotted", color = "red") + 
-  geom_vline(aes(xintercept = plot_v_pred_25),  linetype="dotted", color = "blue") + 
-  geom_vline(aes(xintercept = plot_bs_pred_75), linetype="dotted", color = "red") + 
-  geom_vline(aes(xintercept = plot_v_pred_75),  linetype="dotted", color = "blue") + 
+  geom_vline(aes(xintercept = plot_bs_pred), linetype="dashed", color = red) + 
+  geom_vline(aes(xintercept = plot_v_pred),  linetype="dashed", color = blue) + 
+  geom_vline(aes(xintercept = plot_bs_pred_25), linetype="dotted", color = red) + 
+  geom_vline(aes(xintercept = plot_v_pred_25),  linetype="dotted", color = blue) + 
+  geom_vline(aes(xintercept = plot_bs_pred_75), linetype="dotted", color = red) + 
+  geom_vline(aes(xintercept = plot_v_pred_75),  linetype="dotted", color = blue) + 
   theme(legend.position = "bottom",
         strip.background = element_rect(fill="white")) +
-  ylab("Density") + ggtitle("Distributions on Predicted Values E[WaH]") #+ xlim(c(0,20))
+  ylab("Density") + ggtitle("Distributions on Predicted Values E[WaH]")
 pred_look    
 
+pdf("./Figures/vci_bci.pdf", width = 10, height = 8)
 (wa_look + theme(legend.position = "none")) / (h_look + theme(legend.position = "none")) / pred_look
+dev.off()
 
 # Summary
 

@@ -17,6 +17,7 @@ theme_set(theme_bw(base_size = 26) +
 
 ggsci <- pal_nejm()(8)
 
+
 options(
   ggplot2.discrete.colour = ggsci,
   ggplot2.discrete.fill = ggsci)

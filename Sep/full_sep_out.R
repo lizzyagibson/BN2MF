@@ -56,8 +56,25 @@ prop_table %>%
   theme_test(base_size = 20) +
   theme(legend.position = "bottom") + 
   scale_fill_distiller(palette = "YlGnBu", direction = 1) +
-  theme(legend.text = element_text(size = 10))
+  theme(legend.text = element_text(size = 30))
 ##dev.off()
+
+#pdf("./Figures/sep_noise_line_100.pdf", width = 6)
+prop_table %>%
+  mutate(Separable = ifelse(sep_num == 0, "No", "Yes")) %>% 
+  ggplot(aes(x = noise_level, y = median, group = sep_num, color = Separable)) +
+  geom_errorbar(aes(ymin = `0.25`, ymax = `0.75`), width = .1) +
+  geom_point() + 
+  geom_line() + 
+  #scale_x_discrete(limits = rev) +
+  labs(fill = "Number of distinct chemicals per pattern",
+       x = expression("Noise level as proportion of true "*sigma),
+       y = "Variational confidence interval coverage") +
+  theme_test(base_size = 20) +
+  theme(legend.position = "bottom") + 
+  #theme(legend.text = element_text(size = 30)) +
+  scale_color_nejm()
+#dev.off()
 
 # Bootstrapped CI ####
 
