@@ -56,30 +56,23 @@ for j = 1:11
     % This creates an empirical distribution for each
     W_dist  = zeros(n, k, draws);
     A_dist  = zeros(1, k, draws);
-    H_dist  = zeros(k, p, draws);
     WA_dist = zeros(n, k, draws);
 
     for i = 1:draws
         W_dist(:,:,i)  = gamrnd(alphaW, thetaW);
         A_dist(:,:,i)  = gamrnd(alphaA, thetaA);
-        H_dist(:,:,i)  = gamrnd(alphaH, thetaH);
         WA_dist(:,:,i) = W_dist(:,:,i) * diag(A_dist(:,:,i));
     end
 
     % Normalize all H matrices to L1 norm across chemicals
-    H_denom  = sum(H_dist, 2);
-    H_scaled = H_dist ./ H_denom;
-
-    % Create CI
-    upper_ci_H = quantile(H_scaled, 0.975, 3);
-    lower_ci_H = quantile(H_scaled, 0.025, 3);
+    H_denom  = sum(patterns, 2);
 
     % Scale all WA matrices by corresponding normalization constant
     % This creates a scaled empirical distribution for scores
     WA_scaled = zeros(1000, k, draws);
 
     for i = 1:draws
-        WA_scaled(:,:,i) = WA_dist(:,:,i) * diag(H_denom(:,:,i));
+        WA_scaled(:,:,i) = WA_dist(:,:,i) * diag(H_denom(:,:));
     end
 
     % Create CI
@@ -87,9 +80,9 @@ for j = 1:11
     lower_ci_WA = quantile(WA_scaled, 0.025, 3);
 
     % Normalize  expected values, too
-    EH_denom = sum(EH, 2);
-    EH_scaled = EH ./ EH_denom;
-    EWA_scaled = EWA * diag(EH_denom);
+    H_denom = sum(EH, 2);
+    EH_scaled = EH ./ H_denom;
+    EWA_scaled = EWA * diag(H_denom);
 
     % Compare error and coverage across noise levels
     prop = sum(sum(scores_scaled <= upper_ci_WA & scores_scaled >= lower_ci_WA))/4000
@@ -100,4 +93,5 @@ for j = 1:11
     score_err2 = norm(scores_scaled - EWA_scaled, 'fro')/norm(scores_scaled, 'fro')
     
     out(j,:) = [j prop pred_err load_err score_err load_err2 score_err2] ;
+
 end    
