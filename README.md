@@ -8,8 +8,8 @@ Bayesian non-parametric non-negative matrix factorization for environmental epid
     * Script to create simulations.
     * Subfolder with csv files.
     * Subfolder with sims for bootstrap example.
-    * `sim_sep.RDA` has all sims as a large nested dataframe.
-    * `bs_sample.RDA` has 600 sim subsample for bootstrapping.
+    * `sim_sep.RDA` with all sims as a large nested dataframe.
+    * `bs_sample.RDA` with 600 sim subsample for bootstrapping.
 2. [main](main) has:
     * [bn2mf](bn2mf) subfolder with:
         * `run_bn2mf.m` to run on all sims.
@@ -26,7 +26,7 @@ Bayesian non-parametric non-negative matrix factorization for environmental epid
     * `bootstrap_bn2mf.m` to run on subsample.
     * `bootstrap_combo.R` to combine and reorder bootstrap results.
     * `bootstrap_coverage.R` to calculate coverage of true scores.
-    * `ci_example.R` to vizualize results for one bootstrapped example.
+    * `ci_example.R` to visualize results for one bootstrapped example.
     * `bootstrap_nmf.R` to bootstrap Poisson NMF.
     * `output` subfolder with results.
 4. [functions](functions) has functions I've written, see code for comments.

@@ -1,14 +1,13 @@
 # Functions for BN2MF project
 
-## Functions to run other models
-## & to choose number of factors/components
-
-# Packages
+# Packages ####
+# If running on hpc, load libraries from remote path
 if (grepl("/Users/lizzy/", getwd())) {
   library(tidyverse)
   library(R.matlab)
   library(psych)
   library(NMF)
+  library(LearnBayes)
   library(CVXR)
 } else {
   library(tidyverse, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
@@ -21,14 +20,24 @@ if (grepl("/Users/lizzy/", getwd())) {
   library(CVXR, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
   library(GPArotation, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
   library(ellipsis,lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
+  library(LearnBayes, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
 }
 
+# Models to compare BN2MF with ####
+
 # PCA
+# Function to run PCA,
+# determine how many components explain 80% of the variance
+# choose that rank and
+# output scores, loadings, pred, rank
 get_pca <- function (sim) {
   # Run PCA centered, not scaled
   pca_out <- prcomp(sim)
+  #loadings
   rot <- pca_out$rotation
+  # scores
   ex <- pca_out$x
+  # singular values
   sv <- pca_out$sdev
   
   # Explain >=80% of var
@@ -45,17 +54,27 @@ get_pca <- function (sim) {
   scores <- if (rank == 1) {matrix(ex[, 1:rank], nrow = nrow(sim))} else {ex[, 1:rank]}
   # Predicted values
   pred <- scores %*% t(rotations) + matrix(rep(apply(sim, 2, mean), each= nrow(scores)), nrow = nrow(scores))
+  
   return(list(rotations = rotations, scores = scores, pred = pred, rank = rank))
 }
 
 # Factor analysis
+# Function to run FA,
+# choose rank with lowest BIC
+# output scores, loadings, pred, rank
 get_fa <- function (sim, patterns) {
   
   set.seed(1988)
   
+  # Run model with specified number of factors
+  # and for one factor more and one factor less
   patternsm1 = ifelse(patterns == 1, 3, patterns - 1)
   patternsp1 = patterns+1
   
+  # This keeps the script from crashing if FA doesn't work
+  # Just return NA
+  # If there is not enough variability in the sim (e.g., sims with no added noise)
+  # the FA solution is singular and doesn't converge
   my_fa <- function(x, px){
     tryCatch(
       expr = {
@@ -74,10 +93,14 @@ get_fa <- function (sim, patterns) {
   fa_5 <- my_fa(sim, patternsp1) 
   
   # Choose the model with the LOWEST BIC
+  # If the model didn't converge, BIC = NA
   if(any(is.na(fa_3))) {fa_3BIC = NA} else {fa_3BIC = fa_3$BIC}
   if(any(is.na(fa_4))) {fa_4BIC = NA} else {fa_4BIC = fa_4$BIC}
   if(any(is.na(fa_5))) {fa_5BIC = NA} else {fa_5BIC = fa_5$BIC}
   
+  # This chooses the lowest BIC
+  # Also, ignore NA values, unless they are all NA
+  # then, the best model is NA and rank is NA
   if (!any(is.na(fa_3BIC)) | !any(is.na(fa_4BIC)) | !any(is.na(fa_5BIC))) {
       if (min(fa_5BIC, fa_4BIC, fa_3BIC, na.rm = T) == fa_5BIC & !is.na(fa_5BIC)) {
         fa_out <- fa_5
@@ -94,6 +117,7 @@ get_fa <- function (sim, patterns) {
     rank = NA
   }
   
+  # If model isnt NA, save factors, scores, calculate pred
   if (!any(is.na(fa_out))) {
     loadings <- matrix(fa_out$loadings, ncol = ncol(fa_out$scores))
     fa_scores <- fa_out$scores
@@ -106,6 +130,7 @@ get_fa <- function (sim, patterns) {
 }
 
 # Calculate BIC
+# NMF doesn't have a built in BIC
 get_bic <- function(sim, patterns, scores, loadings){
   bic = sum((sim - (scores%*%loadings))^2) + 
     (1/2)*(nrow(sim) + ncol(sim)) * patterns * log(nrow(sim) * ncol(sim))
@@ -113,6 +138,9 @@ get_bic <- function(sim, patterns, scores, loadings){
 }
 
 # NMF L2
+# Function to run NMF with L2 penalty
+# choose rank with lowest BIC
+# output scores, loadings, pred, rank
 get_nmfl2 <- function (sim, patterns) {
   
   patternsm1 = ifelse(patterns == 1, 3, patterns - 1)
@@ -147,6 +175,9 @@ get_nmfl2 <- function (sim, patterns) {
 }
 
 # NMF Poisson
+# Function to run NMF with divergence penalty
+# choose rank with lowest BIC
+# output scores, loadings, pred, rank
 get_nmfp <- function (sim, patterns) {
   
   patternsm1 = ifelse(patterns == 1, 3, patterns - 1)
@@ -179,8 +210,8 @@ get_nmfp <- function (sim, patterns) {
   return(list(coef = coef, basis = basis, pred = pred, rank = rank))
 }
 
-## Metric Functions
-## to compare performance
+# Metric Functions ####
+# to compare performance
 
 # Symmetric Subspace Distance 
 symm_subspace_dist <- function(U, V) {
@@ -194,12 +225,15 @@ symm_subspace_dist <- function(U, V) {
     if (nrow(U) < ncol(U)) {U <- t(U)}
     if (nrow(V) < ncol(V)) {V <- t(V)}
     
+    # this gets an orthonormal basis
     qrU <- qr.Q(qr(U))
     qrV <- qr.Q(qr(V))
   
     m <- ncol(U)
     n <- ncol(V)
-  
+    
+    # this is the formula
+    # don't want the script to crash
     tryCatch(
       {dUV <- sqrt( max(m,n) - sum((t(qrU) %*% qrV)^2) )
       },
@@ -210,6 +244,8 @@ symm_subspace_dist <- function(U, V) {
         dUV = NA
       })
     
+    # it happened somewhere that (t(qrU) %*% qrV)^2)),10) was so close to 0
+    # that the sqrt function gave NaN
     if(round((max(m,n) - sum((t(qrU) %*% qrV)^2)),10) == 0) {dUV = 0} # if sqrt(0), make zero
     
     if (!is.na(dUV)) {ratio <- dUV/sqrt( max(m,n))} else {ratio = NA}
@@ -218,6 +254,8 @@ symm_subspace_dist <- function(U, V) {
 }
 
 # Cosine distance (matrix version)
+# WITH error handling
+# if the matrices are not the same size, NA
 cos_dist <- function(a, b){
 
   if(any(is.na(a)) | any(is.na(b))) {return(NA)} else{
@@ -239,6 +277,8 @@ cos_dist <- function(a, b){
 }
 
 # Cosine distance (vector version)
+# WITH error handling
+# if the matrices are not the same size, NA
 cos_dist_v <- function(a, b){
   
   if(any(is.na(a)) | any(is.na(b))) {return(NA)} else{
@@ -280,7 +320,10 @@ get_relerror <- function(x,y) {
   }
 }
 
-get_relerror_l1 <- function(x,y) {
+# L1 relative error
+# WITH error handling
+# if the matrices are not the same size, NA
+get_l1_error <- function(x,y) {
   
   if(any(is.na(x)) | any(is.na(y))) {return(NA)} else{
     
@@ -297,6 +340,9 @@ get_relerror_l1 <- function(x,y) {
   }
 }
 
+# Get the proportion of true values within confidence interval
+# WITH error handling
+# if the matrices are not the same size, NA
 get_prop <- function(x,y,z) {
   # mean, lower, upper
   
@@ -322,7 +368,8 @@ get_prop <- function(x,y,z) {
 # if matrices are not same size, NA
 # If nn is false, we allow *signed permutations*
 factor_correspondence <- function (A, B, nn = TRUE) {
-  
+  # This is all from the CVXR package, which is kind of its own language
+  # for convex optimization
   G <- t(B) %*% A
   n <- nrow(G)
   
@@ -368,6 +415,8 @@ factor_correspondence <- function (A, B, nn = TRUE) {
   return(list(rearranged = newB, permutation_matrix = perm))
 }
 
+# Just a wrapper around factor_correspondence
+# with error handling
 get_perm <- function(x,y, nn = TRUE) {
   
   if(any(is.na(x)) | any(is.na(y))) {return(NA)} else{
@@ -384,6 +433,8 @@ get_perm <- function(x,y, nn = TRUE) {
       }
 }
 
+# Multiply loadings and scores by perm matrix
+# with error handling
 get_perm_product <- function(x,y) {
   if(any(is.na(x)) | any(is.na(y))) {return(x)} else{ # if permutation matrix is NA, return X
     

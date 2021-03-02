@@ -134,14 +134,3 @@ BN2MF <- function(X) {
 
   list(EWA = EWA, EH = EH, H_CI_low = H_CI_low, H_CI_high = H_CI_high)
   }
-
-
-library(tictoc)
-load("./Sims/sim_dgp_rep1.RDA")
-X = sim_dgp_rep1$sim[[1]]
-dim(X)
-
-tic()
-out <- BN2MF(X)
-toc()
-# 58 minutes

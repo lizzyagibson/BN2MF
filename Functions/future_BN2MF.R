@@ -129,12 +129,3 @@ BN2MF_parallel <- function(X) {
   results <- results_all[[best]]
   return(results)
   }
-
-library(tictoc)
-load("./Sims/sim_dgp_rep1.RDA")
-X = sim_dgp_rep1$sim[[1]]
-
-tic()
-out <- BN2MF_parallel(X)
-toc()
-# 29 minutes

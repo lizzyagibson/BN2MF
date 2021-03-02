@@ -1,20 +1,24 @@
+# Create simulated datasets
 
-# Packages
-library(tidyverse, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
-library(LearnBayes, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
-library(Matrix)
+# Get functions
+source("./functions/compare_functions.R")
 
-## 1: Distinct Patterns
-### Simulate Patterns
+# Simulate Patterns
 create_patterns <- function (seed, reps) {
   set.seed(seed)
+  
+  # 4 patterns
+  # each chemical loads high on one, medium on another
+  # zero on lat two patterns
   pat1=c(0,0,5,10)
   pat2=c(0,5,10,0)
   pat3=c(5,10,0,0)
   pat4=c(10,0,0,5)
   
+  # `reps` is how overlapping the patterns are
+  # reps = 0 -- completely overlapping
+  # reps = 10 completely distinct
   start = c()
-  
   if (reps != 0) { 
     for (i in 1:reps) {
       start = cbind(start,diag(1,4))
@@ -25,17 +29,23 @@ create_patterns <- function (seed, reps) {
   return(patterns)
 }
 
+# 100 random samples from each data generating process
 seed = 1:100
+# gradient from overlapping to distinct
 sep_num = 0:10
+# gradient from no noise to high noise
 noise_level = seq(0,1, 0.1)
+# get every combination
 all_comb = expand_grid(seed, sep_num, noise_level)
 
+# simulate patterns
 patterns_iter <- all_comb %>% 
   mutate(true_patterns = map2(seed, sep_num, create_patterns))
 
-### Simulate Scores
+# Simulate Scores
 create_scores <- function (seed) {
   set.seed(seed)
+  # independent draws from standard log-normal
   scores <- matrix(exp(rnorm(1000*4)), ncol = 4)
   return(as.matrix(scores))
 }
@@ -43,58 +53,68 @@ create_scores <- function (seed) {
 scores_iter <- patterns_iter %>% 
   mutate(true_scores = map(seed, create_scores))
 
-### Simulate Chemical Exposures
+# Simulate Chemical Exposures
+# matrix multiply scores times loadings
 sim_sep <- scores_iter %>% 
   mutate(chem = map2(true_scores, true_patterns, `%*%`))
 
-### Simulate Noise
+# Simulate Noise
 add_noise <- function (seed, chem, noise_level) {
   n = nrow(chem)
   p = ncol(chem)
   noise <- matrix(NA, nrow = n, ncol = p)
+  
+  # stdev of each column in the true simulation before noise was added
   stdev = apply(chem, 2, sd)
   
+  # add noise from normal dist, mean = 0
+  # sd = proprtion of true noise
   for (i in 1:p) {
     noise[,i] <- (rnorm(n, mean = 0, sd = (stdev[i]*noise_level)))
   }
   
+  # if negative, push to zero
   sim = pmax(chem + noise, 0)
   sim
 }
 
+# add noise
 sim_sep <- sim_sep %>% 
   mutate(sim = pmap(list(seed, chem, noise_level), add_noise))
 
-## Save
-sim_sep
-
+# save csv files
 # for (i in 1:nrow(sim_sep)) {
 #   write_csv(as_tibble(sim_sep$sim[[i]]),           paste0("/ifs/scratch/msph/ehs/eag2186/Data/sep_csv/sim_sep_", i, ".csv"))
 #   write_csv(as_tibble(sim_sep$chem[[i]]),          paste0("/ifs/scratch/msph/ehs/eag2186/Data/sep_csv/chem_sep_", i, ".csv"))
 #   write_csv(as_tibble(sim_sep$true_patterns[[i]]), paste0("/ifs/scratch/msph/ehs/eag2186/Data/sep_csv/patterns_sep_", i, ".csv"))
 #   write_csv(as_tibble(sim_sep$true_scores[[i]]),   paste0("/ifs/scratch/msph/ehs/eag2186/Data/sep_csv/scores_sep_", i, ".csv"))
 # }
-# 
+
+# save nested dataframe 
 # save(sim_sep, file = "/ifs/scratch/msph/ehs/eag2186/Data/sim_sep.RDA")
 
-# Bootstrap subsample ####
+
+# Bootstrap subsample
+# distinct and overlapping
+# noise = 0.2, 0.5, and 1
 bs_sample = sim_sep %>% 
               mutate(id = 1:nrow(.)) %>% 
               filter(sep_num %in% c(0,10) & noise_level %in% c(0.2, 0.5, 1))
 
+# save bootstrap ids
 bs_ids = as_tibble(bs_sample$id)
 
 # write_csv(bs_ids, "./sims/bs_ids.csv")
 # save(bs_sample, file = "./sims/bs_sample.RDA")
 
 # Example to plot histograms from VCI and bootstrap
-
 # ci_sample = bs_sample %>% filter(id == 9562)
 # write_csv(as_tibble(ci_sample$chem[[1]]),         file = "./Sep/ci_ex/true_chem.csv")
 # write_csv(as_tibble(ci_sample$true_patterns[[1]]),file = "./Sep/ci_ex/true_patterns.csv")
 # write_csv(as_tibble(ci_sample$true_scores[[1]]),  file = "./Sep/ci_ex/true_scores.csv")
 
-# Separability sub sample ####
+# Separability sub sample #
+# this is not in manuscript
 test_sep = sim_sep %>% 
           mutate(id = 1:nrow(.)) %>% 
           filter(sep_num == 0 & seed == 1)
