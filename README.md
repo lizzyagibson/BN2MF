@@ -30,7 +30,6 @@ Bayesian non-parametric non-negative matrix factorization for environmental epid
     * `bootstrap_nmf.R` to bootstrap Poisson NMF.
     * `output` subfolder with results.
 4. [functions](functions) has functions I've written, see code for comments.
-5. [figures](figures) has figures for manuscript.
-6. [misc](misc) has miscellaneous scripts.
+5. [misc](misc) has miscellaneous scripts.
     * Related, but not necessary to run analysis.
     * Feel free to ignore.
