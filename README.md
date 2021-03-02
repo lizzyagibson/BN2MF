@@ -25,9 +25,9 @@ Bayesian non-parametric non-negative matrix factorization for environmental epid
 3. [bootstrap](bootstrap) has:
     * `bootstrap_bn2mf.m` to run on subsample.
     * `bootstrap_combo.R` to combine and reorder bootstrap results.
-    * `bootstrap_coverage.R` calculates coverage of true scores.
-    * `ci_example.R` vizualizes results for one bootstrapped example.
-    * `bootstrap_nmf.R` bootstraps Poisson NMF.
+    * `bootstrap_coverage.R` to calculate coverage of true scores.
+    * `ci_example.R` to vizualize results for one bootstrapped example.
+    * `bootstrap_nmf.R` to bootstrap Poisson NMF.
     * `output` subfolder with results.
 4. [functions](functions) has functions I've written, see code for comments.
 5. [figures](figures) has figures for manuscript.
