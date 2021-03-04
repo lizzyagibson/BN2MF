@@ -1,6 +1,7 @@
 # Combine bootstrap distributions and VCI on HPC
-library(tidyverse, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
-library(R.matlab, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
+
+## Get functions
+source("/ifs/scratch/msph/ehs/eag2186/npbnmf/compare_functions.R")
 
 # First combine bootstraps
 
@@ -26,6 +27,7 @@ for (boot in 1:bootstraps) {
                          set, "_bs_", boot, ".RDA"))) {
     load(paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/bs/nmf/nmf_bs_sim_", 
                                               set, "_bs_", boot, ".RDA"))
+    nmf_boot = nmf_boot %>% rename(id = 1, bootstrap = 2, loadings_final = 3, scores_sam = 4, pred_sam = 5)
     bs_scores[,,boot] = as.matrix(nmf_boot$scores_sam[[1]])
     bs_loadings[,,boot] = as.matrix(nmf_boot$loadings_final[[1]])
     bs_pred[,,boot] = as.matrix(nmf_boot$pred_sam[[1]])
@@ -58,15 +60,15 @@ for (boot in 1:bootstraps) {
 # 25th, mean, mean, and 75th percentile matrices for EWA
 bs_lower_score  <- apply(bs_scores, c(1,2), quantile, 0.025, na.rm = TRUE)
 bs_upper_score  <- apply(bs_scores, c(1,2), quantile, 0.975, na.rm = TRUE)
-bs_mean_score <- apply(bs_scores, c(1,2), mean,          na.rm = TRUE)
+bs_mean_score   <- apply(bs_scores, c(1,2), mean,          na.rm = TRUE)
 
 bs_lower_load  <- apply(bs_loadings, c(1,2), quantile, 0.025, na.rm = TRUE)
 bs_upper_load  <- apply(bs_loadings, c(1,2), quantile, 0.975, na.rm = TRUE)
-bs_mean_load <- apply(bs_loadings, c(1,2), mean,          na.rm = TRUE)
+bs_mean_load   <- apply(bs_loadings, c(1,2), mean,          na.rm = TRUE)
 
 bs_lower_pred  <- apply(bs_pred, c(1,2), quantile, 0.025, na.rm = TRUE)
 bs_upper_pred  <- apply(bs_pred, c(1,2), quantile, 0.975, na.rm = TRUE)
-bs_mean_pred <- apply(bs_pred, c(1,2), mean,          na.rm = TRUE)
+bs_mean_pred   <- apply(bs_pred, c(1,2), mean,          na.rm = TRUE)
 
 save(bs_lower_score,  file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/bs/nmf_ci/bs_lower_nmf_score_", set, ".RDA"))
 save(bs_upper_score,  file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/bs/nmf_ci/bs_upper_nmf_score_", set, ".RDA"))
