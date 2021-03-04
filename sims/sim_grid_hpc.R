@@ -82,6 +82,8 @@ add_noise <- function (seed, chem, noise_level) {
 sim_sep <- sim_sep %>% 
   mutate(sim = pmap(list(seed, chem, noise_level), add_noise))
 
+sim_ids = sim_sep %>% dplyr::select(1:3) %>% mutate_all(as.factor)
+
 # save csv files
 # for (i in 1:nrow(sim_sep)) {
 #   write_csv(as_tibble(sim_sep$sim[[i]]),           paste0("/ifs/scratch/msph/ehs/eag2186/Data/sep_csv/sim_sep_", i, ".csv"))
@@ -90,8 +92,14 @@ sim_sep <- sim_sep %>%
 #   write_csv(as_tibble(sim_sep$true_scores[[i]]),   paste0("/ifs/scratch/msph/ehs/eag2186/Data/sep_csv/scores_sep_", i, ".csv"))
 # }
 
+# write_csv(as_tibble(sim_sep$sim[[9562]]),           paste0("./sims/sep_csv_sim/sim_sep_", 9562, ".csv"))
+# write_csv(as_tibble(sim_sep$chem[[9562]]),          paste0("./sims/sep_csv_chem/chem_sep_", 9562, ".csv"))
+
 # save nested dataframe 
 # save(sim_sep, file = "/ifs/scratch/msph/ehs/eag2186/Data/sim_sep.RDA")
+
+# save ids
+# save(sim_ids, file = "/ifs/scratch/msph/ehs/eag2186/Data/sim_ids.RDA")
 
 
 # Bootstrap subsample

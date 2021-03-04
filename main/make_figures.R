@@ -6,28 +6,30 @@ options(scipen = 999)
 
 # Load Data ####
 
-# bN2mf output
+# bn2mf output
 load("./main/bn2mf/output/m_rank.RDA")
 load("./main/bn2mf/output/m_metrics.RDA")
 load("./main/bn2mf/output/m_prop.RDA")
 
 # Simulations
-load("./sims/sim_sep.RDA")
-sim_ids = sim_sep %>% dplyr::select(1:3) %>% mutate_all(as.factor)
+load("./sims/sim_ids.RDA")
 
 # R output of comparison models
 load("./main/other_models/output/other_metrics.RDA")
 load("./main/other_models/output/other_rank.RDA")
 
 # bootstrapped output
+# bn2mf
 load("./bootstrap/output/bs_prop.RDA")
+# nmf
+load("./bootstrap/output/nmf_bs_prop.RDA")
 
 # bootstrap sub sample
 load("./sims/bs_sample.RDA")
 
 # VCI ####
 sep_vci = bind_cols(sim_ids, m_rank, m_prop[,1])
-sep_vci
+sep_vci %>% filter(sep_num %in% c(0,10) & noise_level %in% c(0.2, 0.5, 1)) %>% pull(prop) %>% summary()
 
 prop_table = sep_vci %>%
   group_by(sep_num, noise_level) %>% 
@@ -36,9 +38,9 @@ prop_table = sep_vci %>%
               values_from = "qs") %>% 
   mutate_if(is.numeric, round, 2) %>% 
   rename(median = `0.5`) %>% 
-  mutate_at(vars(1:2), as.factor)
+  mutate_at(vars(1:2), as.factor) %>% 
+  mutate(name = "BN2MF")
 
-red = "#bC3C29ff"
 blue = "#0072b5ff"
 
 #pdf("./figures/coverage_heat.pdf")
@@ -57,31 +59,37 @@ prop_table %>%
 #dev.off()
 
 # bootstrapped CI ####
-sep_bs = bind_cols(bs_sample, bs_prop)
-sep_bs %>% arrange(desc(prop))
+sep_bs = bind_cols(bs_sample, bs_prop) %>% 
+  rename(BN2MF_bootstrap = prop) %>% 
+  full_join(., nmf_bs_prop) %>% 
+  rename(NMF_bootstrap = prop)
 
 bs_table = sep_bs %>%
-  group_by(sep_num, noise_level) %>% 
-  summarise(qs = quantile(prop, c(0.25, 0.5, 0.75), na.rm = TRUE), prob = c(0.25, "median", 0.75)) %>% 
+  pivot_longer(BN2MF_bootstrap:NMF_bootstrap) %>% 
+  group_by(sep_num, noise_level, name) %>% 
+  summarise(qs = quantile(value, c(0.25, 0.5, 0.75), na.rm = TRUE), prob = c(0.25, "median", 0.75)) %>% 
   pivot_wider(names_from = "prob",
               values_from = "qs") %>% 
   mutate_if(is.numeric, round, 2) %>% 
-  mutate_at(vars(1:2), as.factor)
+  mutate_at(vars(1:2), as.factor) %>% 
+  bind_rows(., prop_table %>% filter(sep_num %in% c(0,10) & noise_level %in% c(0.2, 0.5, 1))) %>% 
+  mutate(name = str_replace(name, "_", " "))
 
-#pdf("./figures/bs_coverage_heat.pdf")
+pdf("./figures/bs_coverage_heat.pdf", height = 6, width = 9)
 bs_table %>%
   ggplot(aes(x = sep_num, y = noise_level, fill = median)) +
   geom_tile() +
   geom_text(aes(label = median), size = 7, col = "coral") + 
   scale_x_discrete(limits = rev) +
   labs(x = "Number of distinct chemicals per pattern",
-       y = "Noise level (as proportion of true SD)",
-       fill = "median coverage") +
+       y = expression("Noise level as proportion of true "*sigma),
+       fill = "Median coverage") +
   theme_test(20) +
   theme(legend.position = "bottom") + 
+  facet_wrap(~name) + 
   scale_fill_gradient(high = blue, low = "white") + 
   theme(legend.text = element_text(size = 10))
-#dev.off()
+dev.off()
 
 # Rank ####
 bn2mf_rank = bind_cols(sim_ids, m_rank)

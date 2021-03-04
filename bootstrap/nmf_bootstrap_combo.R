@@ -17,6 +17,8 @@ set = datasets$value[job_num]
 
 # One array for all bootstraps 
 bs_scores <- array(dim = c(1000, 5, bootstraps)) # 5 includes row ID
+bs_loadings <- array(dim = c(4, 40, bootstraps)) # 5 includes row ID
+bs_pred <- array(dim = c(1000, 41, bootstraps)) # 5 includes row ID
 
 # Read in data output by `bootstrap_nmf.m`
 for (boot in 1:bootstraps) {
@@ -24,7 +26,10 @@ for (boot in 1:bootstraps) {
                          set, "_bs_", boot, ".RDA"))) {
     load(paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/bs/nmf/nmf_bs_sim_", 
                                               set, "_bs_", boot, ".RDA"))
-    bs_scores[,,boot] = as.matrix(nmf_boot$scores_final[[1]])
+    bs_scores[,,boot] = as.matrix(nmf_boot$scores_sam[[1]])
+    bs_loadings[,,boot] = as.matrix(nmf_boot$loadings_final[[1]])
+    bs_pred[,,boot] = as.matrix(nmf_boot$pred_sam[[1]])
+    
   }
   print(paste0("Boot Number: ", boot))
 }
@@ -37,19 +42,42 @@ for (boot in 1:bootstraps) {
 # takes the first instance of an ID
 # all instances of same ID are equal
   bs_scores[,,boot] = bs_scores[,,boot][match(1:1000, bs_scores[,,boot][,1]),]
-  print(paste0("Match Permutations for Boot Number: ", boot))
+  print(paste0("Match Score Permutations for Boot Number: ", boot))
+}
+
+# Pred
+for (boot in 1:bootstraps) {
+  # takes the first instance of an ID
+  # all instances of same ID are equal
+  bs_pred[,,boot] = bs_pred[,,boot][match(1:1000, bs_pred[,,boot][,1]),]
+  print(paste0("Match Pred Permutations for Boot Number: ", boot))
 }
 
 # Create empirical confidence interval
 # One matrix for each BN2MF output
-# 25th, mean, median, and 75th percentile matrices for EWA
-bs_lower  <- apply(bs_scores, c(1,2), quantile, 0.025, na.rm = TRUE)
-bs_upper  <- apply(bs_scores, c(1,2), quantile, 0.975, na.rm = TRUE)
-#bs_mean   <- apply(bs_scores, c(1,2), mean,            na.rm = TRUE)
-#bs_median <- apply(bs_scores, c(1,2), median,          na.rm = TRUE)
+# 25th, mean, mean, and 75th percentile matrices for EWA
+bs_lower_score  <- apply(bs_scores, c(1,2), quantile, 0.025, na.rm = TRUE)
+bs_upper_score  <- apply(bs_scores, c(1,2), quantile, 0.975, na.rm = TRUE)
+bs_mean_score <- apply(bs_scores, c(1,2), mean,          na.rm = TRUE)
 
-save(bs_lower,  file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/bs/nmf_ci/bs_lower_nmf_", set, ".RDA"))
-save(bs_upper,  file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/bs/nmf_ci/bs_upper_nmf_", set, ".RDA"))
-#save(bs_mean,   file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/bs/nmf_ci/bs_mean_nmf_", set, ".RDA"))
-#save(bs_median, file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/bs/nmf_ci/bs_median_nmf_", set, ".RDA"))
+bs_lower_load  <- apply(bs_loadings, c(1,2), quantile, 0.025, na.rm = TRUE)
+bs_upper_load  <- apply(bs_loadings, c(1,2), quantile, 0.975, na.rm = TRUE)
+bs_mean_load <- apply(bs_loadings, c(1,2), mean,          na.rm = TRUE)
+
+bs_lower_pred  <- apply(bs_pred, c(1,2), quantile, 0.025, na.rm = TRUE)
+bs_upper_pred  <- apply(bs_pred, c(1,2), quantile, 0.975, na.rm = TRUE)
+bs_mean_pred <- apply(bs_pred, c(1,2), mean,          na.rm = TRUE)
+
+save(bs_lower_score,  file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/bs/nmf_ci/bs_lower_nmf_score_", set, ".RDA"))
+save(bs_upper_score,  file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/bs/nmf_ci/bs_upper_nmf_score_", set, ".RDA"))
+save(bs_mean_score, file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/bs/nmf_ci/bs_mean_nmf_score_", set, ".RDA"))
+
+save(bs_lower_load,  file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/bs/nmf_ci/bs_lower_nmf_loadings_", set, ".RDA"))
+save(bs_upper_load,  file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/bs/nmf_ci/bs_upper_nmf_loadings_", set, ".RDA"))
+save(bs_mean_load, file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/bs/nmf_ci/bs_mean_nmf_loadings_", set, ".RDA"))
+
+save(bs_lower_pred,  file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/bs/nmf_ci/bs_lower_nmf_pred_", set, ".RDA"))
+save(bs_upper_pred,  file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/bs/nmf_ci/bs_upper_nmf_pred_", set, ".RDA"))
+save(bs_mean_pred, file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/bs/nmf_ci/bs_mean_nmf_pred_", set, ".RDA"))
+
 # all `bs_list...` files go into `nmf_bootstrap_out.R`
