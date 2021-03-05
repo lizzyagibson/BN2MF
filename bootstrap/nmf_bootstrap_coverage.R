@@ -36,9 +36,9 @@ for (i in 1:nrow(datasets)) {
   bs_mean_score  = bs_mean_score[,2:5]
   
   # True Scores
-  true_scores = read_csv(paste0("/ifs/scratch/msph/ehs/eag2186/Data/sep_csv_scores/scores_sep_", set, ".csv"))
+  true_scores = read_csv(paste0("/ifs/scratch/msph/ehs/eag2186/Data/sep_csv_scores/scores_sep_", set, ".csv")) %>% as.matrix()
   # True patterns
-  true_patterns = read_csv(paste0("/ifs/scratch/msph/ehs/eag2186/Data/sep_csv_patterns/patterns_sep_", set, ".csv"))
+  true_patterns = read_csv(paste0("/ifs/scratch/msph/ehs/eag2186/Data/sep_csv_patterns/patterns_sep_", set, ".csv")) %>% as.matrix()
   # True sims
   chem = read_csv(paste0("/ifs/scratch/msph/ehs/eag2186/Data/sep_csv_chem/chem_sep_", set, ".csv")) %>% as.matrix()
   
@@ -58,7 +58,7 @@ for (i in 1:nrow(datasets)) {
   err_pred = norm(chem - bs_mean_pred, "F")/norm(chem, "F")
   
   err_scores_scaled = norm(scores_scaled - bs_mean_score, "F")/norm(scores_scaled, "F")
-  err_load_scaled  = norm(patterns_scaled - bs_mean_load, "F")/norm(patterns_scaled, "F")
+  err_load_scaled  = norm(patterns_scaled - as.matrix(bs_mean_load), "F")/norm(patterns_scaled, "F")
   
   row = tibble(set, prop_scores, prop_load, prop_pred, 
                err_scores_scaled, err_load_scaled, err_pred,

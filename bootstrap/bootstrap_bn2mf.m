@@ -19,6 +19,12 @@ grid = combvec(bs_ids', bootstrap)';
 boot  = grid(str2num(j),2)
 runn  = grid(str2num(j),1)
 
+path = "/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/bs/";
+if isfile(strcat(path, "bootstrap_ewa/ewa_bs_sim_",   num2str(runn), "_bs_", num2str(boot),  ".mat"))
+    quit
+end
+
+
 %% Choose 1 simulation
 sim_data = table2array(readtable(strcat("/ifs/scratch/msph/ehs/eag2186/Data/sep_csv_sim/sim_sep_", num2str(runn), ".csv")));
 patterns = table2array(readtable(strcat("/ifs/scratch/msph/ehs/eag2186/Data/sep_csv_patterns/patterns_sep_", num2str(runn), ".csv")));
@@ -58,6 +64,8 @@ sim_sample = sim_data(sam, :);
 %% Run bn2mf
 [EWA0, EH0, varH0, alphaH0, betaH0, alphaW0, betaW0, ...
    alphaA0, betaA0, varWA0, finalscore0, final_iter0, init_seed] = BN2MF(sim_sample);
+
+size(EH0)
 
 pred = EWA0 * EH0;
 
