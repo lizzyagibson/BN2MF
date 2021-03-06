@@ -20,10 +20,12 @@ boot  = grid(str2num(j),2)
 runn  = grid(str2num(j),1)
 
 path = "/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/bs/";
-if isfile(strcat(path, "bootstrap_ewa/ewa_bs_sim_",   num2str(runn), "_bs_", num2str(boot),  ".mat"))
+get_size = load(strcat(path, "bootstrap_pred/pred_bs_sim_",   num2str(runn), "_bs_", num2str(boot),  ".mat"));
+size(get_size.pred_sam)
+
+if isequal(size(get_size.pred_sam), [1000,41])
     quit
 end
-
 
 %% Choose 1 simulation
 sim_data = table2array(readtable(strcat("/ifs/scratch/msph/ehs/eag2186/Data/sep_csv_sim/sim_sep_", num2str(runn), ".csv")));
@@ -79,12 +81,13 @@ EWA_scaled   = EWA0 * diag(H_denom);
 %% Rearrange solution to match truth
 [~,Pi]    = factor_correspondence(patterns_scaled',EH_scaled');
 EH_final  = (EH_scaled' * Pi)';
-EWA_final = EWA_scaled * Pi;
+EWA_perm = EWA_scaled * Pi;
 
-EWA_sam = [sam' EWA_final];
+EWA_sam = [sam' EWA_perm];
+pred_sam = [sam' pred];
 
 path = "/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/bs/";
 save(strcat(path, "bootstrap_ewa/ewa_bs_sim_",   num2str(runn), "_bs_", num2str(boot),  ".mat"), 'EWA_sam');
 save(strcat(path, "bootstrap_ewa/eh_bs_sim_",   num2str(runn), "_bs_", num2str(boot),  ".mat"), 'EH_scaled');
-save(strcat(path, "bootstrap_ewa/pred_bs_sim_",   num2str(runn), "_bs_", num2str(boot),  ".mat"), 'pred');
+save(strcat(path, "bootstrap_ewa/pred_bs_sim_",   num2str(runn), "_bs_", num2str(boot),  ".mat"), 'pred_sam');
 % Results go into `get_ex_bootstrap.R`, and `bootstrap_combo.R`

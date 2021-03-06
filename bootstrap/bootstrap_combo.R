@@ -1,19 +1,21 @@
 # Combine bootstrap distributions and VCI on HPC
-library(tidyverse, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
-library(R.matlab, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
-
 # First combine bootstraps
 
 # Run 1:600
 job_num = as.integer(Sys.getenv("SGE_TASK_ID"))
 job_num
 
-# 150 bootstrap samples 
-bootstraps = 150
-
 # 600 simulated data sets
 datasets = read_csv("/ifs/scratch/msph/ehs/eag2186/Data/bs_ids.csv")
 set = datasets$value[job_num]
+
+if (file.exists(paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/bs/bootstrap_ci/bs_lower_wa_", set, ".RDA"))) {quit(save = "no")}
+
+library(tidyverse, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
+library(R.matlab, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
+
+# 150 bootstrap samples 
+bootstraps = 150
 
 # One array for all bootstraps 
 bs_ewa  <- array(dim = c(1000, 5, bootstraps)) # 5 includes row ID
@@ -72,11 +74,11 @@ save(bs_lower_wa,  file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/
 save(bs_upper_wa,  file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/bs/bootstrap_ci/bs_upper_wa_", set, ".RDA"))
 save(bs_mean_wa,   file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/bs/bootstrap_ci/bs_mean_wa_", set, ".RDA"))
 
-save(bs_lower_eh,  file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/bs/bootstrap_ci/bs_lower_nmf_eh_", set, ".RDA"))
-save(bs_upper_eh,  file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/bs/bootstrap_ci/bs_upper_nmf_eh_", set, ".RDA"))
-save(bs_mean_eh, file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/bs/bootstrap_ci/bs_mean_nmf_eh_", set, ".RDA"))
+save(bs_lower_eh,  file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/bs/bootstrap_ci/bs_lower_eh_", set, ".RDA"))
+save(bs_upper_eh,  file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/bs/bootstrap_ci/bs_upper_eh_", set, ".RDA"))
+save(bs_mean_eh, file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/bs/bootstrap_ci/bs_mean_eh_", set, ".RDA"))
 
-save(bs_lower_pred,  file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/bs/bootstrap_ci/bs_lower_nmf_pred_", set, ".RDA"))
-save(bs_upper_pred,  file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/bs/bootstrap_ci/bs_upper_nmf_pred_", set, ".RDA"))
-save(bs_mean_pred, file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/bs/bootstrap_ci/bs_mean_nmf_pred_", set, ".RDA"))
+save(bs_lower_pred,  file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/bs/bootstrap_ci/bs_lower_pred_", set, ".RDA"))
+save(bs_upper_pred,  file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/bs/bootstrap_ci/bs_upper_pred_", set, ".RDA"))
+save(bs_mean_pred, file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/bs/bootstrap_ci/bs_mean_pred_", set, ".RDA"))
 # all `bs_list...` files go into `bootstrap_out.R`
