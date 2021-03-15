@@ -20,10 +20,8 @@ boot  = grid(str2num(j),2)
 runn  = grid(str2num(j),1)
 
 path = "/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/bs/";
-get_size = load(strcat(path, "bootstrap_pred/pred_bs_sim_",   num2str(runn), "_bs_", num2str(boot),  ".mat"));
-size(get_size.pred_sam)
 
-if isequal(size(get_size.pred_sam), [1000,41])
+if isfile(strcat(path, "bootstrap_ewa/ewa_bs_sim_", num2str(runn), "_bs_", num2str(boot),  ".mat"))
     quit
 end
 

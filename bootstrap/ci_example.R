@@ -368,7 +368,7 @@ pred_look =
   labs(fill = "")
 pred_look    
 
-#pdf("./figures/vci_bci.pdf", width = 10, height = 8)
+#pdf("./figures/vci_bci_nmfci.pdf", width = 10, height = 8)
 (wa_look + theme(legend.position = "none")) / (h_look + theme(legend.position = "none")) / pred_look
 #dev.off()
 

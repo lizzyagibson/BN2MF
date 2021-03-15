@@ -75,7 +75,7 @@ bs_table = sep_bs %>%
   bind_rows(., prop_table %>% filter(sep_num %in% c(0,10) & noise_level %in% c(0.2, 0.5, 1))) %>% 
   mutate(name = str_replace(name, "_", " "))
 
-pdf("./figures/bs_coverage_heat.pdf", height = 6, width = 9)
+#pdf("./figures/bs_coverage_heat.pdf", height = 6, width = 9)
 bs_table %>%
   ggplot(aes(x = sep_num, y = noise_level, fill = median)) +
   geom_tile() +
