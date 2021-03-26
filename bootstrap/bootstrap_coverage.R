@@ -1,8 +1,8 @@
 # Get bootstrap coverage
 
 ####  Load packages ####
-library(tidyverse, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
-library(R.matlab, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
+library(tidyverse, lib.loc = "/ifs/scratch/msph/ehs/eag2186/rpack")
+library(R.matlab, lib.loc = "/ifs/scratch/msph/ehs/eag2186/rpack")
 
 #### For 600 sims ####
 
@@ -19,9 +19,9 @@ for (i in 1:nrow(datasets)) {
   load(paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/bs/bootstrap_ci/bs_upper_pred_", set, ".RDA"))
   load(paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/bs/bootstrap_ci/bs_mean_pred_", set, ".RDA"))
   
-  load(paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/bs/bootstrap_ci/bs_lower_ewa_", set, ".RDA"))
-  load(paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/bs/bootstrap_ci/bs_upper_ewa_", set, ".RDA"))
-  load(paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/bs/bootstrap_ci/bs_mean_ewa_", set, ".RDA"))
+  load(paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/bs/bootstrap_ci/bs_lower_wa_", set, ".RDA"))
+  load(paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/bs/bootstrap_ci/bs_upper_wa_", set, ".RDA"))
+  load(paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/bs/bootstrap_ci/bs_mean_wa_", set, ".RDA"))
   
   load(paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/bs/bootstrap_ci/bs_lower_eh_", set, ".RDA"))
   load(paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/bs/bootstrap_ci/bs_upper_eh_", set, ".RDA"))
@@ -31,12 +31,12 @@ for (i in 1:nrow(datasets)) {
   bs_upper_pred = bs_upper_pred[,2:41]
   bs_mean_pred  = bs_mean_pred[,2:41]
   
-  bs_lower_ewa = bs_lower_ewa[,2:5]
-  bs_upper_ewa = bs_upper_ewa[,2:5]
-  bs_mean_ewa  = bs_mean_ewa[,2:5]
+  bs_lower_ewa = bs_lower_wa[,2:5]
+  bs_upper_ewa = bs_upper_wa[,2:5]
+  bs_mean_ewa  = bs_mean_wa[,2:5]
   
   # True ewa
-  true_scores = read_csv(paste0("/ifs/scratch/msph/ehs/eag2186/Data/sep_csv_ewa/ewa_sep_", set, ".csv")) %>% as.matrix()
+  true_scores = read_csv(paste0("/ifs/scratch/msph/ehs/eag2186/Data/sep_csv_scores/scores_sep_", set, ".csv")) %>% as.matrix()
   # True patterns
   true_patterns = read_csv(paste0("/ifs/scratch/msph/ehs/eag2186/Data/sep_csv_patterns/patterns_sep_", set, ".csv")) %>% as.matrix()
   # True sims
@@ -69,5 +69,5 @@ for (i in 1:nrow(datasets)) {
 }
 
 # Save prop
-save(bs_metrics, file = "/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/bs/bs_metrics.RDA")
+save(bs_metrics, file = "/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/bs/bn2mf_bs_metrics.RDA")
 
