@@ -38,8 +38,13 @@ Bayesian non-parametric non-negative matrix factorization for environmental epid
         * `nmf_bootstrap_coverage.R` to calculate coverage of true scores.  
     * `vci_bs_coverage.R` saves VCI metrics to compare with bootstraps. (10th)  
     * `compare_bootstrap.R` summarizes both bootstraps and VCI. (11th)  
-    * For 8-10, you can't run these, but please check for logic.  
     * `output` subfolder with results.  
 5. [misc](misc) has miscellaneous scripts (**ignore**). 
-    * Related, but not necessary to run analysis.
+    * Related, but not necessary to run analysis.  
+      
+Order to run scripts is in parentheses. (2nd) through (6th) run on 1 example simulated dataset. (7th) loads all runs (12,100 total). (8th) through (10th) you can't run, but please check for logic. (11th) loads all runs (600 simulations, 150 bootstraps each).  
+
+There are never any variable names, only `40` unnamed chemicals in the 'mixture.' Sample size is 1,000.  
+
+
 
