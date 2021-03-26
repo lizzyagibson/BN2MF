@@ -82,6 +82,10 @@ add_noise <- function (seed, chem, noise_level) {
 sim_sep <- sim_sep %>% 
   mutate(sim = pmap(list(seed, chem, noise_level), add_noise))
 # ^ this file is 5G so I did not push it to github
+# save it to run other scripts
+
+# save nested dataframe 
+save(sim_sep, file = "./sims/sim_sep.RDA")
 
 sim_ids = sim_sep %>% dplyr::select(1:3) %>% mutate_all(as.factor)
 
@@ -93,9 +97,6 @@ sim_ids = sim_sep %>% dplyr::select(1:3) %>% mutate_all(as.factor)
 #   write_csv(as_tibble(sim_sep$true_scores[[i]]),   paste0("./sims/csvs/scores_sep_", i, ".csv"))
 # }
 
-# save nested dataframe 
-# save(sim_sep, file = "./sims/sim_sep.RDA")
-
 # save ids
 # save(sim_ids, file = "./sims/sim_ids.RDA")
 
@@ -106,10 +107,11 @@ bs_sample = sim_sep %>%
               mutate(id = 1:nrow(.)) %>% 
               filter(sep_num %in% c(0,10) & noise_level %in% c(0.2, 0.5, 1))
 # ^ this file is also big so I did not push it to gethub
+# save it to run other scripts
+save(bs_sample, file = "./sims/bs_sample.RDA")
 
 # save bootstrap ids
 bs_ids = as_tibble(bs_sample$id)
-
 # write_csv(bs_ids, "./sims/bs_ids.csv")
-# save(bs_sample, file = "./sims/bs_sample.RDA")
+
 
