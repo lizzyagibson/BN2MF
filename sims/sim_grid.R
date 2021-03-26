@@ -92,15 +92,11 @@ sim_ids = sim_sep %>% dplyr::select(1:3) %>% mutate_all(as.factor)
 #   write_csv(as_tibble(sim_sep$true_scores[[i]]),   paste0("/ifs/scratch/msph/ehs/eag2186/Data/sep_csv/scores_sep_", i, ".csv"))
 # }
 
-# write_csv(as_tibble(sim_sep$sim[[9562]]),           paste0("./sims/sep_csv_sim/sim_sep_", 9562, ".csv"))
-# write_csv(as_tibble(sim_sep$chem[[9562]]),          paste0("./sims/sep_csv_chem/chem_sep_", 9562, ".csv"))
-
 # save nested dataframe 
 # save(sim_sep, file = "/ifs/scratch/msph/ehs/eag2186/Data/sim_sep.RDA")
 
 # save ids
 # save(sim_ids, file = "/ifs/scratch/msph/ehs/eag2186/Data/sim_ids.RDA")
-
 
 # Bootstrap subsample
 # distinct and overlapping
@@ -115,21 +111,3 @@ bs_ids = as_tibble(bs_sample$id)
 # write_csv(bs_ids, "./sims/bs_ids.csv")
 # save(bs_sample, file = "./sims/bs_sample.RDA")
 
-# Example to plot histograms from VCI and bootstrap
-# ci_sample = bs_sample %>% filter(id == 9562)
-# write_csv(as_tibble(ci_sample$chem[[1]]),         file = "./Sep/ci_ex/true_chem.csv")
-# write_csv(as_tibble(ci_sample$true_patterns[[1]]),file = "./Sep/ci_ex/true_patterns.csv")
-# write_csv(as_tibble(ci_sample$true_scores[[1]]),  file = "./Sep/ci_ex/true_scores.csv")
-
-# Separability sub sample #
-# this is not in manuscript
-test_sep = sim_sep %>% 
-          mutate(id = 1:nrow(.)) %>% 
-          filter(sep_num == 0 & seed == 1)
-
-# for (i in 1:nrow(test_sep)) {
-#   write_csv(as_tibble(test_sep$sim[[i]]),           paste0("./sims/sep_csv/sim_sep_", i, ".csv"))
-#   write_csv(as_tibble(test_sep$chem[[i]]),          paste0("./sims/sep_csv/chem_sep_", i, ".csv"))
-#   write_csv(as_tibble(test_sep$true_patterns[[i]]), paste0("./sims/sep_csv/patterns_sep_", i, ".csv"))
-#   write_csv(as_tibble(test_sep$true_scores[[i]]),   paste0("./sims/sep_csv/scores_sep_", i, ".csv"))
-# }
