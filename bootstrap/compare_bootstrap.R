@@ -31,80 +31,7 @@ nmf_bs_metrics = nmf_bs_metrics %>% mutate(model = "NMF bootstrap")
 all_metrics = bind_rows(vci_bs_metrics, bs_metrics, nmf_bs_metrics) %>% full_join(., bs_ids)
 
 # Compare ####
-
-# Proportion in CI, SCORES
-prop_table = all_metrics %>%
-  group_by(sep_num, noise_level, model) %>% 
-  summarise(qs = quantile(prop_scores, c(0.25, 0.5, 0.75), na.rm = TRUE), prob = c(0.25, 0.5, 0.75)) %>% 
-  pivot_wider(names_from = "prob",
-              values_from = "qs") %>% 
-  mutate_if(is.numeric, round, 2) %>% 
-  rename(median = `0.5`) %>% 
-  mutate_at(vars(1:2), as.factor)
-
 blue = "#0072b5ff"
-
-prop_table %>%
-  ggplot(aes(x = sep_num, y = noise_level, fill = median)) +
-  geom_tile() +
-  geom_text(aes(label = median), size = 4) + 
-  scale_x_discrete(limits = rev) +
-  facet_wrap(~model) +
-  labs(x = "Number of distinct chemicals per pattern",
-       y = expression("Noise level as proportion of true "*sigma),
-       fill = "Median coverage") +
-  theme_test(base_size = 20) +
-  theme(legend.position = "bottom") + 
-  scale_fill_gradient(high = blue, low = "white") + 
-  theme(legend.text = element_text(size = 10))
-
-# Proportion in CI, LOADINGS
-prop_load = all_metrics %>%
-  group_by(sep_num, noise_level, model) %>% 
-  summarise(qs = quantile(prop_load, c(0.25, 0.5, 0.75), na.rm = TRUE), prob = c(0.25, 0.5, 0.75)) %>% 
-  pivot_wider(names_from = "prob",
-              values_from = "qs") %>% 
-  mutate_if(is.numeric, round, 2) %>% 
-  rename(median = `0.5`) %>% 
-  mutate_at(vars(1:2), as.factor)
-
-prop_load %>%
-  ggplot(aes(x = sep_num, y = noise_level, fill = median)) +
-  geom_tile() +
-  geom_text(aes(label = median), size = 4) + 
-  scale_x_discrete(limits = rev) +
-  facet_wrap(~model) +
-  labs(x = "Number of distinct chemicals per pattern",
-       y = expression("Noise level as proportion of true "*sigma),
-       fill = "Median coverage") +
-  theme_test(base_size = 20) +
-  theme(legend.position = "bottom") + 
-  scale_fill_gradient(high = blue, low = "white") + 
-  theme(legend.text = element_text(size = 10))
-
-# Proportion in CI, SCORES
-prop_pred = all_metrics %>%
-  group_by(sep_num, noise_level, model) %>% 
-  summarise(qs = quantile(prop_pred, c(0.25, 0.5, 0.75), na.rm = TRUE), prob = c(0.25, 0.5, 0.75)) %>% 
-  pivot_wider(names_from = "prob",
-              values_from = "qs") %>% 
-  mutate_if(is.numeric, round, 2) %>% 
-  rename(median = `0.5`) %>% 
-  mutate_at(vars(1:2), as.factor)
-
-prop_pred %>%
-  ggplot(aes(x = sep_num, y = noise_level, fill = median)) +
-  geom_tile() +
-  geom_text(aes(label = median), size = 4) + 
-  scale_x_discrete(limits = rev) +
-  facet_wrap(~model) +
-  labs(x = "Number of distinct chemicals per pattern",
-       y = expression("Noise level as proportion of true "*sigma),
-       fill = "Median coverage") +
-  theme_test(base_size = 20) +
-  theme(legend.position = "bottom") + 
-  scale_fill_gradient(high = blue, low = "white") + 
-  theme(legend.text = element_text(size = 10))
 
 # Tables ####
 
@@ -168,7 +95,7 @@ score_err = medians %>%
   scale_fill_gradient(high = "#20854EFF", low = "white") + 
   labs(subtitle = "Median relative error")
 
-pdf("./figures/bootstrap_metrics_scores.pdf", height = 10)
+# pdf("./figures/bootstrap_metrics_scores.pdf", height = 10)
 (score_prop +
   theme(axis.title = element_blank(),
         legend.position = "none")) / 
@@ -178,7 +105,7 @@ pdf("./figures/bootstrap_metrics_scores.pdf", height = 10)
   (score_err +
      theme(axis.title.y = element_blank(),
            legend.position = "none"))
-dev.off()
+# dev.off()
 
 # Loadings ####
 load_prop = medians %>%
@@ -225,7 +152,7 @@ load_err = medians %>%
   scale_fill_gradient(high = "#20854EFF", low = "white") + 
   labs(subtitle = "Median relative error")
 
-pdf("./figures/bootstrap_metrics_load.pdf", height = 10)
+# pdf("./figures/bootstrap_metrics_load.pdf", height = 10)
 (load_prop +
     theme(axis.title = element_blank(),
           legend.position = "none")) / 
@@ -235,7 +162,7 @@ pdf("./figures/bootstrap_metrics_load.pdf", height = 10)
   (load_err +
      theme(axis.title.y = element_blank(),
            legend.position = "none"))
-dev.off()
+# dev.off()
 
 # Pred ####
 pred_prop = medians %>%
@@ -282,7 +209,7 @@ pred_err = medians %>%
   scale_fill_gradient(high = "#20854EFF", low = "white") + 
   labs(subtitle = "Median relative error")
 
-pdf("./figures/bootstrap_metrics_pred.pdf", height = 10)
+# pdf("./figures/bootstrap_metrics_pred.pdf", height = 10)
 (pred_prop +
     theme(axis.title = element_blank(),
           legend.position = "none")) / 
@@ -292,5 +219,5 @@ pdf("./figures/bootstrap_metrics_pred.pdf", height = 10)
   (pred_err +
      theme(axis.title.y = element_blank(),
            legend.position = "none"))
-dev.off()
+# dev.off()
 

@@ -9,7 +9,7 @@ datasets = read_csv("/ifs/scratch/msph/ehs/eag2186/Data/bs_ids.csv")
 
 vci_bs_metrics = tibble()
 
-for (i in 571:nrow(datasets)) {
+for (i in 1:nrow(datasets)) {
   
   set = datasets$value[i]
   
