@@ -1,48 +1,51 @@
 # Get metrics for all other models on all sims
-# 1:12100
+# on hpc, run array 1:12100
 
-source("/ifs/scratch/msph/ehs/eag2186/npbnmf/compare_functions.R")
+source("./functions/compare_functions.R")
 
-# Read in Sims ####
-job_num = as.integer(Sys.getenv("SGE_TASK_ID"))
-job_num
+# Read in BN2MF results ####
 
-chem <- read_csv(paste0("/ifs/scratch/msph/ehs/eag2186/Data/sep_csv_chem/chem_sep_", job_num, ".csv")) %>%
-  as_tibble() %>%
-  nest(chem = c(V1:V40))
+# job_num = as.integer(Sys.getenv("SGE_TASK_ID"))
 
-true_scores <- read_csv(paste0("/ifs/scratch/msph/ehs/eag2186/Data/sep_csv_scores/scores_sep_", job_num, ".csv")) %>%
-  as_tibble() %>%
-  nest(true_scores = c(V1:V4))
+# Follow analysis with one example simulated dataset
+job_num = 1
 
-sim <- read_csv(paste0("/ifs/scratch/msph/ehs/eag2186/Data/sep_csv_sim/sim_sep_", job_num, ".csv")) %>%
-  as_tibble() %>%
-  nest(sim = c(V1:V40))
+# Read in simulated dataset for comparison ####
+chem <- read_csv(paste0("./sims/csvs/chem_sep_", job_num, ".csv")) %>%
+  as_tibble() %>% nest(chem = c(V1:V40))
 
-true_patterns <- read_csv(paste0("/ifs/scratch/msph/ehs/eag2186/Data/sep_csv_patterns/patterns_sep_", job_num, ".csv")) %>%
-  as_tibble() %>%
-  nest(true_patterns = c(V1:V40))
+true_scores <- read_csv(paste0("./sims/csvs/scores_sep_", job_num, ".csv")) %>%
+  as_tibble() %>% nest(true_scores = c(V1:V4))
+
+sim <- read_csv(paste0("./sims/csvs/sim_sep_", job_num, ".csv")) %>%
+  as_tibble() %>% nest(sim = c(V1:V40))
+
+true_patterns <- read_csv(paste0("./sims/csvs/patterns_sep_", job_num, ".csv")) %>%
+  as_tibble() %>% nest(true_patterns = c(V1:V40))
 
 true_sep = bind_cols(chem, sim, true_patterns, true_scores)
 
 # Get BN2MF Output ####
 
-bn2mf_loadings = readMat(paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/sep_vci_eh_not/sep_eh_NOTscaled", job_num, ".mat"))[[1]] %>% 
+bn2mf_loadings = readMat(paste0("./main/bn2mf/output/eh_NOTscaled", job_num, ".mat"))[[1]] %>% 
   as_tibble(.) %>% nest(data = everything()) %>% rename(bn2mf_loadings = data)
 
-bn2mf_scores = readMat(paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/sep_vci_ewa_not/sep_ewa_NOTscaled", job_num, ".mat"))[[1]] %>% 
+bn2mf_scores = readMat(paste0("./main/bn2mf/output/ewa_NOTscaled", job_num, ".mat"))[[1]] %>% 
   as_tibble(.) %>% nest(data= everything()) %>% rename(bn2mf_scores = data)
 
-ewa_scaled = readMat(paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/sep_vci_ewa_scaled/sep_ewa_scaled", job_num, ".mat"))[[1]] %>% 
+ewa_scaled = readMat(paste0("./main/bn2mf/output/ewa_scaled", job_num, ".mat"))[[1]] %>% 
   as_tibble(.) %>% nest(data= everything()) %>% rename(ewa_scaled = data)
 
-upperWA = readMat(paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/sep_vci_ewa_upper/sep_upperWA_", job_num, ".mat"))[[1]] %>% 
+upperWA = readMat(paste0("./main/bn2mf/output/upperWA_", job_num, ".mat"))[[1]] %>% 
   as_tibble(.) %>% nest(data= everything()) %>% rename(upperWA = data)
 
-lowerWA = readMat(paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/sep_vci_ewa_lower/sep_lowerWA_", job_num, ".mat"))[[1]] %>% 
+lowerWA = readMat(paste0("./main/bn2mf/output/lowerWA_", job_num, ".mat"))[[1]] %>% 
   as_tibble(.) %>% nest(data= everything()) %>% rename(lowerWA = data)
 
+# m has regular/unscaled loadings and scores to compare with other models
 m_out   <- bind_cols(bn2mf_loadings, bn2mf_scores)
+
+# vci has scaled scores and confidence interval to calculate coverage
 vci_out <- bind_cols(ewa_scaled, lowerWA, upperWA)
 
 sep_m <- m_out %>%
@@ -104,7 +107,7 @@ vci_metrics = vci_sep %>%
   mutate(model = "bn2mf")
 
 # Save ####
-save(sep_rank,    file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/sep_rank_m/sep_rank_m_", job_num, ".RDA"))
-save(sep_metrics, file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/sep_metrics_m/sep_metrics_m_", job_num, ".RDA"))
-save(vci_metrics, file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/sep_prop_m/sep_prop_m_", job_num, ".RDA"))
+save(sep_rank,    file = paste0("./main/bn2mf/output/sep_rank_m_", job_num, ".RDA"))
+save(sep_metrics, file = paste0("./main/bn2mf/output/sep_metrics_m_", job_num, ".RDA"))
+save(vci_metrics, file = paste0("./main/bn2mf/output/sep_prop_m_", job_num, ".RDA"))
 

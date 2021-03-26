@@ -1,22 +1,21 @@
 # Get metrics for all other models on all sims
 # 1:12100
 
-source("/ifs/scratch/msph/ehs/eag2186/npbnmf/compare_functions.R")
+source("./functions/compare_functions.R")
 
 # Read in Sims
-job_num = as.integer(Sys.getenv("SGE_TASK_ID"))
-job_num
+# job_num = as.integer(Sys.getenv("SGE_TASK_ID"))
+job_num = 1
+
+# Get simulated dataset ####
+chem <- read_csv(paste0("./sims/csvs/chem_sep_", job_num, ".csv")) %>% 
+  as_tibble() %>% nest(data = c(V1:V40)) %>% rename(chem = data)
+
+true_scores <- read_csv(paste0("./sims/csvs/scores_sep_", job_num, ".csv")) %>% 
+  as_tibble() %>% nest(data = c(V1:V4)) %>% rename(true_scores = data)
 
 # read files made by `run_other_models.R`
-chem <- read_csv(paste0("/ifs/scratch/msph/ehs/eag2186/Data/sep_csv_chem/chem_sep_", job_num, ".csv")) %>% 
-  as_tibble() %>% 
-  nest(data = c(V1:V40)) %>% rename(chem = data)
-
-true_scores <- read_csv(paste0("/ifs/scratch/msph/ehs/eag2186/Data/sep_csv_scores/scores_sep_", job_num, ".csv")) %>% 
-  as_tibble() %>% 
-  nest(data = c(V1:V4)) %>% rename(true_scores = data)
-
-load(paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/sep_models_out/sep_out_", job_num, ".RDA"))
+load(paste0("./main/other_models/output/sep_out_", job_num, ".RDA"))
 
 all_sep = bind_cols(chem, true_scores, sep_out)
 
@@ -62,6 +61,6 @@ sep_metrics = all_sep %>%
 
 #### Save ####
 
-save(sep_rank,    file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/sep_rank/sep_rank_", job_num, ".RDA"))
-save(sep_metrics, file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/sep_metrics/sep_metrics_", job_num, ".RDA"))
+save(sep_rank,    file = paste0("./main/other_models/output/other_rank_", job_num, ".RDA"))
+save(sep_metrics, file = paste0("./main/other_models/output/other_metrics_", job_num, ".RDA"))
 # goes into `combine_other_models.R`

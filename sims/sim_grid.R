@@ -84,19 +84,19 @@ sim_sep <- sim_sep %>%
 
 sim_ids = sim_sep %>% dplyr::select(1:3) %>% mutate_all(as.factor)
 
-# save csv files
+#save csv files
 # for (i in 1:nrow(sim_sep)) {
-#   write_csv(as_tibble(sim_sep$sim[[i]]),           paste0("/ifs/scratch/msph/ehs/eag2186/Data/sep_csv/sim_sep_", i, ".csv"))
-#   write_csv(as_tibble(sim_sep$chem[[i]]),          paste0("/ifs/scratch/msph/ehs/eag2186/Data/sep_csv/chem_sep_", i, ".csv"))
-#   write_csv(as_tibble(sim_sep$true_patterns[[i]]), paste0("/ifs/scratch/msph/ehs/eag2186/Data/sep_csv/patterns_sep_", i, ".csv"))
-#   write_csv(as_tibble(sim_sep$true_scores[[i]]),   paste0("/ifs/scratch/msph/ehs/eag2186/Data/sep_csv/scores_sep_", i, ".csv"))
+#   write_csv(as_tibble(sim_sep$sim[[i]]),           paste0("./sims/csvs/sim_sep_", i, ".csv"))
+#   write_csv(as_tibble(sim_sep$chem[[i]]),          paste0("./sims/csvs/chem_sep_", i, ".csv"))
+#   write_csv(as_tibble(sim_sep$true_patterns[[i]]), paste0("./sims/csvs/patterns_sep_", i, ".csv"))
+#   write_csv(as_tibble(sim_sep$true_scores[[i]]),   paste0("./sims/csvs/scores_sep_", i, ".csv"))
 # }
 
 # save nested dataframe 
-# save(sim_sep, file = "/ifs/scratch/msph/ehs/eag2186/Data/sim_sep.RDA")
+# save(sim_sep, file = "./sims/sim_sep.RDA")
 
 # save ids
-# save(sim_ids, file = "/ifs/scratch/msph/ehs/eag2186/Data/sim_ids.RDA")
+# save(sim_ids, file = "./sims/sim_ids.RDA")
 
 # Bootstrap subsample
 # distinct and overlapping

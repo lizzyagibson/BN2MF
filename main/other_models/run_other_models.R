@@ -3,19 +3,17 @@
 # Run models: regular NMF (L2 & Poisson), PCA, and FA 
 #########################################################
 
-source("/ifs/scratch/msph/ehs/eag2186/npbnmf/compare_functions.R")
+source("./functions/compare_functions.R")
 
 # Read in Sims
-job_num = as.integer(Sys.getenv("SGE_TASK_ID"))
-job_num
+# job_num = as.integer(Sys.getenv("SGE_TASK_ID"))
+job_num = 1
 
-sim <- read_csv(paste0("/ifs/scratch/msph/ehs/eag2186/Data/sep_csv_sim/sim_sep_", job_num, ".csv")) %>% 
-            as_tibble() %>% 
-            nest(sim = c(V1:V40))
+sim <- read_csv(paste0("./sims/csvs/sim_sep_", job_num, ".csv")) %>% 
+            as_tibble() %>% nest(sim = c(V1:V40))
 
-true_patterns <- read_csv(paste0("/ifs/scratch/msph/ehs/eag2186/Data/sep_csv_patterns/patterns_sep_", job_num, ".csv")) %>% 
-  as_tibble() %>% 
-  nest(true_patterns = c(V1:V40))
+true_patterns <- read_csv(paste0("./sims/csvs/patterns_sep_", job_num, ".csv")) %>% 
+  as_tibble() %>% nest(true_patterns = c(V1:V40))
 
 sim_sep = bind_cols(sim, true_patterns)
 
@@ -75,6 +73,6 @@ sep_out <- sep_out %>%
          nmfp_loadings = map2(nmfp_loadings, nmfp_perm, get_perm_product),
          nmfp_scores   = map2(nmfp_scores, nmfp_perm, get_perm_product))
 
-save(sep_out, file = paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/separate/sep_models_out/sep_out_", job_num, ".RDA"))
+save(sep_out, file = paste0("./main/other_models/output/sep_out_", job_num, ".RDA"))
 # Combine all
 # goes into `other_model_metrics.R`

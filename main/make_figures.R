@@ -18,19 +18,11 @@ load("./sims/sim_ids.RDA")
 load("./main/other_models/output/other_metrics.RDA")
 load("./main/other_models/output/other_rank.RDA")
 
-# bootstrapped output
-# bn2mf
-load("./bootstrap/output/bs_prop.RDA")
-# nmf
-load("./bootstrap/output/nmf_bs_prop.RDA")
-
-# bootstrap sub sample
-load("./sims/bs_sample.RDA")
-
 # VCI ####
 sep_vci = bind_cols(sim_ids, m_rank, m_prop[,1])
 sep_vci %>% filter(sep_num %in% c(0,10) & noise_level %in% c(0.2, 0.5, 1)) %>% pull(prop) %>% summary()
 
+# This is to plot the median coverage of BN2MF at different levels of noise and separability
 prop_table = sep_vci %>%
   group_by(sep_num, noise_level) %>% 
   summarise(qs = quantile(prop, c(0.25, 0.5, 0.75), na.rm = TRUE), prob = c(0.25, 0.5, 0.75)) %>% 
@@ -58,43 +50,12 @@ prop_table %>%
   theme(legend.text = element_text(size = 10))
 #dev.off()
 
-# bootstrapped CI ####
-sep_bs = bind_cols(bs_sample, bs_prop) %>% 
-  rename(BN2MF_bootstrap = prop) %>% 
-  full_join(., nmf_bs_prop) %>% 
-  rename(NMF_bootstrap = prop)
-
-bs_table = sep_bs %>%
-  pivot_longer(BN2MF_bootstrap:NMF_bootstrap) %>% 
-  group_by(sep_num, noise_level, name) %>% 
-  summarise(qs = quantile(value, c(0.25, 0.5, 0.75), na.rm = TRUE), prob = c(0.25, "median", 0.75)) %>% 
-  pivot_wider(names_from = "prob",
-              values_from = "qs") %>% 
-  mutate_if(is.numeric, round, 2) %>% 
-  mutate_at(vars(1:2), as.factor) %>% 
-  bind_rows(., prop_table %>% filter(sep_num %in% c(0,10) & noise_level %in% c(0.2, 0.5, 1))) %>% 
-  mutate(name = str_replace(name, "_", " "))
-
-#pdf("./figures/bs_coverage_heat.pdf", height = 6, width = 9)
-bs_table %>%
-  ggplot(aes(x = sep_num, y = noise_level, fill = median)) +
-  geom_tile() +
-  geom_text(aes(label = median), size = 7, col = "coral") + 
-  scale_x_discrete(limits = rev) +
-  labs(x = "Number of distinct chemicals per pattern",
-       y = expression("Noise level as proportion of true "*sigma),
-       fill = "Median coverage") +
-  theme_test(20) +
-  theme(legend.position = "bottom") + 
-  facet_wrap(~name) + 
-  scale_fill_gradient(high = blue, low = "white") + 
-  theme(legend.text = element_text(size = 10))
-dev.off()
-
 # Rank ####
+# This is to get the chosen rank of each model
 bn2mf_rank = bind_cols(sim_ids, m_rank)
 
 sim_ids_4 = bind_rows(sim_ids, sim_ids, sim_ids, sim_ids)
+# ^ this gets the sim ids, noise, and sep_num to match the corresponding rows
 
 get_rank = other_rank %>% 
               arrange(model) %>% 
@@ -158,12 +119,14 @@ get_rank %>%
 
 # metrics ####
 sim_ids_3 = bind_rows(sim_ids, sim_ids, sim_ids)
+# ^ this gets the sim ids, noise, and sep_num to match the corresponding rows
 
 bn2mf_metrics = m_metrics %>% 
                   arrange(matrix) %>% 
                   bind_cols(., sim_ids_3)
 
 sim_ids_12 = bind_rows(sim_ids_4, sim_ids_4, sim_ids_4)
+# ^ this gets the sim ids, noise, and sep_num to match the corresponding rows
 
 get_metrics = other_metrics %>% 
                 arrange(model, matrix) %>% 
@@ -173,6 +136,7 @@ get_metrics = other_metrics %>%
                        matrix = str_to_title(matrix))
 get_metrics
 
+# filter to subset for plotting / tables
 metrics = get_metrics %>% 
           filter(sep_num %in% c(0, 10) & noise_level %in% c(0.2, 0.5, 1)) %>% 
           mutate(sep = ifelse(sep_num == 10, "Distinct Patterns", "overlapping Patterns"),
@@ -181,15 +145,15 @@ metrics = get_metrics %>%
                                    TRUE ~ "Noise +100%"))
 
 # Plots ####
-metrics %>% 
-  ggplot(aes(x = model, y = relerr, fill = model)) +
-  geom_boxplot() +
-  facet_wrap(.~matrix, scales = "free_y") +
-  scale_y_log10() +
-  theme_bw() + 
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  labs(x = "", y = "Relative error", fill = "",
-       title = "Across all simulations (noise levels and separability)")
+# metrics %>% 
+#   ggplot(aes(x = model, y = relerr, fill = model)) +
+#   geom_boxplot() +
+#   facet_wrap(.~matrix, scales = "free_y") +
+#   scale_y_log10() +
+#   theme_bw() + 
+#   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+#   labs(x = "", y = "Relative error", fill = "",
+#        title = "Across all simulations (noise levels and separability)")
 
 #pdf("./figures/loadings.pdf")
 metrics %>% 
@@ -245,6 +209,8 @@ metrics %>%
 #dev.off()
 
 # Tables ####
+# these are the tables in the manuscript
+
 metrics_sum =  metrics %>%
                 group_by(sep, noise, model, matrix) %>% 
                 summarize(mean_relerr = mean(relerr, na.rm=TRUE),
@@ -255,16 +221,17 @@ metrics_sum =  metrics %>%
                           sd_cosdist  = sd(cosdist, na.rm = T))
 metrics_sum
 
+# this just cleans up the output for latex
 for_table = metrics_sum %>% 
             ungroup() %>% 
             mutate_if(is.numeric, ~round(., 2)) %>% 
             mutate_all(as.character) %>% 
-            mutate_at(vars(5:10), ~ifelse(. == "0", "<0.01", .)) %>% 
+            mutate_at(vars(5:10), ~ifelse(. == "0", "<0.01", .)) %>% # don't print zero
             mutate_at(vars(5:10), ~ifelse(grepl("(\\.\\d)$", .), str_c(., "0"), .)) %>% # if #.#, add zero to end
             mutate_at(vars(5:10), ~ifelse(!grepl("(\\.)", .), str_c(., ".00"), .)) %>%
             mutate(RelErr = str_c(mean_relerr, " (", sd_relerr, ")"),
                    CosDist = str_c(mean_cosdist, " (", sd_cosdist, ")"),
-                   SSDist = str_c(mean_ssdist, " (", sd_ssdist, ")")) %>% 
+                   SSDist = str_c(mean_ssdist, " (", sd_ssdist, ")")) %>% # format values as mean (stdev) 
             dplyr::select(-grep("(mean|sd)", colnames(.))) %>% 
             mutate_at(vars(5:7), ~ifelse(is.na(.), "---", .))
 
