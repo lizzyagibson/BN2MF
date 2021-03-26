@@ -9,7 +9,7 @@ library(tidyverse)
 #   "Salomie" = "#FFDC91", "FrenchRose" = "#EE4C97"
 # )
 
-theme_set(theme_bw(base_size = 26) + 
+theme_set(theme_bw(base_size = 20) + 
             theme(strip.background = element_rect(fill="white"),
                   axis.text.x = element_text(angle = 45, hjust = 1, size = 20),
                   axis.title.x = element_blank(),
