@@ -4,7 +4,7 @@
 .Ruserdata
 .rData
 
-*.csv
+/misc/*
+
 *.mat
-*.RDA
 *.pdf

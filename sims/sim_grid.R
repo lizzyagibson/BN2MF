@@ -81,6 +81,7 @@ add_noise <- function (seed, chem, noise_level) {
 # add noise
 sim_sep <- sim_sep %>% 
   mutate(sim = pmap(list(seed, chem, noise_level), add_noise))
+# ^ this file is 5G so I did not push it to github
 
 sim_ids = sim_sep %>% dplyr::select(1:3) %>% mutate_all(as.factor)
 
@@ -104,6 +105,7 @@ sim_ids = sim_sep %>% dplyr::select(1:3) %>% mutate_all(as.factor)
 bs_sample = sim_sep %>% 
               mutate(id = 1:nrow(.)) %>% 
               filter(sep_num %in% c(0,10) & noise_level %in% c(0.2, 0.5, 1))
+# ^ this file is also big so I did not push it to gethub
 
 # save bootstrap ids
 bs_ids = as_tibble(bs_sample$id)
