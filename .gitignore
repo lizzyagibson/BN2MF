@@ -8,3 +8,9 @@
 
 *.mat
 *.pdf
+*_1.RDA
+*_1.csv
+
+# too big
+sim_sep.RDA
+bs_sample.RDA
