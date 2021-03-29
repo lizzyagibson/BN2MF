@@ -44,7 +44,7 @@ Bayesian non-parametric non-negative matrix factorization for environmental epid
       
 Order to run scripts is in parentheses. (2nd) through (6th) run on 1 example simulated dataset. (7th) loads all runs (12,100 total). (8th) through (10th) you can't run, but please check for logic. (11th) loads all runs (600 simulations, 150 bootstraps each).  
 
-There are never any variable names, only `40` unnamed chemicals in the 'mixture.' Sample size is 1,000.  
+There are never any variable names, only `40` unnamed chemicals in the 'mixture.' Sample size is `1,000`.  
 
 
 
