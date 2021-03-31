@@ -3,37 +3,43 @@
 # This runs 1 time
 
 # Packages
-library(tidyverse, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
+#library(tidyverse, lib.loc = "/ifs/home/msph/ehs/eag2186/local/hpc/")
 
 ## Get functions
 source("/ifs/scratch/msph/ehs/eag2186/npbnmf/compare_functions.R")
-source("/ifs/scratch/msph/ehs/eag2186/npbnmf/factor_correspondence.R")
+#source("/ifs/scratch/msph/ehs/eag2186/npbnmf/factor_correspondence.R")
 
 # Read in metrics for
 # PCA, FA, NMF
-n = 2700 # (3*3*3*100)
+n = 13500
 
-metrics = tibble()
+dim_r_metrics = tibble()
 for (i in 1:n) {
-  load(paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/combo_dim/dim_out_", i, ".RDA"))
-  output_all = output_all %>% mutate(id = i)
-  metrics = bind_rows(metrics, output_all)
+  load(paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/dim/combo_r_dim/dim_out_", i, ".RDA"))
+  # output_all = output_all %>% mutate(id = i)
+  dim_r_metrics = bind_rows(dim_r_metrics, output_all)
+  if (i %% 100 == 0) {print(i)}
 }
+save(dim_r_metrics, file = "/ifs/scratch/msph/ehs/eag2186/npbnmf/dim/dim_r_metrics.RDA")
 
 # Read in BN2MF metrics
-bn2mf_m = tibble()
-for (i in 1:n) {
-  load(paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/combo_bnmf/bnmf_dim_out_", i, ".RDA"))
-  output_all = output_all
-  bn2mf_m = bind_rows(bn2mf_m, output_all)
+bn2mf_rank = tibble()
+bn2mf_metrics = tibble()
+bn2mf_prop = tibble()
+
+for (j in 1:n) {
+  load(paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/dim/dim_prop_m/dim_prop_m_", j, ".RDA"))
+  bn2mf_prop = bind_rows(bn2mf_prop, vci_metrics)
+  
+  load(paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/dim/dim_rank_m/dim_rank_m_", j, ".RDA"))
+  bn2mf_rank = bind_rows(bn2mf_rank, dim_rank)
+  
+  load(paste0("/ifs/scratch/msph/ehs/eag2186/npbnmf/dim/dim_metrics_m/dim_metrics_m_", j, ".RDA"))
+  bn2mf_metrics = bind_rows(bn2mf_metrics, dim_metrics)
+  
+  if (j %% 100 == 0) {print(j)}
 }
 
-dim_all = left_join(metrics, bn2mf_m) %>% 
-  mutate(patterns = paste0(patterns, " Patterns"),
-         patterns = ifelse(patterns == "1 Patterns", "1 Pattern", patterns),
-         patterns = fct_relevel(patterns, "4 Patterns", after = 1),
-         participants = paste0(participants, " Participants"),
-         chemicals = paste0(chemicals, " Chemicals"),
-         chemicals = fct_inorder(chemicals))
-
-save(dim_all, file = "/ifs/scratch/msph/ehs/eag2186/npbnmf/sup_dim.RDA")
+save(bn2mf_metrics, file = "/ifs/scratch/msph/ehs/eag2186/npbnmf/dim/dim_m_metrics.RDA")
+save(bn2mf_prop, file = "/ifs/scratch/msph/ehs/eag2186/npbnmf/dim/dim_m_prop.RDA")
+save(bn2mf_rank, file = "/ifs/scratch/msph/ehs/eag2186/npbnmf/dim/dim_m_rank.RDA")

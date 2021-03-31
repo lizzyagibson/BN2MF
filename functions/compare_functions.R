@@ -226,8 +226,9 @@ symm_subspace_dist <- function(U, V) {
     if (nrow(V) < ncol(V)) {V <- t(V)}
     
     # this gets an orthonormal basis
-    qrU <- qr.Q(qr(U))
-    qrV <- qr.Q(qr(V))
+    # Both provide orthonormal bases, but svd does not give NaNs for lots of zeros
+    qrU <- svd(U)$u #qr.Q(qr(U))
+    qrV <- svd(V)$u #qr.Q(qr(V))
   
     m <- ncol(U)
     n <- ncol(V)
