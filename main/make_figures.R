@@ -144,6 +144,25 @@ metrics = get_metrics %>%
                                    noise_level == 0.5 ~ "Noise +50%", 
                                    TRUE ~ "Noise +100%"))
 
+get_metrics %>% 
+  group_by(sep_num, noise_level, model) %>% 
+  summarise(median = median(relerr, na.rm = T)) %>% 
+  mutate_if(is.numeric, round, 2) %>% 
+  mutate_at(vars(1:3), as.factor) %>% 
+  filter(model == "NMFL2") %>%
+  #mutate(noise = fct_relevel(noise_level, "Noise +20%", "Noise +50%", "Noise +100%")) %>% 
+  ggplot(aes(x = sep_num, y = noise_level, fill = median)) +
+  geom_tile() +
+  geom_text(aes(label = median), size = 4) + 
+  scale_x_discrete(limits = rev) +
+  labs(x = "Number of distinct chemicals per pattern",
+       y = expression("Noise level as proportion of true "*sigma),
+       fill = "Median coverage") +
+  theme_test(base_size = 20) +
+  theme(legend.position = "bottom") + 
+  scale_fill_gradient(high = blue, low = "white") + 
+  theme(legend.text = element_text(size = 10))
+
 # Plots ####
 # metrics %>% 
 #   ggplot(aes(x = model, y = relerr, fill = model)) +

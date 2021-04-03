@@ -33,6 +33,17 @@ all_metrics = bind_rows(vci_bs_metrics, bs_metrics, nmf_bs_metrics) %>% full_joi
 # Compare ####
 blue = "#0072b5ff"
 
+# Width ####
+
+width = as_vector(vci_bs_metrics[,8] - bs_metrics[,8])
+quantile(width, probs = c(seq(0,1,.01)))
+
+width = as_vector(vci_bs_metrics[,9] - bs_metrics[,9])
+quantile(width, probs = c(seq(0,1,.01)))
+
+width = as_vector(vci_bs_metrics[,10] - bs_metrics[,10])
+quantile(width, probs = c(seq(0,1,.01)))
+
 # Tables ####
 
 medians = all_metrics %>% 
@@ -62,9 +73,17 @@ score_prop = medians %>%
        fill = "Median coverage") +
   theme_test(base_size = 15) +
   scale_fill_gradient(high = blue, low = "white") + 
-  theme(title = element_text(size = 10)) + 
-  labs(subtitle = "Median coverage")
-  
+  theme(title = element_text(size = 10))
+
+pdf("./figures/bootstrap_coverage.pdf", height=5)
+score_prop +
+    theme(axis.title = element_text(size = 18),
+          strip.background =element_rect(fill="white"),
+          legend.position = "bottom",
+          legend.title = element_text(size=15),
+          legend.text = element_text(size=10))
+dev.off()
+
 score_width = medians %>%
   ggplot(aes(x = sep_num, y = noise_level, fill = width_scores)) +
   geom_tile() +
@@ -96,7 +115,8 @@ score_err = medians %>%
   labs(subtitle = "Median relative error")
 
 # pdf("./figures/bootstrap_metrics_scores.pdf", height = 10)
-(score_prop +
+(score_prop  + 
+    labs(subtitle = "Median coverage") +
   theme(axis.title = element_blank(),
         legend.position = "none")) / 
   (score_width +
