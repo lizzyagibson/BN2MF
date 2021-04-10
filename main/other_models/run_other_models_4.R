@@ -1,4 +1,5 @@
 #########################################################
+# SCRIPT 4
 # Data Generating Process Sims
 # Run models: regular NMF (L2 & Poisson), PCA, and FA 
 #########################################################

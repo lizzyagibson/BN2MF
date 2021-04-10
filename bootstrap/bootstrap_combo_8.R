@@ -1,3 +1,4 @@
+# SCRIPT 8
 # Combine bootstrap distributions and VCI on HPC
 # First combine bootstraps
 

@@ -1,3 +1,4 @@
+# SCRIPT 3
 # Get metrics for all other models on all sims
 # on hpc, run array 1:12100
 
