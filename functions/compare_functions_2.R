@@ -228,8 +228,8 @@ symm_subspace_dist <- function(U, V) {
     
     # this gets an orthonormal basis
     # Both provide orthonormal bases, but svd does not give NaNs for lots of zeros
-    qrU <- svd(U)$u #qr.Q(qr(U))
-    qrV <- svd(V)$u #qr.Q(qr(V))
+    qrU <- svd(U)$v #qr.Q(qr(U))
+    qrV <- svd(V)$v #qr.Q(qr(V))
   
     m <- ncol(U)
     n <- ncol(V)
@@ -449,16 +449,3 @@ get_perm_product <- function(x,y) {
     if(ncol(x) != ncol(y)) { return(x) } else{ return(x %*% y) }
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
