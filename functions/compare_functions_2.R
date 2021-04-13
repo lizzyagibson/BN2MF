@@ -215,8 +215,10 @@ get_nmfp <- function (sim, patterns) {
 # to compare performance
 
 # Symmetric Subspace Distance 
-symm_subspace_dist <- function(U, V) {
+symsub_dist <- function(U, V) {
   
+  # there is some hacky error-handling in here
+  # to return `NA' instead of crashing
   if(any(is.na(U)) | any(is.na(V))) {return(NA)} else {
     
     U = as.matrix(U)
@@ -228,9 +230,15 @@ symm_subspace_dist <- function(U, V) {
     
     # this gets an orthonormal basis
     # Both provide orthonormal bases, but svd does not give NaNs for lots of zeros
-    qrU <- svd(U)$v #qr.Q(qr(U))
-    qrV <- svd(V)$v #qr.Q(qr(V))
-  
+    # the distance is invariant to choice of orthonormal basis
+    qrU <- qr.Q(qr(U))
+    qrV <- qr.Q(qr(V))
+    
+    if (any(is.nan(qrU)) | any(is.nan(qrV))) {
+      qrU <- svd(U)$u
+      qrV <- svd(V)$u
+    }
+    
     m <- ncol(U)
     n <- ncol(V)
     
@@ -246,7 +254,7 @@ symm_subspace_dist <- function(U, V) {
         dUV = NA
       })
     
-    # it happened somewhere that (t(qrU) %*% qrV)^2)),10) was so close to 0
+    # it happened somewhere that round((max(m,n) - sum((t(qrU) %*% qrV)^2)),10) was so close to 0
     # that the sqrt function gave NaN
     if(round((max(m,n) - sum((t(qrU) %*% qrV)^2)),10) == 0) {dUV = 0} # if sqrt(0), make zero
     
@@ -449,3 +457,4 @@ get_perm_product <- function(x,y) {
     if(ncol(x) != ncol(y)) { return(x) } else{ return(x %*% y) }
   }
 }
+
