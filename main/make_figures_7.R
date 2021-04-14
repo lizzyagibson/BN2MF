@@ -1,7 +1,7 @@
 # SCRIPT 7
 # Packages ####
 
-source("./functions/compare_functions.R")
+source("./functions/compare_functions_2.R")
 source("./functions/fig_set.R")
 options(scipen = 999)
 
@@ -273,5 +273,8 @@ other_table = for_table %>%
   arrange(sep, noise, model) %>% 
   dplyr::select(sep:model, CosDist_Pred, CosDist_Scores, CosDist_Loadings, 
                 SSDist_Pred, SSDist_Scores, SSDist_Loadings)
+
+other_table %>% 
+  print(n=30)
 
 xtable::xtable(other_table)
