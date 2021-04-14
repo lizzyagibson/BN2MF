@@ -263,6 +263,20 @@ symsub_dist <- function(U, V) {
   }
 }
 
+# Check orthonormal bases
+# x = matrix(rnorm(30), ncol = 10)
+# 
+# qrx = qr.Q(qr(x))
+# svdx = svd(x)$u
+# 
+# # orthogonal
+# round(t(qrx) %*% qrx, 10)
+# round(t(svdx) %*% svdx, 10)
+# 
+# # unitary
+# apply(qrx, 2, function(x) (sum(x^2)))
+# apply(svdx, 2, function(x) (sum(x^2)))
+
 # Cosine distance (matrix version)
 # WITH error handling
 # if the matrices are not the same size, NA
