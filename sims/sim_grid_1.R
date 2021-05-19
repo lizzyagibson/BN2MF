@@ -2,7 +2,7 @@
 # Create simulated datasets
 
 # Get functions
-source("./functions/compare_functions.R")
+source("./functions/compare_functions_2.R")
 
 # Simulate Patterns
 create_patterns <- function (seed, reps) {
@@ -86,7 +86,7 @@ sim_sep <- sim_sep %>%
 # save it to run other scripts
 
 # save nested dataframe 
-save(sim_sep, file = "./sims/sim_sep.RDA")
+# save(sim_sep, file = "./sims/sim_sep.RDA")
 
 sim_ids = sim_sep %>% dplyr::select(1:3) %>% mutate_all(as.factor)
 
@@ -109,7 +109,7 @@ bs_sample = sim_sep %>%
               filter(sep_num %in% c(0,10) & noise_level %in% c(0.2, 0.5, 1))
 # ^ this file is also big so I did not push it to gethub
 # save it to run other scripts
-save(bs_sample, file = "./sims/bs_sample.RDA")
+# save(bs_sample, file = "./sims/bs_sample.RDA")
 
 # save bootstrap ids
 bs_ids = as_tibble(bs_sample$id)

@@ -5,6 +5,7 @@
 .rData
 
 /misc/*
+*.html
 
 *.mat
 *.pdf
