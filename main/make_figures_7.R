@@ -4,6 +4,7 @@
 source("./functions/compare_functions_2.R")
 source("./functions/fig_set.R")
 options(scipen = 999)
+library(RColorBrewer)
 
 # Load Data ####
 
@@ -48,6 +49,25 @@ prop_table %>%
   theme_test(base_size = 20) +
   theme(legend.position = "bottom") + 
   scale_fill_gradient(high = blue, low = "white") + 
+  theme(legend.text = element_text(size = 10))
+#dev.off()
+
+#pdf("./figures/coverage_heat_crop.pdf",width=10)
+prop_table %>%
+  filter(noise_level %in% c(0,0.1,0.2,0.3,0.4,0.5)) %>% 
+  #mutate(median = as_factor(median)) %>% 
+  ggplot(aes(x = sep_num, y = noise_level, fill = median)) +
+  geom_tile(color="black",size=.5) +
+  geom_text(aes(label = median), size = 7, color="coral") + 
+  scale_x_discrete(limits = rev) +
+  labs(x = "Number of distinct chemicals per pattern",
+       y = expression("Noise level as proportion of true "*sigma),
+       fill = "Median coverage") +
+  theme_minimal(base_size = 20) +
+  theme(legend.position = "bottom",
+        panel.grid = element_blank(),
+        axis.ticks = element_line()) + 
+  scale_fill_distiller(palette = "YlGnBu", direction = 1) +
   theme(legend.text = element_text(size = 10))
 #dev.off()
 
@@ -118,6 +138,16 @@ get_rank %>%
   mutate_if(is_integer, ~replace_na(., 0)) %>% 
   knitr::kable()
 
+get_rank %>%
+  filter(model == "pca") %>% 
+  #mutate(rank = ifelse(rank > 5, 5, rank)) %>% 
+  group_by(noise_level, rank) %>% 
+  summarise(n = n()) %>% 
+  pivot_wider(names_from = rank,
+              values_from = "n") %>% 
+  mutate_if(is_integer, ~replace_na(., 0)) %>% 
+  knitr::kable()
+
 # metrics ####
 sim_ids_3 = bind_rows(sim_ids, sim_ids, sim_ids)
 # ^ this gets the sim ids, noise, and sep_num to match the corresponding rows
@@ -136,6 +166,7 @@ get_metrics = other_metrics %>%
                 mutate(model = str_to_upper(model),
                        matrix = str_to_title(matrix))
 get_metrics
+save(get_metrics, file = "./main/metrics.rda")
 
 # filter to subset for plotting / tables
 metrics = get_metrics %>% 
@@ -146,11 +177,12 @@ metrics = get_metrics %>%
                                    TRUE ~ "Noise +100%"))
 
 get_metrics %>% 
+  filter(model == "NMFL2" & matrix == "Pred") %>%
   group_by(sep_num, noise_level, model) %>% 
   summarise(median = median(relerr, na.rm = T)) %>% 
   mutate_if(is.numeric, round, 2) %>% 
   mutate_at(vars(1:3), as.factor) %>% 
-  filter(model == "NMFL2") %>%
+  #filter(model == "BN2MF") %>%
   #mutate(noise = fct_relevel(noise_level, "Noise +20%", "Noise +50%", "Noise +100%")) %>% 
   ggplot(aes(x = sep_num, y = noise_level, fill = median)) +
   geom_tile() +
