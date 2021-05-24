@@ -166,7 +166,7 @@ get_metrics = other_metrics %>%
                 mutate(model = str_to_upper(model),
                        matrix = str_to_title(matrix))
 get_metrics
-save(get_metrics, file = "./main/metrics.rda")
+#save(get_metrics, file = "./main/metrics.rda")
 
 # filter to subset for plotting / tables
 metrics = get_metrics %>% 
@@ -259,6 +259,22 @@ metrics %>%
         legend.position = c(0.5, -0.05), # c(0,0) bottom left, c(1,1) top-right.
         legend.text = element_text(size = 14))
 #dev.off()
+
+metrics %>% 
+  filter(noise_level %in% c(0.2, 0.5)) %>% 
+  filter(matrix == "Pred") %>% 
+  mutate(noise = fct_inorder(noise)) %>%
+  ggplot(aes(x = model, y = relerr, fill = model, col = model)) +
+  geom_boxplot(alpha = 0.5, outlier.size = 0.5, notch = TRUE) +
+  facet_grid(sep~noise, scales = "free_y") +
+  scale_y_log10() + 
+  theme_bw(base_size = 20) + 
+  labs(x = "", y = "Relative Prediction Error", fill = "", col = "") + 
+  theme(axis.text.x = element_blank(),
+        strip.background =element_rect(fill="white"),
+        legend.direction = "horizontal",
+        legend.position = c(0.5, -0.05), # c(0,0) bottom left, c(1,1) top-right.
+        legend.text = element_text(size = 14))
 
 # Tables ####
 # these are the tables in the manuscript
