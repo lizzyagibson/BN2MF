@@ -4,8 +4,10 @@
 .Ruserdata
 .rData
 
-/misc/*
-*.html
+*.csv
+*.RDA
+
+misc/*_*/*
 
 *.mat
 *.pdf
@@ -15,3 +17,4 @@
 # too big
 sim_sep.RDA
 bs_sample.RDA
+README.html
