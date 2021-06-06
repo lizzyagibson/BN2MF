@@ -9,8 +9,10 @@ library(tidyverse)
 library(RColorBrewer)
 library(patchwork)
 library(ggridges)
+library(ggsci)
 
 source("./functions/compare_functions_2.R")
+source("./functions/fig_set.R")
 
 load(file = "./sims/sim_sep.RDA")
 sim_sep
@@ -333,6 +335,46 @@ metrics = get_metrics %>%
 #pdf("./figures/prez_error.pdf", width=9)
 metrics %>% 
   filter(matrix == "Pred") %>% 
+  mutate(noise = fct_inorder(noise)) %>% 
+  ggplot(aes(x = model, y = relerr, fill = model, col = model)) +
+  geom_boxplot(alpha = 0.5, outlier.size = 0.5, notch=TRUE) +
+  #geom_violin(alpha=0.5, scale="count", draw_quantiles=T) +
+  facet_grid(.~noise) +
+  scale_y_log10() + 
+  theme_bw(base_size = 25) + 
+  labs(x = "", y = "Relative Prediction Error", fill = "", col = "") + 
+  scale_color_discrete(labels = c(expression(paste("B", N^2, "MF")),'FA','NMF-L2', 'NMF-P', 'PCA')) +
+  scale_fill_discrete(labels = c(expression(paste("B", N^2, "MF")),'FA','NMF-L2', 'NMF-P', 'PCA')) +
+  theme(axis.text.x = element_blank(),
+        strip.background =element_rect(fill="white"),
+        legend.direction = "horizontal",
+        legend.position = c(0.5, -0.08), # c(0,0) bottom left, c(1,1) top-right.
+        legend.text = element_text(size = 15))
+# dev.off()
+
+#pdf("./figures/prez_scores.pdf", width=9)
+metrics %>% 
+  filter(matrix == "Scores") %>% 
+  mutate(noise = fct_inorder(noise)) %>% 
+  ggplot(aes(x = model, y = relerr, fill = model, col = model)) +
+  geom_boxplot(alpha = 0.5, outlier.size = 0.5, notch=TRUE) +
+  #geom_violin(alpha=0.5, scale="count", draw_quantiles=T) +
+  facet_grid(.~noise) +
+  scale_y_log10() + 
+  theme_bw(base_size = 25) + 
+  labs(x = "", y = "Relative Prediction Error", fill = "", col = "") + 
+  scale_color_discrete(labels = c(expression(paste("B", N^2, "MF")),'FA','NMF-L2', 'NMF-P', 'PCA')) +
+  scale_fill_discrete(labels = c(expression(paste("B", N^2, "MF")),'FA','NMF-L2', 'NMF-P', 'PCA')) +
+  theme(axis.text.x = element_blank(),
+        strip.background =element_rect(fill="white"),
+        legend.direction = "horizontal",
+        legend.position = c(0.5, -0.08), # c(0,0) bottom left, c(1,1) top-right.
+        legend.text = element_text(size = 15))
+# dev.off()
+
+# pdf("./figures/prez_loadings.pdf", width=9)
+metrics %>% 
+  filter(matrix == "Loadings") %>% 
   mutate(noise = fct_inorder(noise)) %>% 
   ggplot(aes(x = model, y = relerr, fill = model, col = model)) +
   geom_boxplot(alpha = 0.5, outlier.size = 0.5, notch=TRUE) +
