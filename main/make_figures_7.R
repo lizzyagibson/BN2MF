@@ -94,15 +94,19 @@ get_rank %>%
   knitr::kable()
 
 get_rank %>% 
+  filter(noise_level == '0.7') %>% 
   mutate(rank_f = case_when(rank > 6 ~ ">6",
                             TRUE ~ as.character(rank))) %>% 
   group_by(model, rank_f) %>% 
-  summarise(n = n()) %>% 
+  summarise(n = n()) %>%
+  mutate(prop = round(n/sum(n),4)) %>% 
+  select(-n) %>% 
   pivot_wider(names_from = "rank_f",
-              values_from = "n") %>% 
-  mutate_if(is_integer, ~replace_na(., 0)) %>% 
-  dplyr::select(model, `0`, everything()) %>% 
+              values_from = "prop") %>% 
+  mutate_if(is.numeric, ~replace_na(., 0)) %>% 
+  #dplyr::select(model, `0`, everything()) %>% 
   knitr::kable()
+  #stargazer::stargazer(summary = F)
 
 get_rank %>%
   filter(rank != 4) %>% 
