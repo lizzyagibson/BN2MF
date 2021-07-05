@@ -22,7 +22,7 @@ all_sep = bind_cols(chem, true_scores, sep_out)
 
 #### Get Stats ####
 
-#### Normalize truth ####
+#### Normalize patterns ####
 all_sep = all_sep %>% 
   mutate(denom = map(true_patterns, function(x) apply(x, 1, sum)),
          true_patternsscaled = map2(true_patterns, denom, function(x,y) x/y),

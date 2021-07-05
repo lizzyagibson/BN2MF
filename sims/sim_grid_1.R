@@ -16,17 +16,17 @@ create_patterns <- function (seed, reps) {
   pat3=c(5,10,0,0)
   pat4=c(10,0,0,5)
   
-  # `reps` is how overlapping the patterns are
-  # reps = 0 -- completely overlapping
-  # reps = 10 completely distinct
-  start = c()
-  if (reps != 0) { 
-    for (i in 1:reps) {
-      start = cbind(start,diag(1,4))
+  # `inseparable` is how overlapping the patterns are
+  # inseparable = 0 -- completely overlapping
+  # inseparable = 10 completely distinct
+  separable = c()
+  if (inseparable != 0) { 
+    for (i in 1:inseparable) {
+      separable = cbind(separable,diag(1,4))
     }}
   
-  patterns = cbind(start, t(rdirichlet(10-reps, pat1)), t(rdirichlet(10-reps, pat2)),
-                   t(rdirichlet(10-reps, pat3)), t(rdirichlet(10-reps, pat4)))
+  patterns = cbind(separable, t(rdirichlet(10-inseparable, pat1)), t(rdirichlet(10-inseparable, pat2)),
+                   t(rdirichlet(10-inseparable, pat3)), t(rdirichlet(10-inseparable, pat4)))
   return(patterns)
 }
 

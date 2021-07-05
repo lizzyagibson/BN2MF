@@ -31,9 +31,9 @@ if (grepl("/Users/lizzy/", getwd())) {
 # determine how many components explain 80% of the variance
 # choose that rank and
 # output scores, loadings, pred, rank
-get_pca <- function (sim) {
+get_pca <- function (sim.matrix) {
   # Run PCA centered, not scaled
-  pca_out <- prcomp(sim)
+  pca_out <- prcomp(sim.matrix)
   #loadings
   rot <- pca_out$rotation
   # scores
@@ -52,9 +52,9 @@ get_pca <- function (sim) {
   
   # Cut scores and patterns to rank
   rotations <- as_tibble(rot[, 1:rank])
-  scores <- if (rank == 1) {matrix(ex[, 1:rank], nrow = nrow(sim))} else {ex[, 1:rank]}
+  scores <- if (rank == 1) {matrix(ex[, 1:rank], nrow = nrow(sim.matrix))} else {ex[, 1:rank]}
   # Predicted values
-  pred <- scores %*% t(rotations) + matrix(rep(apply(sim, 2, mean), each= nrow(scores)), nrow = nrow(scores))
+  pred <- scores %*% t(rotations) + matrix(rep(apply(sim.matrix, 2, mean), each= nrow(scores)), nrow = nrow(scores))
   
   return(list(rotations = rotations, scores = scores, pred = pred, rank = rank))
 }
@@ -63,23 +63,23 @@ get_pca <- function (sim) {
 # Function to run FA,
 # choose rank with lowest BIC
 # output scores, loadings, pred, rank
-get_fa <- function (sim, patterns) {
+get_fa <- function (sim.matrix, pattern.num) {
   
   set.seed(1988)
   
   # Run model with specified number of factors
   # and for one factor more and one factor less
-  patternsm1 = ifelse(patterns == 1, 3, patterns - 1)
-  patternsp1 = patterns+1
+  patternsm1 = ifelse(pattern.num == 1, 3, pattern.num - 1)
+  patternsp1 = pattern.num+1
   
   # This keeps the script from crashing if FA doesn't work
   # Just return NA
   # If there is not enough variability in the sim (e.g., sims with no added noise)
   # the FA solution is singular and doesn't converge
-  my_fa <- function(x, px){
+  my_fa <- function(x.matrix, px){
     tryCatch(
       expr = {
-        fa_xx <- fa(x, px, scores = "regression", rotate = "promax", fm = "ml")
+        fa_xx <- fa(x.matrix, px, scores = "regression", rotate = "promax", fm = "ml")
         return(fa_xx)
       },
       error = function(e){
@@ -89,9 +89,9 @@ get_fa <- function (sim, patterns) {
         return(NA)
       })}
   
-  fa_3 <- my_fa(sim, patternsm1)
-  fa_4 <- my_fa(sim, patterns)   
-  fa_5 <- my_fa(sim, patternsp1) 
+  fa_3 <- my_fa(sim.matrix, patternsm1)
+  fa_4 <- my_fa(sim.matrix, pattern.num)   
+  fa_5 <- my_fa(sim.matrix, patternsp1) 
   
   # Choose the model with the LOWEST BIC
   # If the model didn't converge, BIC = NA
@@ -108,7 +108,7 @@ get_fa <- function (sim, patterns) {
         rank <- patternsm1
       } else if (min(fa_5BIC, fa_4BIC, fa_3BIC, na.rm = T) == fa_4BIC & !is.na(fa_4BIC)) {
         fa_out <- fa_4
-        rank <- patterns
+        rank <- pattern.num
       } else {
         fa_out <- fa_3
         rank <- patternsp1
@@ -132,9 +132,9 @@ get_fa <- function (sim, patterns) {
 
 # Calculate BIC
 # NMF doesn't have a built in BIC
-get_bic <- function(sim, patterns, scores, loadings){
-  bic = sum((sim - (scores%*%loadings))^2) + 
-    (1/2)*(nrow(sim) + ncol(sim)) * patterns * log(nrow(sim) * ncol(sim))
+get_bic <- function(sim.matrix, pattern.num, scores, loadings){
+  bic = sum((sim.matrix - (scores%*%loadings))^2) + 
+    (1/2)*(nrow(sim.matrix) + ncol(sim.matrix)) * pattern.num * log(nrow(sim.matrix) * ncol(sim.matrix))
   return(bic)
 }
 
@@ -142,20 +142,20 @@ get_bic <- function(sim, patterns, scores, loadings){
 # Function to run NMF with L2 penalty
 # choose rank with lowest BIC
 # output scores, loadings, pred, rank
-get_nmfl2 <- function (sim, patterns) {
+get_nmfl2 <- function (sim.matrix, pattern.num) {
   
-  patternsm1 = ifelse(patterns == 1, 3, patterns - 1)
-  patternsp1 = patterns+1
+  patternsm1 = ifelse(pattern.num == 1, 3, pattern.num - 1)
+  patternsp1 = pattern.num+1
   
   set.seed(1988)
-  nmf_3 <- nmf(sim, patternsm1, nrun = 100, method = "lee")
-  nmf_4 <- nmf(sim, patterns,   nrun = 100, method = "lee")
-  nmf_5 <- nmf(sim, patternsp1, nrun = 100, method = "lee")
+  nmf_3 <- nmf(sim.matrix, patternsm1, nrun = 100, method = "lee")
+  nmf_4 <- nmf(sim.matrix, pattern.num,   nrun = 100, method = "lee")
+  nmf_5 <- nmf(sim.matrix, patternsp1, nrun = 100, method = "lee")
   
   # Calculate BIC for each
-  bic_3 <- get_bic(sim, patternsm1, basis(nmf_3), coef(nmf_3))
-  bic_4 <- get_bic(sim, patterns,   basis(nmf_4), coef(nmf_4))
-  bic_5 <- get_bic(sim, patternsp1, basis(nmf_5), coef(nmf_5))
+  bic_3 <- get_bic(sim.matrix, patternsm1, basis(nmf_3), coef(nmf_3))
+  bic_4 <- get_bic(sim.matrix, pattern.num,   basis(nmf_4), coef(nmf_4))
+  bic_5 <- get_bic(sim.matrix, patternsp1, basis(nmf_5), coef(nmf_5))
   
   # Choose model with lowest BIC
   if (min(bic_3, bic_4, bic_5) == bic_3) {
@@ -163,7 +163,7 @@ get_nmfl2 <- function (sim, patterns) {
     rank <- patternsm1
   } else if (min(bic_3, bic_4, bic_5) == bic_4) {
     nmf_out <- nmf_4
-    rank <- patterns
+    rank <- pattern.num
   } else {
     nmf_out <- nmf_5
     rank <- patternsp1
@@ -179,19 +179,19 @@ get_nmfl2 <- function (sim, patterns) {
 # Function to run NMF with divergence penalty
 # choose rank with lowest BIC
 # output scores, loadings, pred, rank
-get_nmfp <- function (sim, patterns) {
+get_nmfp <- function (sim.matrix, pattern.num) {
   
-  patternsm1 = ifelse(patterns == 1, 3, patterns - 1)
-  patternsp1 = patterns+1
+  patternsm1 = ifelse(pattern.num == 1, 3, pattern.num - 1)
+  patternsp1 = pattern.num+1
   
   set.seed(1988)
-  nmf_3 <- nmf(sim, patternsm1, nrun = 100, method = "brunet")
-  nmf_4 <- nmf(sim, patterns,   nrun = 100, method = "brunet")
-  nmf_5 <- nmf(sim, patternsp1, nrun = 100, method = "brunet")
+  nmf_3 <- nmf(sim.matrix, patternsm1, nrun = 100, method = "brunet")
+  nmf_4 <- nmf(sim.matrix, pattern.num,   nrun = 100, method = "brunet")
+  nmf_5 <- nmf(sim.matrix, patternsp1, nrun = 100, method = "brunet")
   
   # Calculate BIC for each
   bic_3 <- get_bic(sim, patternsm1, basis(nmf_3), coef(nmf_3))
-  bic_4 <- get_bic(sim, patterns,   basis(nmf_4), coef(nmf_4))
+  bic_4 <- get_bic(sim, pattern.num,   basis(nmf_4), coef(nmf_4))
   bic_5 <- get_bic(sim, patternsp1, basis(nmf_5), coef(nmf_5))
   
   if (min(bic_3, bic_4, bic_5) == bic_3) {
@@ -199,7 +199,7 @@ get_nmfp <- function (sim, patterns) {
     rank <- patternsm1
   } else if (min(bic_3, bic_4, bic_5) == bic_4) {
     nmf_out <- nmf_4
-    rank <- patterns
+    rank <- pattern.num
   } else {
     nmf_out <- nmf_5
     rank <- patternsp1
@@ -215,14 +215,14 @@ get_nmfp <- function (sim, patterns) {
 # to compare performance
 
 # Symmetric Subspace Distance 
-symsub_dist <- function(U, V) {
+symsub_dist <- function(Umatrix, Vmatrix) {
   
   # there is some hacky error-handling in here
   # to return `NA' instead of crashing
   if(any(is.na(U)) | any(is.na(V))) {return(NA)} else {
     
-    U = as.matrix(U)
-    V = as.matrix(V)
+    U = as.matrix(Umatrix)
+    V = as.matrix(Vmatrix)
     
     # patterns should be columns
     if (nrow(U) < ncol(U)) {U <- t(U)}
@@ -300,39 +300,15 @@ cos_dist <- function(a, b){
   }
 }
 
-# Cosine distance (vector version)
-# WITH error handling
-# if the matrices are not the same size, NA
-cos_dist_v <- function(a, b){
-  
-  if(any(is.na(a)) | any(is.na(b))) {return(NA)} else{
-    
-       a = as.matrix(a)
-       b = as.matrix(b)
-
-       # patterns should be columns
-       if (nrow(a) < ncol(a)) {a <- t(a)}
-       if (nrow(b) < ncol(b)) {b <- t(b)}
-       
-       if(ncol(a) != ncol(b)) { return(NA) } else{
-         cos_sim = c()
-         for (i in 1:ncol(a)) {
-          cos_sim[i] = (a[,i] %*% b[,i]) / (norm(a[,i], "2")*norm(b[,i], "2"))
-          }
-         return(1-cos_sim) 
-       }
-  }
-  }
-
 # L2 relative error
 # WITH error handling
 # if the matrices are not the same size, NA
-get_relerror <- function(x,y) {
+get_relerror <- function(Xmatrix,Ymatrix) {
 
-  if(any(is.na(x)) | any(is.na(y))) {return(NA)} else{
+  if(any(is.na(Xmatrix)) | any(is.na(Ymatrix))) {return(NA)} else{
     
-        x = as.matrix(x)
-        y = as.matrix(y)
+        x = as.matrix(Xmatrix)
+        y = as.matrix(Ymatrix)
         
         # patterns should be columns
         if (nrow(x) < ncol(x)) {x <- t(x)}
@@ -347,12 +323,12 @@ get_relerror <- function(x,y) {
 # L1 relative error
 # WITH error handling
 # if the matrices are not the same size, NA
-get_l1_error <- function(x,y) {
+get_l1_error <- function(Xmatrix,Ymatrix) {
   
-  if(any(is.na(x)) | any(is.na(y))) {return(NA)} else{
+  if(any(is.na(Xmatrix)) | any(is.na(Ymatrix))) {return(NA)} else{
     
-    x = as.matrix(x)
-    y = as.matrix(y)
+    x = as.matrix(Xmatrix)
+    y = as.matrix(Ymatrix)
     
     # patterns should be columns
     if (nrow(x) < ncol(x)) {x <- t(x)}
@@ -367,14 +343,19 @@ get_l1_error <- function(x,y) {
 # Get the proportion of true values within confidence interval
 # WITH error handling
 # if the matrices are not the same size, NA
-get_prop <- function(x,y,z) {
-  # mean, lower, upper
+get_prop <- function(true.matrix,lower.matrix,upper.matrix) {
+  # true value, lower CI, upper CI
   
-  if(any(is.na(x)) | any(is.na(y))) {return(NA)} else{
+  # this function takes the true simulated value (x) and the upper (z) and lower (y) bounds
+  # for the estimated confidence interval, and for each entry in the matrix, it gives a 1 if 
+  # the truth is within the CI, and a zero if it isn't
+  # then it takes the proportion of 1's over all entries as the coverage proportion.
+  
+  if(any(is.na(true.matrix)) | any(is.na(lower.matrix))) {return(NA)} else{
     
-    x = as.matrix(x)
-    y = as.matrix(y)
-    z = as.matrix(z)
+    x = as.matrix(true.matrix)
+    y = as.matrix(lower.matrix)
+    z = as.matrix(upper.matrix)
     
     # patterns should be columns
     if (nrow(x) < ncol(x)) {x <- t(x)}
@@ -394,6 +375,9 @@ get_prop <- function(x,y,z) {
 factor_correspondence <- function (A, B, nn = TRUE) {
   # This is all from the CVXR package, which is kind of its own language
   # for convex optimization
+  
+  # A and B are both matrices
+  #  B is the one that gets rearranged relative to A.
   G <- t(B) %*% A
   n <- nrow(G)
   
@@ -442,6 +426,8 @@ factor_correspondence <- function (A, B, nn = TRUE) {
 # Just a wrapper around factor_correspondence
 # with error handling
 get_perm <- function(x,y, nn = TRUE) {
+  # x and y are both matrices
+  # y is rearranged relative to x
   
   if(any(is.na(x)) | any(is.na(y))) {return(NA)} else{
     
@@ -461,7 +447,7 @@ get_perm <- function(x,y, nn = TRUE) {
 # with error handling
 get_perm_product <- function(x,y) {
   if(any(is.na(x)) | any(is.na(y))) {return(x)} else{ # if permutation matrix is NA, return X
-    
+    # x and y must both be matrices
     x = as.matrix(x)
     y = as.matrix(y)
     

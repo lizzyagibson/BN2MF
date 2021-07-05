@@ -30,18 +30,24 @@ true_sep = bind_cols(chem, sim, true_patterns, true_scores)
 
 bn2mf_loadings = readMat(paste0("./main/bn2mf/output/eh_NOTscaled", job_num, ".mat"))[[1]] %>% 
   as_tibble(.) %>% nest(data = everything()) %>% rename(bn2mf_loadings = data)
+# EH is a matrix of expected values for chemical loadings on patterns
 
 bn2mf_scores = readMat(paste0("./main/bn2mf/output/ewa_NOTscaled", job_num, ".mat"))[[1]] %>% 
   as_tibble(.) %>% nest(data= everything()) %>% rename(bn2mf_scores = data)
+# EWA is a matrix of expected values for individual scores on patterns
 
 ewa_scaled = readMat(paste0("./main/bn2mf/output/ewa_scaled", job_num, ".mat"))[[1]] %>% 
   as_tibble(.) %>% nest(data= everything()) %>% rename(ewa_scaled = data)
+# EWA is a matrix of expected values for SCALED individual scores on patterns
+# scaled by the normalization constant used to normalize patterns (EH) to sum to 1
 
 upperWA = readMat(paste0("./main/bn2mf/output/upperWA_", job_num, ".mat"))[[1]] %>% 
   as_tibble(.) %>% nest(data= everything()) %>% rename(upperWA = data)
+# This is a matrix of upper bounds on the confidence intervals for SCALED individual scores on patterns
 
 lowerWA = readMat(paste0("./main/bn2mf/output/lowerWA_", job_num, ".mat"))[[1]] %>% 
   as_tibble(.) %>% nest(data= everything()) %>% rename(lowerWA = data)
+# This is a matrix of lower bounds on the confidence intervals for SCALED individual scores on patterns
 
 # m has regular/unscaled loadings and scores to compare with other models
 m_out   <- bind_cols(bn2mf_loadings, bn2mf_scores)
@@ -85,6 +91,7 @@ sep_metrics = all_sep %>%
                            matrix == "scores" ~ true_scores,
                            matrix == "pred" ~ chem),
          truth = map(truth, function(df) df[,colSums(is.na(df))<nrow(df)]),
+         # ^ 
          relerr  = map2(truth, value, get_relerror),
          ssdist  = map2(truth, value, symm_subspace_dist),
          cosdist = map2(truth, value, cos_dist)) %>%
@@ -101,8 +108,7 @@ vci_sep = vci_sep %>%
 
 vci_metrics = vci_sep %>% 
   mutate_all(~map(., as.matrix)) %>% 
-  mutate(prop = pmap(list(scores_scaled, lowerWA, upperWA),
-                     function(x,y,z) sum(x >= y & x <= z)/(nrow(x)*ncol(x)) )) %>%
+  mutate(prop = pmap(list(scores_scaled, lowerWA, upperWA), get_pror)) %>%
   unnest(c(prop)) %>% 
   dplyr::select(prop) %>% 
   mutate(model = "bn2mf")
