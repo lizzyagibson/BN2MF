@@ -69,7 +69,7 @@ add_noise <- function (seed, chem, noise_level) {
   stdev = apply(chem, 2, sd)
   
   # add noise from normal dist, mean = 0
-  # sd = proprtion of true noise
+  # sd = proportion of true variance
   for (i in 1:p) {
     noise[,i] <- (rnorm(n, mean = 0, sd = (stdev[i]*noise_level)))
   }
